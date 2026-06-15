@@ -34,7 +34,8 @@ The repository is structured into two primary divisions:
 │   ├── devops_architecture.md        # Docker Compose, K8s orchestration, CI/CD, Prometheus telemetry
 │   ├── ai_governance_framework.md    # Ethical scoring calculations, pillar matrices
 │   ├── me_framework.md               # National KPIs, SEIS scorecard formulas, verification paths
-│   └── user_administrator_manual.md  # Detailed operator handbook
+│   ├── user_administrator_manual.md  # Detailed operator handbook
+│   └── national_ai_regulatory_overview_2026.md # 2026 IT Regulator Overview of AI Projects
 │
 ├── src/                              # React + TypeScript Frontend Prototype
 │   ├── components/                   # Interactive portal view sub-modules

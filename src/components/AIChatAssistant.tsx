@@ -220,11 +220,11 @@ export const AIChatAssistant: React.FC<AIChatAssistantProps> = ({ projects }) =>
 
   const sampleQuestions = [
     "What is the total registry budget and active project count?",
-    "Show details for project GN-AI-2026-002 (Akosombo)",
+    "Explain the 2026 Ghana National AI Strategy & Initiatives",
+    "Show Ghana AI Projects & Key Regulators table",
     "Explain Ghana Data Protection Act 2012 (Act 843) rules",
     "How does the system enforce Cybersecurity Act 2020 (Act 1038)?",
     "Describe the microservices system architecture & databases",
-    "How do M&E Officers perform an ethical compliance audit?",
     "What are the 8 user roles and access boundaries (RBAC/ABAC)?"
   ];
 
@@ -404,6 +404,37 @@ ${delayedStr}
 - **Good Grade** (NGS 75-89%): **${complianceGrades['Good']}** projects
 - **Moderate Grade** (NGS 50-74%): **${complianceGrades['Moderate']}** projects
 - **High Risk Grade** (NGS < 50%): **${complianceGrades['High Risk']}** projects
+`;
+      }
+      else if (query.includes('strategy') || query.includes('national ai strategy') || query.includes('roadmap') || query.includes('mahama') || query.includes('authority') || query.includes('fund') || query.includes('computing centre') || query.includes('coders') || query.includes('omcp') || query.includes('bill')) {
+        replyText = `## 🇬🇭 Ghana National AI Strategy (2025–2035) & Key Initiatives
+The **Ghana National AI Strategy (2025–2035)** sets out a ten-year roadmap to build a responsible, human-centred AI ecosystem in Ghana.
+
+### 🏛️ Core National Initiatives
+1. **Responsible AI Authority**: An independent authority designed to monitor ethics, data collection, and governance benchmarks across public and private AI projects, informed by Singapore's National AI Office precedent.
+2. **National AI Fund**: Capitalized at **GH₵5 billion** for 2025–2030 (scaling to **GH₵15 billion** for 2030–2035), drawn from royalties on mining and oil, to fund start-ups, scale innovations, and build local computational capacity.
+3. **AI Computing Centre**: A **$270 million** high-performance hardware hub (including $250 million dedicated capital) providing GPU capacity for academic research and public-sector model training.
+4. **One Million Coders Programme (OMCP)**: Equipped learning hubs across all 16 regions aiming to train one million citizens in AI, software coding, and cybersecurity starting in April 2026.
+5. **Emerging Technologies Bill**: Draft legislation setting legal boundaries, data protection guidelines, and accountability mechanisms for advanced systems (AI, Blockchain, Robotics).
+`;
+      }
+      else if (query.includes('table') || query.includes('regulator') || query.includes('regulon') || query.includes('partnership')) {
+        replyText = `## 📊 Ghana AI Projects & Key Regulators
+Here is a summary of registered projects and their oversight bodies under the **Responsible AI Authority**:
+
+| Category | No. of Projects | Key Regulator |
+|---|---|---|
+| **Government Strategy & Policy** | 6 | Ministry of Communication, Digital Technology & Innovation (MoCD) / Responsible AI Authority |
+| **Healthcare AI** | 3 | Ministry of Health (MoH) / WHO-UNDP |
+| **Agriculture AI** | 1 | Ministry of Food & Agriculture (MoFA) |
+| **Fintech & Financial AI** | 3 | Bank of Ghana (BoG) / NCA |
+| **Regulatory/Compliance AI** | 1 | NCA / Regulon |
+| **Language & NLP AI** | 1 | Ghana NLP / MoCD |
+| **Education AI** | 3 | GES / UNICEF |
+| **Data & Analytics** | 3 | Data Protection Commission (DPC) |
+| **International Partnerships** | 4 | Multiple Ministries / International Partners |
+
+> **Regulatory Note:** Key oversight bodies include the **National Communications Authority (NCA)**, the **Data Protection Commission (DPC)**, and the forthcoming **Responsible AI Authority**. The **Emerging Technologies Bill** will serve as the primary legal framework for data use and accountability.
 `;
       }
       else if (query.includes('act 843') || query.includes('privacy') || query.includes('data protection') || query.includes('data commission')) {
