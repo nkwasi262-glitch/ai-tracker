@@ -1,0 +1,309 @@
+import React, { useState } from 'react';
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
+  LineChart, Line
+} from 'recharts';
+import { 
+  TrendingUp, 
+  DollarSign, 
+  Layers, 
+  Activity, 
+  AlertTriangle,
+  FolderOpen,
+  CheckCircle2,
+  HelpCircle
+} from 'lucide-react';
+import { AIProject } from '../data/sampleProjects';
+import { UserRole } from './RoleSwitcher';
+
+interface DashboardProps {
+  projects: AIProject[];
+  currentRole: UserRole;
+}
+
+export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) => {
+  const [selectedSector, setSelectedSector] = useState<string>('All');
+
+  // Calculates KPI values
+  const totalProjectsCount = projects.length;
+  const activeProjectsCount = projects.filter(p => p.status === 'Active').length;
+  const delayedProjectsCount = projects.filter(p => p.status === 'Delayed').length;
+  
+  const totalBudget = projects.reduce((acc, p) => acc + p.budget.totalAllocated, 0);
+  const totalUtilized = projects.reduce((acc, p) => acc + p.budget.utilized, 0);
+  const budgetUtilizationRate = totalBudget > 0 ? (totalUtilized / totalBudget) * 100 : 0;
+
+  const avgReadiness = projects.reduce((acc, p) => acc + p.readinessScore, 0) / totalProjectsCount;
+  const avgCompliance = projects.reduce((acc, p) => {
+    const s = p.compliance;
+    return acc + (s.fairness + s.transparency + s.accountability + s.privacy + s.security) / 5;
+  }, 0) / totalProjectsCount;
+
+  // Filter projects by sector for drilldowns
+  const filteredProjects = selectedSector === 'All' 
+    ? projects 
+    : projects.filter(p => p.sector === selectedSector);
+
+  // 1. Data formulation for Budgets Chart
+  const budgetChartData = filteredProjects.map(p => ({
+    name: p.mdaCode,
+    Approved: p.budget.totalAllocated / 100000, // scaled to GHS Lakhs for readability
+    Utilized: p.budget.utilized / 100000,
+    project: p.name
+  }));
+
+  // 2. Data formulation for Sectors (Radar)
+  const sectorCounts: { [key: string]: number } = {};
+  projects.forEach(p => {
+    sectorCounts[p.sector] = (sectorCounts[p.sector] || 0) + 1;
+  });
+  const sectorChartData = Object.keys(sectorCounts).map(sector => ({
+    subject: sector,
+    count: sectorCounts[sector],
+    fullMark: 5
+  }));
+
+  // 3. Compliance Trends Simulation
+  const complianceTrendData = [
+    { month: 'Jan', Compliance: 72, Projects: 12 },
+    { month: 'Feb', Compliance: 74, Projects: 14 },
+    { month: 'Mar', Compliance: 78, Projects: 18 },
+    { month: 'Apr', Compliance: 81, Projects: 20 },
+    { month: 'May', Compliance: 84, Projects: 22 },
+    { month: 'Jun', Compliance: 86, Projects: 24 },
+  ];
+
+  // Dynamic system notifications based on roles
+  const getNotifications = () => {
+    const notices = [];
+    if (currentRole !== 'Public User') {
+      notices.push({
+        type: 'warning',
+        message: 'GRA Tax Fraud engine milestone verification delayed by 2 weeks.',
+        time: '3 hours ago'
+      });
+      notices.push({
+        type: 'danger',
+        message: 'Security risk check flagged on Akosombo Dam Hydrology project. Mitigation action required.',
+        time: '5 hours ago'
+      });
+      notices.push({
+        type: 'success',
+        message: 'Cocoa Board disease predictor ethics review finalized and approved.',
+        time: '1 day ago'
+      });
+    } else {
+      notices.push({
+        type: 'info',
+        message: 'National AI Observatory published new statistics on agricultural tech adoption.',
+        time: 'Yesterday'
+      });
+    }
+    return notices;
+  };
+
+  return (
+    <div>
+      {/* Sector filter bar */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '24px',
+        background: 'rgba(255,255,255,0.02)',
+        padding: '16px 24px',
+        borderRadius: '12px',
+        border: '1px solid var(--border-color)'
+      }}>
+        <div>
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 700 }}>National AI Dashboard</h2>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+            Real-time analytics for government Artificial Intelligence implementations
+          </p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+            Sector Focus:
+          </span>
+          <select 
+            value={selectedSector}
+            onChange={(e) => setSelectedSector(e.target.value)}
+            className="form-select"
+            style={{ width: '180px', padding: '8px 12px' }}
+          >
+            <option value="All">All Sectors</option>
+            <option value="Health">Health</option>
+            <option value="Agriculture">Agriculture</option>
+            <option value="Finance">Finance</option>
+            <option value="Energy">Energy</option>
+            <option value="Justice">Justice</option>
+            <option value="Environment">Environment</option>
+          </select>
+        </div>
+      </div>
+
+      {/* KPI Cards Grid */}
+      <div className="card-grid">
+        <div className="glass-card kpi-card" style={{ '--theme-accent': 'var(--ghana-emerald)' } as React.CSSProperties}>
+          <div className="kpi-title">Total AI Projects</div>
+          <div className="kpi-value">{totalProjectsCount}</div>
+          <div className="kpi-sub">
+            <span style={{ color: 'var(--ghana-emerald)' }}>Active: {activeProjectsCount}</span> | Delayed: {delayedProjectsCount}
+          </div>
+          <FolderOpen className="kpi-icon-wrapper" />
+        </div>
+
+        <div className="glass-card kpi-card" style={{ '--theme-accent': 'var(--ghana-gold)' } as React.CSSProperties}>
+          <div className="kpi-title">Approved Budget</div>
+          <div className="kpi-value">
+            GHS {(totalBudget / 1000000).toFixed(1)}M
+          </div>
+          <div className="kpi-sub">
+            Utilization Rate: <span style={{ color: 'var(--ghana-gold)' }}>{budgetUtilizationRate.toFixed(1)}%</span>
+          </div>
+          <DollarSign className="kpi-icon-wrapper" />
+        </div>
+
+        <div className="glass-card kpi-card" style={{ '--theme-accent': 'var(--ghana-emerald)' } as React.CSSProperties}>
+          <div className="kpi-title">AI Readiness index</div>
+          <div className="kpi-value">{avgReadiness.toFixed(0)}%</div>
+          <div className="kpi-sub">
+            National Maturity Tier: <span style={{ color: 'var(--ghana-emerald)' }}>Defined</span>
+          </div>
+          <Layers className="kpi-icon-wrapper" />
+        </div>
+
+        <div className="glass-card kpi-card" style={{ '--theme-accent': 'var(--ghana-emerald)' } as React.CSSProperties}>
+          <div className="kpi-title">Compliance Index</div>
+          <div className="kpi-value">{avgCompliance.toFixed(0)}%</div>
+          <div className="kpi-sub">
+            Ethical Governance Score: <span style={{ color: 'var(--ghana-emerald)' }}>Good</span>
+          </div>
+          <Activity className="kpi-icon-wrapper" />
+        </div>
+      </div>
+
+      {/* Charts Panels */}
+      <div className="chart-grid">
+        {/* Budget utilization Bar chart */}
+        <div className="glass-card chart-card">
+          <div className="chart-header">
+            <h3 className="chart-title">Financial Allotments (GHS Millions)</h3>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '4px' }}>
+              Indexed by MDA Code
+            </span>
+          </div>
+          <div className="chart-container">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={budgetChartData}
+                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="name" stroke="var(--text-secondary)" fontSize={11} tickLine={false} />
+                <YAxis stroke="var(--text-secondary)" fontSize={11} tickLine={false} />
+                <Tooltip 
+                  contentStyle={{ background: '#111b27', border: '1px solid var(--border-color)', borderRadius: '8px' }}
+                  labelStyle={{ color: 'var(--ghana-emerald)', fontWeight: 700 }}
+                />
+                <Legend verticalAlign="top" height={36} iconSize={12} iconType="circle" wrapperStyle={{ fontSize: '0.8rem' }} />
+                <Bar name="Allocated Budget" dataKey="Approved" fill="rgba(16, 185, 129, 0.75)" radius={[4, 4, 0, 0]} />
+                <Bar name="Utilized Funds" dataKey="Utilized" fill="rgba(251, 191, 36, 0.75)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Sectoral concentration Radar chart */}
+        <div className="glass-card chart-card">
+          <div className="chart-header">
+            <h3 className="chart-title">Sector distribution</h3>
+          </div>
+          <div className="chart-container">
+            <ResponsiveContainer width="100%" height="100%">
+              <RadarChart cx="50%" cy="50%" outerRadius="70%" data={sectorChartData}>
+                <PolarGrid stroke="rgba(255,255,255,0.06)" />
+                <PolarAngleAxis dataKey="subject" stroke="var(--text-secondary)" fontSize={10} />
+                <PolarRadiusAxis angle={30} domain={[0, 4]} stroke="rgba(255,255,255,0.15)" fontSize={8} />
+                <Radar
+                  name="Projects Count"
+                  dataKey="count"
+                  stroke="var(--ghana-emerald)"
+                  fill="rgba(16, 185, 129, 0.2)"
+                  fillOpacity={0.6}
+                />
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Grid: Trends & Notification panels */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+        {/* Compliance trends Line chart */}
+        <div className="glass-card" style={{ minHeight: '260px' }}>
+          <div className="chart-header">
+            <h3 className="chart-title">Ethical Compliance Trends</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: 'var(--ghana-emerald)' }}>
+              <TrendingUp className="w-3.5 h-3.5" />
+              <span>Upward Trajectory (+14%)</span>
+            </div>
+          </div>
+          <div style={{ height: '180px', width: '100%' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={complianceTrendData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="month" stroke="var(--text-secondary)" fontSize={10} />
+                <YAxis stroke="var(--text-secondary)" fontSize={10} />
+                <Tooltip contentStyle={{ background: '#111b27', border: '1px solid var(--border-color)' }} />
+                <Line 
+                  type="monotone" 
+                  dataKey="Compliance" 
+                  stroke="var(--ghana-emerald)" 
+                  strokeWidth={2.5} 
+                  dot={{ fill: 'var(--ghana-emerald)', strokeWidth: 2 }} 
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Dynamic Alerts and system audits panel */}
+        <div className="glass-card" style={{ minHeight: '260px', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h3 className="chart-title">System Status & Regulatory Notices</h3>
+            <span className="badge badge-warning" style={{ fontSize: '0.65rem' }}>Active Alerts</span>
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, overflowY: 'auto' }}>
+            {getNotifications().map((note, idx) => (
+              <div 
+                key={idx} 
+                style={{ 
+                  display: 'flex', 
+                  gap: '12px', 
+                  padding: '12px', 
+                  borderRadius: '8px', 
+                  background: 'rgba(255,255,255,0.015)', 
+                  border: '1px solid var(--border-color)',
+                  fontSize: '0.85rem'
+                }}
+              >
+                {note.type === 'danger' && <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />}
+                {note.type === 'warning' && <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0" />}
+                {note.type === 'success' && <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />}
+                {note.type === 'info' && <HelpCircle className="w-5 h-5 text-blue-400 flex-shrink-0" />}
+                
+                <div style={{ flex: 1 }}>
+                  <div style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{note.message}</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px' }}>{note.time}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
