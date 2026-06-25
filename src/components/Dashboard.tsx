@@ -168,84 +168,128 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
           <FolderOpen className="kpi-icon-wrapper" />
 
           {showProjectsTooltip && (
-            <div style={{
-              position: 'absolute',
-              top: '102%',
-              left: '0',
-              width: '320px',
-              backgroundColor: 'rgba(11, 15, 25, 0.98)',
-              backdropFilter: 'blur(16px)',
-              border: '1px solid var(--border-focus)',
-              borderRadius: '10px',
-              padding: '16px',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.8), 0 10px 10px -5px rgba(0, 0, 0, 0.8)',
-              zIndex: 999,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px',
-              textAlign: 'left'
-            }}>
-              <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Project Registry Breakdown
-              </div>
-              
-              {/* Active Section */}
-              <div>
-                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ghana-emerald)', display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                  <span>ACTIVE</span>
-                  <span>{activeProjectsList.length}</span>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', maxHeight: '90px', overflowY: 'auto', paddingRight: '4px' }}>
-                  {activeProjectsList.length > 0 ? (
-                    activeProjectsList.map(p => (
-                      <div key={p.id} style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={p.name}>
-                        • {p.name}
-                      </div>
-                    ))
-                  ) : (
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>No active projects</div>
-                  )}
-                </div>
-              </div>
+            <>
+              {/* Arrow Indicator */}
+              <div style={{
+                position: 'absolute',
+                top: '24px',
+                left: '100%',
+                width: '8px',
+                height: '8px',
+                backgroundColor: 'rgba(11, 15, 25, 0.98)',
+                borderRight: '1px solid var(--border-focus)',
+                borderTop: '1px solid var(--border-focus)',
+                transform: 'translateX(-4px) rotate(45deg)',
+                zIndex: 1000
+              }} />
 
-              {/* Delayed Section */}
-              <div>
-                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ghana-gold)', display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                  <span>DELAYED</span>
-                  <span>{delayedProjectsList.length}</span>
+              {/* Hover Panel */}
+              <div style={{
+                position: 'absolute',
+                top: '0',
+                right: '105%',
+                width: '320px',
+                backgroundColor: 'rgba(11, 15, 25, 0.98)',
+                backdropFilter: 'blur(16px)',
+                border: '1px solid var(--border-focus)',
+                borderRadius: '10px',
+                padding: '16px',
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.8), 0 10px 10px -5px rgba(0, 0, 0, 0.8)',
+                zIndex: 999,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                textAlign: 'left'
+              }}>
+                <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Project Registry Breakdown
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', maxHeight: '90px', overflowY: 'auto', paddingRight: '4px' }}>
-                  {delayedProjectsList.length > 0 ? (
-                    delayedProjectsList.map(p => (
-                      <div key={p.id} style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={p.name}>
-                        • {p.name}
-                      </div>
-                    ))
-                  ) : (
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>No delayed projects</div>
-                  )}
+                
+                {/* Active Section */}
+                <div>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ghana-emerald)', display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span>ACTIVE</span>
+                    <span>{activeProjectsList.length}</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '120px', overflowY: 'auto', paddingRight: '4px' }}>
+                    {activeProjectsList.length > 0 ? (
+                      activeProjectsList.map(p => (
+                        <div key={p.id} style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '6px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--text-primary)', fontWeight: 500, overflow: 'hidden' }}>
+                              <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--ghana-emerald)', flexShrink: 0 }} />
+                              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={p.name}>{p.name}</span>
+                            </div>
+                            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{p.readinessScore}%</span>
+                          </div>
+                          <div style={{ width: '100%', height: '3px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
+                            <div style={{ width: `${p.readinessScore}%`, height: '100%', background: 'var(--ghana-emerald)' }} />
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic', paddingLeft: '4px' }}>No active projects</div>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              {/* Completed Section */}
-              <div>
-                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#3b82f6', display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                  <span>COMPLETED</span>
-                  <span>{completedProjectsList.length}</span>
+                {/* Delayed Section */}
+                <div>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ghana-gold)', display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span>DELAYED</span>
+                    <span>{delayedProjectsList.length}</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '120px', overflowY: 'auto', paddingRight: '4px' }}>
+                    {delayedProjectsList.length > 0 ? (
+                      delayedProjectsList.map(p => (
+                        <div key={p.id} style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '6px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--text-primary)', fontWeight: 500, overflow: 'hidden' }}>
+                              <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--ghana-gold)', flexShrink: 0 }} />
+                              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={p.name}>{p.name}</span>
+                            </div>
+                            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{p.readinessScore}%</span>
+                          </div>
+                          <div style={{ width: '100%', height: '3px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
+                            <div style={{ width: `${p.readinessScore}%`, height: '100%', background: 'var(--ghana-gold)' }} />
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic', paddingLeft: '4px' }}>No delayed projects</div>
+                    )}
+                  </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', maxHeight: '90px', overflowY: 'auto', paddingRight: '4px' }}>
-                  {completedProjectsList.length > 0 ? (
-                    completedProjectsList.map(p => (
-                      <div key={p.id} style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={p.name}>
-                        • {p.name}
-                      </div>
-                    ))
-                  ) : (
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>No completed projects</div>
-                  )}
+
+                {/* Completed Section */}
+                <div>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#3b82f6', display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span>COMPLETED</span>
+                    <span>{completedProjectsList.length}</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '120px', overflowY: 'auto', paddingRight: '4px' }}>
+                    {completedProjectsList.length > 0 ? (
+                      completedProjectsList.map(p => (
+                        <div key={p.id} style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '6px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--text-primary)', fontWeight: 500, overflow: 'hidden' }}>
+                              <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#3b82f6', flexShrink: 0 }} />
+                              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={p.name}>{p.name}</span>
+                            </div>
+                            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{p.readinessScore}%</span>
+                          </div>
+                          <div style={{ width: '100%', height: '3px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
+                            <div style={{ width: `${p.readinessScore}%`, height: '100%', background: '#3b82f6' }} />
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic', paddingLeft: '4px' }}>No completed projects</div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            </>
           )}
         </div>
 
