@@ -8,7 +8,6 @@ import { AIReadiness } from './components/AIReadiness';
 import { RiskManagement } from './components/RiskManagement';
 import { DocumentManager } from './components/DocumentManager';
 import { AIChatAssistant } from './components/AIChatAssistant';
-import { NationalObservatory } from './components/NationalObservatory';
 import { sampleProjects, AIProject, ComplianceScore, DocumentAsset } from './data/sampleProjects';
 import { UserRole } from './components/RoleSwitcher';
 
@@ -128,8 +127,6 @@ function App() {
         );
       case 'chat':
         return <AIChatAssistant projects={projects} />;
-      case 'observatory':
-        return <NationalObservatory projects={projects} />;
       default:
         return <Dashboard projects={projects} currentRole={currentRole} />;
     }

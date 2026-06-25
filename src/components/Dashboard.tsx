@@ -96,7 +96,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
     } else {
       notices.push({
         type: 'info',
-        message: 'National AI Observatory published new statistics on agricultural tech adoption.',
+        message: 'Responsible AI Authority published new statistics on agricultural tech adoption.',
         time: 'Yesterday'
       });
     }

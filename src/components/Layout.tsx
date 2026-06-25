@@ -8,7 +8,6 @@ import {
   AlertOctagon, 
   Files, 
   MessageSquareCode, 
-  Compass, 
   Calendar,
   Globe
 } from 'lucide-react';
@@ -39,8 +38,7 @@ export const Layout: React.FC<LayoutProps> = ({
     { id: 'readiness', label: 'AI Readiness', icon: <Award />, public: false },
     { id: 'risk', label: 'Risk Matrix', icon: <AlertOctagon />, public: false },
     { id: 'documents', label: 'Documents & OCR', icon: <Files />, public: false },
-    { id: 'chat', label: 'AI Chat Assistant', icon: <MessageSquareCode />, public: true },
-    { id: 'observatory', label: 'AI Observatory', icon: <Compass />, public: true },
+    { id: 'chat', label: 'AI Chat Assistant', icon: <MessageSquareCode />, public: true }
   ];
 
   // Restricts viewing tabs if public user tries to access internal modules
@@ -115,7 +113,7 @@ export const Layout: React.FC<LayoutProps> = ({
               onRoleChange={(newRole) => {
                 onRoleChange(newRole);
                 // Resets active tab to dashboard if moving from administrator to public role
-                if (newRole === 'Public User' && !['dashboard', 'gis', 'chat', 'observatory'].includes(activeTab)) {
+                if (newRole === 'Public User' && !['dashboard', 'gis', 'chat'].includes(activeTab)) {
                   setActiveTab('dashboard');
                 }
               }} 
