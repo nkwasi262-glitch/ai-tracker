@@ -173,13 +173,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
               <div style={{
                 position: 'absolute',
                 top: '24px',
-                left: '100%',
+                right: '100%',
                 width: '8px',
                 height: '8px',
                 backgroundColor: 'rgba(11, 15, 25, 0.98)',
-                borderRight: '1px solid var(--border-focus)',
-                borderTop: '1px solid var(--border-focus)',
-                transform: 'translateX(-4px) rotate(45deg)',
+                borderLeft: '1px solid var(--border-focus)',
+                borderBottom: '1px solid var(--border-focus)',
+                transform: 'translateX(4px) rotate(45deg)',
                 zIndex: 1000
               }} />
 
@@ -187,7 +187,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
               <div style={{
                 position: 'absolute',
                 top: '0',
-                right: '105%',
+                left: '105%',
                 width: '320px',
                 backgroundColor: 'rgba(11, 15, 25, 0.98)',
                 backdropFilter: 'blur(16px)',
