@@ -24,6 +24,11 @@ interface DashboardProps {
 
 export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) => {
   const [selectedSector, setSelectedSector] = useState<string>('All');
+  const [showProjectsTooltip, setShowProjectsTooltip] = useState(false);
+
+  const activeProjectsList = projects.filter(p => p.status === 'Active');
+  const delayedProjectsList = projects.filter(p => p.status === 'Delayed');
+  const completedProjectsList = projects.filter(p => p.status === 'Completed');
 
   // Calculates KPI values
   const totalProjectsCount = projects.length;
@@ -145,13 +150,103 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
 
       {/* KPI Cards Grid */}
       <div className="card-grid">
-        <div className="glass-card kpi-card" style={{ '--theme-accent': 'var(--ghana-emerald)' } as React.CSSProperties}>
+        <div 
+          className="glass-card kpi-card" 
+          style={{ 
+            '--theme-accent': 'var(--ghana-emerald)',
+            overflow: 'visible',
+            cursor: 'pointer'
+          } as React.CSSProperties}
+          onMouseEnter={() => setShowProjectsTooltip(true)}
+          onMouseLeave={() => setShowProjectsTooltip(false)}
+        >
           <div className="kpi-title">Total AI Projects</div>
           <div className="kpi-value">{totalProjectsCount}</div>
           <div className="kpi-sub">
             <span style={{ color: 'var(--ghana-emerald)' }}>Active: {activeProjectsCount}</span> | Delayed: {delayedProjectsCount}
           </div>
           <FolderOpen className="kpi-icon-wrapper" />
+
+          {showProjectsTooltip && (
+            <div style={{
+              position: 'absolute',
+              top: '102%',
+              left: '0',
+              width: '320px',
+              backgroundColor: 'rgba(11, 15, 25, 0.98)',
+              backdropFilter: 'blur(16px)',
+              border: '1px solid var(--border-focus)',
+              borderRadius: '10px',
+              padding: '16px',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.8), 0 10px 10px -5px rgba(0, 0, 0, 0.8)',
+              zIndex: 999,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              textAlign: 'left'
+            }}>
+              <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Project Registry Breakdown
+              </div>
+              
+              {/* Active Section */}
+              <div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ghana-emerald)', display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <span>ACTIVE</span>
+                  <span>{activeProjectsList.length}</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', maxHeight: '90px', overflowY: 'auto', paddingRight: '4px' }}>
+                  {activeProjectsList.length > 0 ? (
+                    activeProjectsList.map(p => (
+                      <div key={p.id} style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={p.name}>
+                        • {p.name}
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>No active projects</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Delayed Section */}
+              <div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ghana-gold)', display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <span>DELAYED</span>
+                  <span>{delayedProjectsList.length}</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', maxHeight: '90px', overflowY: 'auto', paddingRight: '4px' }}>
+                  {delayedProjectsList.length > 0 ? (
+                    delayedProjectsList.map(p => (
+                      <div key={p.id} style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={p.name}>
+                        • {p.name}
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>No delayed projects</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Completed Section */}
+              <div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#3b82f6', display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <span>COMPLETED</span>
+                  <span>{completedProjectsList.length}</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', maxHeight: '90px', overflowY: 'auto', paddingRight: '4px' }}>
+                  {completedProjectsList.length > 0 ? (
+                    completedProjectsList.map(p => (
+                      <div key={p.id} style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={p.name}>
+                        • {p.name}
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>No completed projects</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="glass-card kpi-card" style={{ '--theme-accent': 'var(--ghana-gold)' } as React.CSSProperties}>
