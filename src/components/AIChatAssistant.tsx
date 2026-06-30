@@ -337,13 +337,11 @@ export const AIChatAssistant: React.FC<AIChatAssistantProps> = ({ projects }) =>
 ### ⚖️ Ethical Scorecard (NGS Breakdown)
 | Governance Pillar | Score | Weight | Weighted Score |
 |---|---|---|---|
-| **Fairness** | ${p.compliance.fairness}% | 20% | ${(p.compliance.fairness * 0.2).toFixed(1)}% |
-| **Accountability** | ${p.compliance.accountability}% | 15% | ${(p.compliance.accountability * 0.15).toFixed(1)}% |
-| **Transparency** | ${p.compliance.transparency}% | 15% | ${(p.compliance.transparency * 0.15).toFixed(1)}% |
-| **Explainability** | ${p.compliance.privacy}% | 10% | ${(p.compliance.privacy * 0.1).toFixed(1)}% |
+| **Fairness & Tribal Equity** | ${p.compliance.fairness}% | 20% | ${(p.compliance.fairness * 0.2).toFixed(1)}% |
+| **Transparency & Explainability** | ${p.compliance.transparency}% | 25% | ${(p.compliance.transparency * 0.25).toFixed(1)}% |
 | **Privacy (Act 843)** | ${p.compliance.privacy}% | 20% | ${(p.compliance.privacy * 0.2).toFixed(1)}% |
-| **Security (Act 1038)** | ${p.compliance.security}% | 20% | ${(p.compliance.security * 0.2).toFixed(1)}% |
-| **OVERALL GRADE** | **${p.compliance.overallGrade}** | **100%** | **${p.readinessScore}%** |
+| **Security (Act 1038)** | ${p.compliance.security}% | 35% | ${(p.compliance.security * 0.35).toFixed(1)}% |
+| **OVERALL GRADE** | **${p.compliance.overallGrade}** | **100%** | **${((p.compliance.fairness * 0.2) + (p.compliance.transparency * 0.25) + (p.compliance.privacy * 0.2) + (p.compliance.security * 0.35)).toFixed(0)}%** |
 
 ### 🚀 Implementation Milestones
 ${milestonesStr}
@@ -466,16 +464,14 @@ To evaluate AI safety and socio-economic value, GNAPRMS applies the **National A
 
 ### 📊 NGS Scoring Formula & Weights
 The final NGS grade is computed as a weighted average:
-$$\\text{NGS} = 0.20(Fairness) + 0.15(Accountability) + 0.15(Transparency) + 0.10(Explainability) + 0.20(Privacy) + 0.20(Security)$$
+$$\text{NGS} = 0.20(Fairness) + 0.25(Transparency) + 0.20(Privacy) + 0.35(Security)$$
 
 | Pillar | Weight | Description |
 |---|---|---|
-| **Fairness (F)** | **20%** | Zero discrimination by region, tribe, language, or socioeconomic class. |
-| **Accountability (A)** | **15%** | Appointed human operator and legal responsibility paths. |
-| **Transparency (T)** | **15%** | Documented model cards, dataset lineages, and code visibility. |
-| **Explainability (E)** | **10%** | Non-technical explanations for model decisions (no "black box" in health or justice). |
+| **Fairness & Tribal Equity (F)** | **20%** | Zero discrimination by region, tribe, language, or socioeconomic class. |
+| **Transparency & Explainability (T&E)** | **25%** | Documented model cards, dataset lineages, and non-technical explanations of decisions. |
 | **Privacy (P)** | **20%** | Strict Act 843 adherence, anonymization, and encryption. |
-| **Security (S)** | **20%** | Act 1038 adherence, pen testing, and CERT coordination. |
+| **Security (S)** | **35%** | Act 1038 adherence, pen testing, and threat prevention. |
 
 ### 📈 Compliance Grades & Risk Bands
 - **Excellent** (NGS 90-100%): Safe for national production deployment.

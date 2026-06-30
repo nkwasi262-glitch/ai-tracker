@@ -4,62 +4,53 @@ This framework defines the AI Governance criteria, ethical scoring matrices, reg
 
 ---
 
-## 1. The Six Pillars of Ghanaian AI Ethics
+## 1. The Broader AI Governance & Ethics Pillars
 
-To ensure that AI initiatives in Ghana benefit all citizens without inducing bias, privacy infringement, or security concerns, all registered systems are assessed against six core ethical dimensions:
+To ensure AI initiatives benefit citizens globally without inducing bias, privacy infringement, or security concerns, all registered systems are assessed against four core ethical dimensions, adaptable to multiple international regulatory frameworks:
 
 ```mermaid
 mindmap
-  root((Ghanaian AI Ethics))
-    Fairness
-      Bias mitigation
-      Regional equity
-      Inclusivity
-    Accountability
-      Audit trails
-      Human-in-the-loop
-      Legal liability
-    Transparency
-      Open Source datasets
-      Algorithmic visibility
-      Declared objectives
-    Explainability
-      No black box in health/justice
-      User-friendly outputs
-      Traceable decisions
-    Privacy
-      Act 843 compliance
-      Anonymization
-      Consent workflows
-    Security
-      Act 1038 compliance
-      Penetration tests
-      Vulnerability patching
+  root((Global AI Governance))
+    Fairness and Equity
+      Ghana: Tribal/Regional Representation
+      EU: AI Act Demographic Bias assessments
+      US: Civil Rights Impact
+      ISO: Global Inclusivity Annex A
+    Transparency and Explainability
+      Model Cards & System Logs
+      NIST AI RMF compliance cards
+      EU Explainability requirements
+      Explainable AI (XAI) logs
+    Privacy and Data compliance
+      Ghana DPA Act 843 sovereign hosting
+      GDPR DPIA & Right to erasure
+      US HIPAA & CCPA rules
+      ISO 27701 PIMS audits
+    Cybersecurity and Threat prevention
+      Ghana Cybersecurity Act 1038
+      EU Cyber Resilience CE mark
+      US SOC 2 / FedRAMP
+      ISO 27001 ISMS threat vectors
 ```
 
-1. **Fairness**: AI models must not discriminate based on tribe, region, language, gender, religion, or economic class.
-2. **Accountability**: Every AI initiative must have a designated human operator (DHO) and an overseeing ministry held legally responsible for outcomes.
-3. **Transparency**: Algorithms must document model architectures, training datasets, and intent.
-4. **Explainability**: Complex neural networks (especially in healthcare and justice) must provide a non-technical breakdown explaining how outcomes were derived.
-5. **Privacy**: Systems must adhere strictly to the **Data Protection Act, 2012 (Act 843)**, ensuring citizen records are anonymized and consent-driven.
-6. **Security**: AI applications must withstand cyber threats, undergoing routine pen testing under the **Cybersecurity Act, 2020 (Act 1038)**.
+1. **Fairness & Tribal Equity** (or demographic equity): AI models must not discriminate based on tribe, region, language, gender, race, or socioeconomic class.
+2. **Transparency & Explainability**: Algorithms must publish Model Cards detailing neural architectures, training lineages, and explainability summaries for non-technical auditors.
+3. **Citizen Privacy & Legislative Compliance**: Systems must strictly adhere to data protection acts (such as Ghana's Data Protection Act, 2012 (Act 843), GDPR, HIPAA, or CCPA), assuring user consent and encryption.
+4. **Cybersecurity & Damaging Threats Prevention**: AI systems must withstand adversarial threats (data poisoning, prompt injection, model inversion) under critical infrastructure frameworks (e.g. Ghana's Act 1038, CE mark, NIST framework, ISO/IEC 27001).
 
 ---
 
 ## 2. Dynamic Governance Scorecard Methodology
 
-Each project undergoes an audit by M&E officers and auditors, generating scores from `0` to `100` across the six ethical pillars. The **National AI Governance Score (NGS)** is computed as a weighted average:
+Each project undergoes an audit by M&E officers and auditors, selecting a target **Regulatory Framework Region** and answering a metadata checklist of **Yes** / **No** compliance questions. The **National AI Governance Score (NGS)** is computed as a weighted average:
 
-$$\text{NGS} = w_1 F + w_2 A + w_3 T + w_4 E + w_5 P + w_6 S$$
+$$\text{NGS} = 0.20 F + 0.25 T\&E + 0.20 P + 0.35 C$$
 
-Where the weights $w_i$ reflect priority sectors (e.g., healthcare and finance place heavier weight on security and privacy; public dashboards prioritize transparency):
-
+Where:
 * **F (Fairness)**: Weight = 0.20
-* **A (Accountability)**: Weight = 0.15
-* **T (Transparency)**: Weight = 0.15
-* **E (Explainability)**: Weight = 0.10
+* **T&E (Transparency & Explainability)**: Weight = 0.25
 * **P (Privacy)**: Weight = 0.20
-* **S (Security)**: Weight = 0.20
+* **C (Cybersecurity)**: Weight = 0.35
 
 ### Compliance Grades & Risk Bands
 

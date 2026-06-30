@@ -42,7 +42,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
   const avgReadiness = projects.reduce((acc, p) => acc + p.readinessScore, 0) / totalProjectsCount;
   const avgCompliance = projects.reduce((acc, p) => {
     const s = p.compliance;
-    return acc + (s.fairness + s.transparency + s.accountability + s.privacy + s.security) / 5;
+    const weightedScore = (s.fairness * 0.20) + (s.transparency * 0.25) + (s.privacy * 0.20) + (s.security * 0.35);
+    return acc + weightedScore;
   }, 0) / totalProjectsCount;
 
   // Filter projects by sector for drilldowns
