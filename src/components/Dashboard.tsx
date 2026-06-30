@@ -44,7 +44,7 @@ const CustomTooltip = ({ active, payload }: any) => {
               Allocated Budget
             </div>
             <div style={{ color: '#10b981', fontWeight: 700, fontSize: '0.76rem', marginTop: '2px', lineHeight: '1.3' }}>
-              {formatNumberToWords(data.ApprovedRaw)} GHS
+              {formatNumberToWords(data.ApprovedRaw)} GHS (GHS {data.ApprovedRaw.toLocaleString('en-US')})
             </div>
           </div>
           <div>
@@ -52,7 +52,7 @@ const CustomTooltip = ({ active, payload }: any) => {
               Utilized Funds
             </div>
             <div style={{ color: '#fbbf24', fontWeight: 700, fontSize: '0.76rem', marginTop: '2px', lineHeight: '1.3' }}>
-              {formatNumberToWords(data.UtilizedRaw)} GHS
+              {formatNumberToWords(data.UtilizedRaw)} GHS (GHS {data.UtilizedRaw.toLocaleString('en-US')})
             </div>
           </div>
         </div>
@@ -328,10 +328,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
         <div className="glass-card kpi-card" style={{ '--theme-accent': 'var(--ghana-gold)', minHeight: '140px' } as React.CSSProperties}>
           <div className="kpi-title">Approved Budget & Utilized Funds</div>
           <div className="kpi-value" style={{ fontSize: '1.05rem', lineHeight: '1.4', marginTop: '6px', fontWeight: 700, wordBreak: 'break-word' }}>
-            Allocated: <span style={{ color: 'var(--text-primary)' }}>{formatNumberToWords(totalBudget)} GHS</span>
+            Allocated: <span style={{ color: 'var(--text-primary)' }}>{formatNumberToWords(totalBudget)} GHS (GHS {totalBudget.toLocaleString('en-US')})</span>
           </div>
           <div className="kpi-sub" style={{ fontSize: '0.78rem', marginTop: '4px', display: 'block' }}>
-            Utilized: <span style={{ color: 'var(--ghana-gold)', fontWeight: 600 }}>{formatNumberToWords(totalUtilized)} GHS</span>
+            Utilized: <span style={{ color: 'var(--ghana-gold)', fontWeight: 600 }}>{formatNumberToWords(totalUtilized)} GHS (GHS {totalUtilized.toLocaleString('en-US')})</span>
           </div>
           <div className="kpi-sub" style={{ fontSize: '0.72rem', marginTop: '2px' }}>
             Utilization Rate: <span style={{ color: 'var(--ghana-gold)' }}>{budgetUtilizationRate.toFixed(1)}%</span>

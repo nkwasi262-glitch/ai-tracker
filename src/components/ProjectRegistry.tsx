@@ -344,7 +344,7 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                     <div>
                       <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.03em' }}>Allocated Budget</div>
                       <span style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--text-primary)', wordBreak: 'break-word', display: 'block', marginTop: '2px' }}>
-                        {formatNumberToWords(selectedProject.budget.totalAllocated)} GHS
+                        {formatNumberToWords(selectedProject.budget.totalAllocated)} GHS (GHS {selectedProject.budget.totalAllocated.toLocaleString('en-US')})
                       </span>
                     </div>
                   </div>
@@ -353,7 +353,7 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                     <div>
                       <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.03em' }}>Utilized Funds</div>
                       <span style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--ghana-emerald)', wordBreak: 'break-word', display: 'block', marginTop: '2px' }}>
-                        {formatNumberToWords(selectedProject.budget.utilized)} GHS
+                        {formatNumberToWords(selectedProject.budget.utilized)} GHS (GHS {selectedProject.budget.utilized.toLocaleString('en-US')})
                       </span>
                     </div>
                   </div>
