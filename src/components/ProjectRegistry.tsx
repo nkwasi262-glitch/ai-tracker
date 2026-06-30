@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Plus, Search, Calendar, Landmark, MapPin, DollarSign, AlertCircle } from 'lucide-react';
-import { AIProject } from '../data/sampleProjects';
+import { Plus, Search, Calendar, Landmark, MapPin, DollarSign, AlertCircle, Activity } from 'lucide-react';
+import { AIProject, formatNumberToWords } from '../data/sampleProjects';
 import { UserRole } from './RoleSwitcher';
 
 interface ProjectRegistryProps {
@@ -329,11 +329,33 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                     <span style={{ fontWeight: 600 }}>{selectedProject.latitude.toFixed(4)}, {selectedProject.longitude.toFixed(4)}</span>
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.01)', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-                  <DollarSign className="w-4 h-4 text-amber-400" />
-                  <div>
-                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Approved budget</div>
-                    <span style={{ fontWeight: 600 }}>GHS {(selectedProject.budget.totalAllocated / 100000).toFixed(0)} Lakhs</span>
+                <div style={{ 
+                  gridColumn: '1 / span 2',
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  gap: '8px', 
+                  background: 'rgba(255,255,255,0.01)', 
+                  padding: '12px 14px', 
+                  borderRadius: '8px', 
+                  border: '1px solid var(--border-color)' 
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <DollarSign className="w-4.5 h-4.5 text-amber-400" />
+                    <div>
+                      <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.03em' }}>Allocated Budget</div>
+                      <span style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--text-primary)', wordBreak: 'break-word', display: 'block', marginTop: '2px' }}>
+                        {formatNumberToWords(selectedProject.budget.totalAllocated)} GHS
+                      </span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '8px' }}>
+                    <Activity className="w-4.5 h-4.5 text-emerald-400" />
+                    <div>
+                      <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.03em' }}>Utilized Funds</div>
+                      <span style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--ghana-emerald)', wordBreak: 'break-word', display: 'block', marginTop: '2px' }}>
+                        {formatNumberToWords(selectedProject.budget.utilized)} GHS
+                      </span>
+                    </div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.01)', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>

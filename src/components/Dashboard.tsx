@@ -14,7 +14,7 @@ import {
   CheckCircle2,
   HelpCircle
 } from 'lucide-react';
-import { AIProject } from '../data/sampleProjects';
+import { AIProject, formatNumberToWords } from '../data/sampleProjects';
 import { UserRole } from './RoleSwitcher';
 
 interface DashboardProps {
@@ -277,12 +277,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
           )}
         </div>
 
-        <div className="glass-card kpi-card" style={{ '--theme-accent': 'var(--ghana-gold)' } as React.CSSProperties}>
-          <div className="kpi-title">Approved Budget</div>
-          <div className="kpi-value">
-            GHS {(totalBudget / 1000000).toFixed(1)}M
+        <div className="glass-card kpi-card" style={{ '--theme-accent': 'var(--ghana-gold)', minHeight: '140px' } as React.CSSProperties}>
+          <div className="kpi-title">Approved Budget & Utilized Funds</div>
+          <div className="kpi-value" style={{ fontSize: '1.05rem', lineHeight: '1.4', marginTop: '6px', fontWeight: 700, wordBreak: 'break-word' }}>
+            Allocated: <span style={{ color: 'var(--text-primary)' }}>{formatNumberToWords(totalBudget)} GHS</span>
           </div>
-          <div className="kpi-sub">
+          <div className="kpi-sub" style={{ fontSize: '0.78rem', marginTop: '4px', display: 'block' }}>
+            Utilized: <span style={{ color: 'var(--ghana-gold)', fontWeight: 600 }}>{formatNumberToWords(totalUtilized)} GHS</span>
+          </div>
+          <div className="kpi-sub" style={{ fontSize: '0.72rem', marginTop: '2px' }}>
             Utilization Rate: <span style={{ color: 'var(--ghana-gold)' }}>{budgetUtilizationRate.toFixed(1)}%</span>
           </div>
           <DollarSign className="kpi-icon-wrapper" />

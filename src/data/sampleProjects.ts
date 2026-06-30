@@ -436,3 +436,47 @@ export const ghanaRegions: RegionInfo[] = [
   { name: "Western", center: [5.5560, -2.2229], projectCount: 0, description: "Western coastal and digital literacy training hub." },
   { name: "Volta", center: [6.5781, 0.4504], projectCount: 0, description: "Volta region digital systems and smart services hub." }
 ];
+
+export function formatNumberToWords(num: number): string {
+  if (num === 0) return 'Zero';
+  
+  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 
+                'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+  
+  const scales = ['', 'Thousand', 'Million', 'Billion'];
+  
+  const convertHundreds = (n: number): string => {
+    let str = '';
+    if (n >= 100) {
+      str += ones[Math.floor(n / 100)] + ' Hundred ';
+      n %= 100;
+    }
+    if (n >= 20) {
+      str += tens[Math.floor(n / 10)] + ' ';
+      n %= 10;
+      if (n > 0) {
+        str += ones[n] + ' ';
+      }
+    } else if (n > 0) {
+      str += ones[n] + ' ';
+    }
+    return str.trim();
+  };
+
+  let wordResult = '';
+  let scaleIndex = 0;
+  let temp = num;
+
+  while (temp > 0) {
+    const chunk = temp % 1000;
+    if (chunk > 0) {
+      const chunkText = convertHundreds(chunk);
+      wordResult = chunkText + (scales[scaleIndex] ? ' ' + scales[scaleIndex] : '') + ' ' + wordResult;
+    }
+    temp = Math.floor(temp / 1000);
+    scaleIndex++;
+  }
+  
+  return wordResult.trim();
+}
