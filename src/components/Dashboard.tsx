@@ -17,6 +17,51 @@ import {
 import { AIProject, formatNumberToWords } from '../data/sampleProjects';
 import { UserRole } from './RoleSwitcher';
 
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div style={{ 
+        background: 'rgba(15, 23, 42, 0.98)', 
+        border: '1px solid var(--border-color)', 
+        borderRadius: '8px',
+        padding: '12px 14px',
+        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.6)',
+        backdropFilter: 'blur(10px)',
+        fontSize: '0.78rem',
+        maxWidth: '320px',
+        zIndex: 9999
+      }}>
+        <div style={{ color: 'var(--ghana-emerald)', fontWeight: 700, marginBottom: '6px', fontSize: '0.82rem' }}>
+          {data.project}
+        </div>
+        <div style={{ color: 'var(--text-secondary)', fontSize: '0.72rem', marginBottom: '8px' }}>
+          MDA: <span style={{ color: '#fff', fontWeight: 600 }}>{data.mdaName}</span>
+        </div>
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.66rem', textTransform: 'uppercase', fontWeight: 700 }}>
+              Allocated Budget
+            </div>
+            <div style={{ color: '#10b981', fontWeight: 700, fontSize: '0.76rem', marginTop: '2px', lineHeight: '1.3' }}>
+              {formatNumberToWords(data.ApprovedRaw)} GHS
+            </div>
+          </div>
+          <div>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.66rem', textTransform: 'uppercase', fontWeight: 700 }}>
+              Utilized Funds
+            </div>
+            <div style={{ color: '#fbbf24', fontWeight: 700, fontSize: '0.76rem', marginTop: '2px', lineHeight: '1.3' }}>
+              {formatNumberToWords(data.UtilizedRaw)} GHS
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
 interface DashboardProps {
   projects: AIProject[];
   currentRole: UserRole;
@@ -58,9 +103,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
   // 1. Data formulation for Budgets Chart
   const budgetChartData = filteredProjects.map(p => ({
     name: p.mdaCode,
-    Approved: p.budget.totalAllocated / 100000, // scaled to GHS Lakhs for readability
-    Utilized: p.budget.utilized / 100000,
-    project: p.name
+    Approved: p.budget.totalAllocated / 1000000, // GHS Millions for graph scaling
+    Utilized: p.budget.utilized / 1000000,
+    ApprovedRaw: p.budget.totalAllocated,
+    UtilizedRaw: p.budget.utilized,
+    project: p.name,
+    mdaName: p.mda
   }));
 
   // 2. Data formulation for Sectors (Radar)
@@ -329,10 +377,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                 <XAxis dataKey="name" stroke="var(--text-secondary)" fontSize={11} tickLine={false} />
                 <YAxis stroke="var(--text-secondary)" fontSize={11} tickLine={false} />
-                <Tooltip 
-                  contentStyle={{ background: '#111b27', border: '1px solid var(--border-color)', borderRadius: '8px' }}
-                  labelStyle={{ color: 'var(--ghana-emerald)', fontWeight: 700 }}
-                />
+                <Tooltip content={<CustomTooltip />} />
                 <Legend verticalAlign="top" height={36} iconSize={12} iconType="circle" wrapperStyle={{ fontSize: '0.8rem' }} />
                 <Bar name="Allocated Budget" dataKey="Approved" fill="rgba(16, 185, 129, 0.75)" radius={[4, 4, 0, 0]} />
                 <Bar name="Utilized Funds" dataKey="Utilized" fill="rgba(251, 191, 36, 0.75)" radius={[4, 4, 0, 0]} />
