@@ -20,7 +20,7 @@ interface SubParameter {
 interface ReadinessParameter {
   id: string;
   title: string;
-  description: string;
+  description: string; // Beginner explanation for parent parameter
   icon: React.ReactNode;
   subParameters: SubParameter[];
 }
@@ -29,7 +29,7 @@ const institutionalParameters: ReadinessParameter[] = [
   {
     id: 'i1',
     title: 'Governance & Accountability Structure',
-    description: 'Oversight committees, audit procedures, and policy mandates to govern AI projects.',
+    description: 'This measures who is in charge of the AI system. It checks if there is a group of leaders watching over the project to make sure it follows the rules and stays on track.',
     icon: <ShieldCheck className="w-4 h-4 text-emerald-400" />,
     subParameters: [
       { id: 'i1_sub1', text: 'Has a dedicated steering committee been formed for this project?', description: 'A steering committee is a group of leaders who meet regularly to make sure the project is going in the right direction.' },
@@ -39,7 +39,7 @@ const institutionalParameters: ReadinessParameter[] = [
   {
     id: 'i2',
     title: 'Project Documentation Maturity',
-    description: 'Rigorous standards for model documentation, dataset details, risk assessments, and model cards.',
+    description: 'This measures how well the project details are written down. Writing down how the AI is built and trained helps team members and auditors fix errors later.',
     icon: <FileText className="w-4 h-4 text-emerald-400" />,
     subParameters: [
       { id: 'i2_sub1', text: 'Is there a written project charter or specification sheet?', description: 'A project charter is a simple document that states what the project is, who is working on it, and what success looks like.' },
@@ -49,7 +49,7 @@ const institutionalParameters: ReadinessParameter[] = [
   {
     id: 'i3',
     title: 'Budget & Financial Capacity',
-    description: 'Dedicated funding and multi-year budget lines available for development, hosting, and compute resources.',
+    description: 'This checks if the project has enough money. It ensures you have funds to build the AI and keep paying for monthly hosting fees and server power.',
     icon: <Coins className="w-4 h-4 text-emerald-400" />,
     subParameters: [
       { id: 'i3_sub1', text: 'Is there a dedicated budget allocated for AI development?', description: 'This confirms that money has been set aside specifically to build and launch the AI, rather than pulling from other general IT funds.' },
@@ -59,7 +59,7 @@ const institutionalParameters: ReadinessParameter[] = [
   {
     id: 'i4',
     title: 'Technical Staffing Capacity',
-    description: 'In-house machine learning developers, data scientists, and specialized engineering talent.',
+    description: 'This evaluates the skills of your team. It checks if you have in-house software engineers and administrators who know how to keep the AI running daily.',
     icon: <GraduationCap className="w-4 h-4 text-emerald-400" />,
     subParameters: [
       { id: 'i4_sub1', text: 'Does the team have at least one dedicated software or data engineer?', description: 'A software or data engineer is a specialist who writes clean code, manages data streams, and connects the AI to databases.' },
@@ -69,7 +69,7 @@ const institutionalParameters: ReadinessParameter[] = [
   {
     id: 'i5',
     title: 'Data Governance Ownership',
-    description: 'Clear data custody, cataloguing standards, privacy filters, and secure sharing frameworks.',
+    description: 'This checks who controls the training data. Assigning data owners and access rules keeps citizen information clean, safe, and private.',
     icon: <Compass className="w-4 h-4 text-emerald-400" />,
     subParameters: [
       { id: 'i5_sub1', text: 'Has a clear data custodian or owner been assigned for all datasets?', description: 'A data custodian is the main person responsible for keeping the data clean, secure, and organized.' },
@@ -79,7 +79,7 @@ const institutionalParameters: ReadinessParameter[] = [
   {
     id: 'i6',
     title: 'Existing System Inventory Awareness',
-    description: 'Real-time records of active IT networks, software versions, database structures, and systems dependencies.',
+    description: 'This checks if you know what computers and databases your department currently owns, so you know how the new AI will connect to them.',
     icon: <Layers className="w-4 h-4 text-emerald-400" />,
     subParameters: [
       { id: 'i6_sub1', text: 'Is there an up-to-date registry of all software and hardware systems?', description: 'An inventory registry is a list of all computers, servers, and software programs the agency currently runs.' },
@@ -89,7 +89,7 @@ const institutionalParameters: ReadinessParameter[] = [
   {
     id: 'i7',
     title: 'Change Management Readiness',
-    description: 'Organizational protocols for employee training, reskilling, role shifts, and cultural adaptation support.',
+    description: 'This checks how ready your staff is for new technology. Providing training courses helps workers feel comfortable using the AI tool in their daily jobs.',
     icon: <Users className="w-4 h-4 text-emerald-400" />,
     subParameters: [
       { id: 'i7_sub1', text: 'Has a training curriculum been scheduled for employees using the new AI?', description: 'Training ensures that employees know how to use the AI tool effectively and do not feel overwhelmed by new technology.' },
@@ -99,7 +99,7 @@ const institutionalParameters: ReadinessParameter[] = [
   {
     id: 'i8',
     title: 'Procurement Capability',
-    description: 'Agile procurement pathways built specifically to evaluate, test, contract, and purchase AI solutions.',
+    description: 'This measures how your agency buys software. Having clear rules and a safe testing sandbox ensures you buy the best and safest AI systems.',
     icon: <ShoppingBag className="w-4 h-4 text-emerald-400" />,
     subParameters: [
       { id: 'i8_sub1', text: 'Are there specific criteria to evaluate different vendors and software products?', description: 'This ensures you evaluate vendor packages objectively based on performance, cost, and safety rather than picking at random.' },
@@ -109,7 +109,7 @@ const institutionalParameters: ReadinessParameter[] = [
   {
     id: 'i9',
     title: 'Sustainability/Maintenance Plan',
-    description: 'Post-deployment maintenance procedures, model drift tracking pipelines, and vendor support schedules.',
+    description: 'This measures the long-term support plan. It ensures the software is updated regularly and checked monthly to make sure it doesn\'t make mistakes.',
     icon: <Workflow className="w-4 h-4 text-emerald-400" />,
     subParameters: [
       { id: 'i9_sub1', text: 'Is there a signed SLA contract for software updates and server upkeep?', description: 'An SLA (Service Level Agreement) is a contract that guarantees the software vendor will fix bugs and keep servers running 99.9% of the time.' },
@@ -119,7 +119,7 @@ const institutionalParameters: ReadinessParameter[] = [
   {
     id: 'i10',
     title: 'Institutional Risk Appetite/Escalation',
-    description: 'Defined thresholds for security risks, model failure metrics, and fallback operational triggers.',
+    description: 'This sets safety limits for the AI. It outlines when the AI should be turned off if it acts up, and how staff can fallback to manual paper workflows.',
     icon: <AlertTriangle className="w-4 h-4 text-emerald-400" />,
     subParameters: [
       { id: 'i10_sub1', text: 'Are there written limits specifying what errors require taking the AI offline?', description: 'These limits act as safety boundaries, defining when the system must be switched off if it behaves unsafely.' },
@@ -132,7 +132,7 @@ const marketableParameters: ReadinessParameter[] = [
   {
     id: 'm1',
     title: 'Vendor/Solution Availability',
-    description: 'Availability of external vendors, platforms, and models matching the department\'s requirements.',
+    description: 'This checks if there are already good software products sold in the market, so you don\'t have to build the AI system completely from scratch.',
     icon: <ShoppingBag className="w-4 h-4 text-emerald-400" />,
     subParameters: [
       { id: 'm1_sub1', text: 'Are there at least three competitive products available in the market?', description: 'Having multiple options ensures you can compare features and pricing to get the best deal, preventing single-vendor lock-in.' },
@@ -142,7 +142,7 @@ const marketableParameters: ReadinessParameter[] = [
   {
     id: 'm2',
     title: 'Local Vendor Capacity',
-    description: 'Presence of domestic AI startups and services versus heavy reliance on foreign technology imports.',
+    description: 'This checks if local Ghanaian companies can deploy the system, rather than depending 100% on foreign imports.',
     icon: <Compass className="w-4 h-4 text-emerald-400" />,
     subParameters: [
       { id: 'm2_sub1', text: 'Is there a local Ghanaian IT firm capable of deploying this system?', description: 'Using local firms builds national capacity, creates jobs, and ensures support staff reside in the same time zone.' },
@@ -152,7 +152,7 @@ const marketableParameters: ReadinessParameter[] = [
   {
     id: 'm3',
     title: 'Technology Maturity (Market Adoption)',
-    description: 'Global and regional market adoption, stability, and production readiness of selected AI tools.',
+    description: 'This evaluates if the AI tools you are buying are stable and widely used, rather than experimental software that might break.',
     icon: <Cpu className="w-4 h-4 text-emerald-400" />,
     subParameters: [
       { id: 'm3_sub1', text: 'Has this AI solution been successfully deployed in other sectors for 2+ years?', description: 'A solution with 2+ years of run time is mature and stable, meaning most startup bugs have already been found and fixed.' },
@@ -162,7 +162,7 @@ const marketableParameters: ReadinessParameter[] = [
   {
     id: 'm4',
     title: 'Interoperability with Existing Platforms',
-    description: 'Support for standard APIs (REST, gRPC, GraphQL) and container orchestration ecosystems.',
+    description: 'This measures how easily the vendor\'s software can connect and share file data with other IT systems your department runs.',
     icon: <Layers className="w-4 h-4 text-emerald-400" />,
     subParameters: [
       { id: 'm4_sub1', text: 'Do vendor products offer standard REST or gRPC API endpoints?', description: 'REST and gRPC are standard connectors that let different computer systems talk to each other and share data easily.' },
@@ -172,7 +172,7 @@ const marketableParameters: ReadinessParameter[] = [
   {
     id: 'm5',
     title: 'TCO Competitiveness',
-    description: 'Pricing models, API token expenses, hosting overheads, and long-term value against return on investment.',
+    description: 'This audits both the upfront setup costs and ongoing monthly runtime fees to make sure the software is priced fairly.',
     icon: <Coins className="w-4 h-4 text-emerald-400" />,
     subParameters: [
       { id: 'm5_sub1', text: 'Are the upfront installation and license fees within market benchmarks?', description: 'Upfront fees are initial setup costs. Auditing these against standards ensures you do not pay inflated pricing.' },
@@ -182,7 +182,7 @@ const marketableParameters: ReadinessParameter[] = [
   {
     id: 'm6',
     title: 'Cloud/Infrastructure Market Options',
-    description: 'Availability of local server facilities, cloud hosting zones, and hybrid-cloud capabilities.',
+    description: 'This checks if there are cloud host sites physically located in Ghana (like NITA) to store citizen data legally and securely.',
     icon: <Server className="w-4 h-4 text-emerald-400" />,
     subParameters: [
       { id: 'm6_sub1', text: 'Are there local cloud hosting providers (e.g. NITA cloud) available for hosting?', description: 'Local hosts are datacenters physically located inside Ghana, helping you comply with national data sovereignty laws.' },
@@ -192,7 +192,7 @@ const marketableParameters: ReadinessParameter[] = [
   {
     id: 'm7',
     title: 'Security Certification Availability',
-    description: 'Compliance of market solutions with cybersecurity certifications (e.g. ISO 27001, SOC 2 Type II).',
+    description: 'This checks if the vendor has official security certificates, proving their databases have been tested and protected against hackers.',
     icon: <ShieldCheck className="w-4 h-4 text-emerald-400" />,
     subParameters: [
       { id: 'm7_sub1', text: 'Does the vendor possess a verified SOC 2 Type II or ISO 27001 certificate?', description: 'These certificates prove that an independent auditor verified that the vendor\'s database security meets global protection rules.' },
@@ -202,7 +202,7 @@ const marketableParameters: ReadinessParameter[] = [
   {
     id: 'm8',
     title: 'Support and SLA Ecosystem',
-    description: 'Availability of external tech support teams, system performance agreements, and localized hotlines.',
+    description: 'This ensures the vendor provides a contract to fix system issues quickly (under 4 hours) and has a support hotline in Ghana.',
     icon: <Activity className="w-4 h-4 text-emerald-400" />,
     subParameters: [
       { id: 'm8_sub1', text: 'Does the vendor offer a response SLA of under 4 hours for critical issues?', description: 'This guarantees that if the AI crashes, the vendor\'s engineering team will begin fixing it within 4 hours.' },
@@ -212,7 +212,7 @@ const marketableParameters: ReadinessParameter[] = [
   {
     id: 'm9',
     title: 'Regulatory/Standards Alignment',
-    description: 'Adherence of commercial vendors to emerging policies, EU AI Act standards, and national laws.',
+    description: 'This ensures the vendor software compiles with legal requirements like data protection rules and global safety guidelines.',
     icon: <FileText className="w-4 h-4 text-emerald-400" />,
     subParameters: [
       { id: 'm9_sub1', text: 'Is the vendor product certified compliant with data protection laws?', description: 'This ensures the vendor software compiles with guidelines like GDPR or Act 843, avoiding legal liability.' },
@@ -222,7 +222,7 @@ const marketableParameters: ReadinessParameter[] = [
   {
     id: 'm10',
     title: 'Innovation/Scalability Runway',
-    description: 'Continuous feature rollouts, system scalability potential, and future-proof design of vendor frameworks.',
+    description: 'This checks if the software receives updates and can handle thousands of citizen requests at the same time without crashing.',
     icon: <TrendingUp className="w-4 h-4 text-emerald-400" />,
     subParameters: [
       { id: 'm10_sub1', text: 'Does the vendor\'s product roadmap detail active updates for the next 3 years?', description: 'A product roadmap lists future feature updates. A 3-year commitment ensures the software remains modern.' },
@@ -281,6 +281,7 @@ const tooltipStyles = `
 
 export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
   const [activeBranch, setActiveBranch] = useState<'institutional' | 'marketable'>('institutional');
+  const [activeThickboxParam, setActiveThickboxParam] = useState<ReadinessParameter | null>(null);
 
   // Initialize checklist answer states dynamically
   const [answers, setAnswers] = useState<Record<string, 'yes' | 'no'>>(() => {
@@ -296,7 +297,6 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
       'm10_sub1', 'm10_sub2'
     ];
     keys.forEach((k, idx) => {
-      // 70% yes initially for a realistic start
       initial[k] = idx % 4 === 0 ? 'no' : 'yes';
     });
     return initial;
@@ -580,7 +580,7 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <h3 style={{ fontSize: '0.95rem', fontWeight: 700 }}>
-                {activeBranch === 'institutional' ? 'Institutional Assessment parameters' : 'Marketable Assessment parameters'}
+                {activeBranch === 'institutional' ? 'Institutional Assessment Parameters' : 'Marketable Assessment Parameters'}
               </h3>
               <p style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
                 Verify and answer yes/no for each nested checkpoint parameters.
@@ -625,6 +625,23 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
                       gap: '4px'
                     }}>
                       {p.title}
+                      <button
+                        onClick={() => setActiveThickboxParam(p)}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '2px',
+                          color: '#38bdf8',
+                          opacity: 0.8,
+                          transition: 'opacity 0.15s ease'
+                        }}
+                        title="Click to open detailed explanation modal"
+                      >
+                        <Info className="w-3.5 h-3.5" />
+                      </button>
                     </span>
                   </div>
 
@@ -800,6 +817,133 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
         </div>
 
       </div>
+
+      {/* Thickbox Modal Overlay */}
+      {activeThickboxParam && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.75)',
+          backdropFilter: 'blur(10px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 99999,
+          padding: '16px'
+        }}>
+          <div style={{
+            background: 'rgba(30, 41, 59, 0.95)',
+            border: '3px solid var(--ghana-emerald)',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.75), 0 0 15px rgba(16, 185, 129, 0.3)',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '520px',
+            padding: '24px',
+            color: '#f8fafc',
+            position: 'relative'
+          }}>
+            <button
+              onClick={() => setActiveThickboxParam(null)}
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '8px',
+                color: '#94a3b8',
+                width: '32px',
+                height: '32px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 'bold',
+                fontSize: '0.85rem',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              ✕
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+              <div style={{ 
+                padding: '8px', 
+                borderRadius: '8px', 
+                background: 'rgba(16, 185, 129, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                {activeThickboxParam.icon}
+              </div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#f8fafc', margin: 0 }}>
+                {activeThickboxParam.title}
+              </h3>
+            </div>
+
+            <div style={{ 
+              background: 'rgba(0,0,0,0.25)', 
+              padding: '16px', 
+              borderRadius: '10px', 
+              border: '1px solid rgba(255,255,255,0.05)',
+              marginBottom: '20px'
+            }}>
+              <h4 style={{ fontSize: '0.74rem', textTransform: 'uppercase', color: '#38bdf8', letterSpacing: '0.05em', margin: '0 0 6px 0', fontWeight: 700 }}>
+                Beginner Explanation
+              </h4>
+              <p style={{ fontSize: '0.92rem', lineHeight: '1.5', margin: 0, color: '#e2e8f0' }}>
+                {activeThickboxParam.description}
+              </p>
+            </div>
+
+            <h4 style={{ fontSize: '0.74rem', textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em', margin: '0 0 10px 0', fontWeight: 700 }}>
+              Checklist Requirements
+            </h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {activeThickboxParam.subParameters.map((sub) => (
+                <div key={sub.id} style={{ 
+                  display: 'flex', 
+                  gap: '8px', 
+                  fontSize: '0.82rem', 
+                  background: 'rgba(255,255,255,0.01)', 
+                  padding: '10px', 
+                  borderRadius: '6px', 
+                  border: '1px solid rgba(255,255,255,0.02)' 
+                }}>
+                  <span style={{ color: 'var(--ghana-emerald)', fontWeight: 'bold' }}>✓</span>
+                  <div>
+                    <strong style={{ display: 'block', color: '#f1f5f9', marginBottom: '2px' }}>{sub.text}</strong>
+                    <span style={{ color: '#94a3b8', fontSize: '0.76rem', lineHeight: '1.3' }}>{sub.description}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setActiveThickboxParam(null)}
+              style={{
+                marginTop: '24px',
+                width: '100%',
+                padding: '12px',
+                borderRadius: '8px',
+                border: 'none',
+                background: 'var(--ghana-emerald)',
+                color: 'white',
+                fontWeight: 700,
+                fontSize: '0.88rem',
+                cursor: 'pointer',
+                transition: 'background 0.15s ease'
+              }}
+            >
+              Got it!
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
