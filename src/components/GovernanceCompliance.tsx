@@ -288,27 +288,34 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
                     fontSize: '0.85rem'
                   }}
                 >
-                  <span style={{ 
-                    color: isYes ? 'var(--text-primary)' : 'var(--text-secondary)',
-                    lineHeight: '1.4',
-                    flex: 1,
+                  <div style={{ 
                     display: 'flex',
-                    alignItems: 'center',
-                    flexWrap: 'wrap'
+                    flexDirection: 'column',
+                    gap: '4px',
+                    flex: 1
                   }}>
-                    {q.text}
-                    {/* Glassmorphic Tooltip on hover */}
-                    <span className="tooltip-container">
-                      <Info 
-                        className="w-4 h-4 text-sky-400 cursor-help hover:text-sky-300" 
-                        style={{ marginLeft: '6px', opacity: 0.7 }} 
-                      />
-                      <span className="tooltip-text">
-                        <strong style={{ color: '#38bdf8', display: 'block', marginBottom: '4px' }}>Parameter Explanation:</strong>
-                        {q.description}
-                      </span>
+                    <span style={{ 
+                      color: isYes ? 'var(--text-primary)' : 'var(--text-secondary)',
+                      lineHeight: '1.4',
+                      fontWeight: 600
+                    }}>
+                      {q.text}
                     </span>
-                  </span>
+                    <span style={{ 
+                      color: 'var(--text-muted)',
+                      fontSize: '0.75rem',
+                      lineHeight: '1.4',
+                      display: 'flex',
+                      alignItems: 'center',
+                      opacity: 0.85
+                    }}>
+                      <Info 
+                        className="text-sky-400" 
+                        style={{ width: '14px', height: '14px', marginRight: '6px', flexShrink: 0 }} 
+                      />
+                      {q.description}
+                    </span>
+                  </div>
                   
                   {/* Metadata Format Options (Yes/No Radio Buttons) */}
                   <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
