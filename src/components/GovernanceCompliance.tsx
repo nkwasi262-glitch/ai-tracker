@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Award, AlertTriangle, Info } from 'lucide-react';
+import { ShieldCheck, Award, AlertTriangle, Info, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
 import { AIProject, ComplianceScore } from '../data/sampleProjects';
 import { UserRole } from './RoleSwitcher';
 
@@ -9,69 +9,508 @@ interface GovernanceComplianceProps {
   currentRole: UserRole;
 }
 
+interface SubParameter {
+  id: string;
+  text: string;
+  description: string;
+}
+
 interface AuditQuestion {
   id: string;
   category: 'fairness' | 'transparency' | 'privacy' | 'security';
   text: string;
   description: string;
+  subParameters: SubParameter[];
 }
 
 const frameworkQuestions: Record<string, AuditQuestion[]> = {
   Ghana: [
-    { id: 'f1', category: 'fairness', text: 'Training datasets evaluated and balanced across all 16 Ghanaian regions to prevent regional bias.', description: 'Ensures that agricultural, demographic, and financial models perform equally well across the Northern, Southern, Eastern, and Western zones of Ghana.' },
-    { id: 'f2', category: 'fairness', text: 'Model algorithms tested for gender and tribal label parity (e.g. Twi/Fante speech samples equal representation).', description: 'Mitigates linguistic bias by validating that dialectal variations and gender voices are accurately recognized and represented.' },
-    { id: 'f3', category: 'fairness', text: 'Socio-Economic Inclusivity features implemented (e.g. local language voice prompts for low-literacy segments).', description: 'Enables rural and low-literacy citizens to access benefits and services without facing tech-exclusion barriers.' },
-    { id: 't1', category: 'transparency', text: 'Comprehensive Model Card detailing neural architecture, hyper-parameters, and limitations published.', description: 'Provides a standardized reference document for system design, training runs, and operational limits of the AI.' },
-    { id: 't2', category: 'transparency', text: 'Source dataset origins and labeling metadata catalogued and accessible for civil audits.', description: 'Enables transparency by recording who gathered the data, who annotated it, and how consent was obtained.' },
-    { id: 't3', category: 'transparency', text: 'Plain-English and local language summary explanations generated automatically for end-user decisions.', description: 'Translates complex decision nodes into local terms so citizens can understand why an automated action was taken.' },
-    { id: 'p1', category: 'privacy', text: 'Data Protection Officer (DPO) appointed and officially registered under the Ghana Data Protection Commission.', description: 'Fulfills Act 843 requirements by registering a legal supervisor to handle data privacy compliance and citizen complaints.' },
-    { id: 'p2', category: 'privacy', text: 'All personal records (PII) anonymized at database ingestion using salted cryptographic hashing (SHA-256).', description: 'Ensures that no identifiable citizen records are stored in plain text, securing database logs against privacy leaks.' },
-    { id: 'p3', category: 'privacy', text: 'Verify database hosting meets sovereign localization rules (physically hosted inside Ghana\'s borders).', description: 'Mandated by local data residency rules to ensure all personal data remains within national jurisdiction.' },
-    { id: 's1', category: 'security', text: 'System source code audited and certified against OWASP Top 10 vulnerabilities.', description: 'Ensures software defense layers are robust against common exploits like injection attacks and broken authentication.' },
-    { id: 's2', category: 'security', text: 'Semi-annual third-party penetration testing program and CVE logging scheduled under Act 1038.', description: 'Guarantees periodic simulation of cyber-attacks to proactively discover and remediate security vulnerabilities.' },
-    { id: 's3', category: 'security', text: 'Automatic telemetry integration configured with National Cyber Security Authority alert systems.', description: 'Allows real-time incident reporting and coordinated threat response during active DDoS or malware campaigns.' }
+    {
+      id: 'f1',
+      category: 'fairness',
+      text: 'Training datasets evaluated and balanced across all 16 Ghanaian regions to prevent regional bias.',
+      description: 'Ensures that agricultural, demographic, and financial models perform equally well across the Northern, Southern, Eastern, and Western zones of Ghana.',
+      subParameters: [
+        { id: 'f1_sub1', text: 'Training records represent Northern, Savannah, and North East agricultural zones.', description: 'Validates model accuracy in historically under-sampled rural farming cooperatives.' },
+        { id: 'f1_sub2', text: 'Training records represent Southern, coastal, and forest belt economic hubs.', description: 'Validates model performance in highly populated urban regions like Greater Accra and Ashanti.' }
+      ]
+    },
+    {
+      id: 'f2',
+      category: 'fairness',
+      text: 'Model algorithms tested for gender and tribal label parity (e.g. Twi/Fante speech samples equal representation).',
+      description: 'Mitigates linguistic bias by validating that dialectal variations and gender voices are accurately recognized and represented.',
+      subParameters: [
+        { id: 'f2_sub1', text: 'Speech/text validation sets contain 50%+ representation of Akan family dialects.', description: 'Ensures the largest dialect family has clean, noise-free samples for baseline validation.' },
+        { id: 'f2_sub2', text: 'Speech/text validation sets contain equal metrics for Ga-Adangbe and Ewe language samples.', description: 'Prevents predictive degradation or acoustic mismatch errors for minority regional languages.' }
+      ]
+    },
+    {
+      id: 'f3',
+      category: 'fairness',
+      text: 'Socio-Economic Inclusivity features implemented (e.g. local language voice prompts for low-literacy segments).',
+      description: 'Enables rural and low-literacy citizens to access benefits and services without facing tech-exclusion barriers.',
+      subParameters: [
+        { id: 'f3_sub1', text: 'Offline SMS or USSD channel built for remote deployment.', description: 'Allows queries without requiring a smartphone or stable 3G/4G network access.' },
+        { id: 'f3_sub2', text: 'Interactive voice response (IVR) or local dialect audio narration available.', description: 'Provides audio guidance in local dialects for citizens who cannot read or write text.' }
+      ]
+    },
+    {
+      id: 't1',
+      category: 'transparency',
+      text: 'Comprehensive Model Card detailing neural architecture, hyper-parameters, and limitations published.',
+      description: 'Provides a standardized reference document for system design, training runs, and operational limits of the AI.',
+      subParameters: [
+        { id: 't1_sub1', text: 'Neural network layers, quantization levels, and compression techniques documented.', description: 'Lists optimization records, especially when compressing weights for local MDA servers.' },
+        { id: 't1_sub2', text: 'Accuracy metrics, failure modes, and training boundary thresholds declared.', description: 'Allows auditors to inspect when and where the model outputs become untrustworthy.' }
+      ]
+    },
+    {
+      id: 't2',
+      category: 'transparency',
+      text: 'Source dataset origins and labeling metadata catalogued and accessible for civil audits.',
+      description: 'Enables transparency by recording who gathered the data, who annotated it, and how consent was obtained.',
+      subParameters: [
+        { id: 't2_sub1', text: 'Data provenance register details collector MDA and participant consent sheets.', description: 'Confirms that datasets were compiled legally and in line with ethical requirements.' },
+        { id: 't2_sub2', text: 'Labeler qualification guidelines and inter-annotator agreement metrics logged.', description: 'Validates that labels were created under strict rules to prevent human annotator bias.' }
+      ]
+    },
+    {
+      id: 't3',
+      category: 'transparency',
+      text: 'Plain-English and local language summary explanations generated automatically for end-user decisions.',
+      description: 'Translates complex decision nodes into local terms so citizens can understand why an automated action was taken.',
+      subParameters: [
+        { id: 't3_sub1', text: 'Generates automated plain-text explainability summaries using SHAP or LIME metrics.', description: 'Details what mathematical factors drove a specific model prediction or decision.' },
+        { id: 't3_sub2', text: 'Explanations translated and readable in Twi, Ga, and Ewe languages.', description: 'Fulfills public transparency guidelines by translating decision outputs for local citizens.' }
+      ]
+    },
+    {
+      id: 'p1',
+      category: 'privacy',
+      text: 'Data Protection Officer (DPO) appointed and officially registered under the Ghana Data Protection Commission.',
+      description: 'Fulfills Act 843 requirements by registering a legal supervisor to handle data privacy compliance and citizen complaints.',
+      subParameters: [
+        { id: 'p1_sub1', text: 'DPO certificate of registration verified with the Data Protection Commission.', description: 'Ensures the MDA has a legal, certified representative supervising database storage rules.' },
+        { id: 'p1_sub2', text: 'DPO compliance calendar and internal privacy audit logs established.', description: 'Maintains active internal monitoring instead of static, one-time approvals.' }
+      ]
+    },
+    {
+      id: 'p2',
+      category: 'privacy',
+      text: 'All personal records (PII) anonymized at database ingestion using salted cryptographic hashing (SHA-256).',
+      description: 'Ensures that no identifiable citizen records are stored in plain text, securing database logs against privacy leaks.',
+      subParameters: [
+        { id: 'p2_sub1', text: 'Automated PII detection filters intercept names and phone numbers at intake.', description: 'Applies regular expressions or NLP filters to screen raw data streams for sensitive personal info.' },
+        { id: 'p2_sub2', text: 'Hash tables salted cryptographically with key rotation cycles configured.', description: 'Prevents database dump matching (rainbow attacks) from reversing patient/citizen hashes.' }
+      ]
+    },
+    {
+      id: 'p3',
+      category: 'privacy',
+      text: 'Verify database hosting meets sovereign localization rules (physically hosted inside Ghana\'s borders).',
+      description: 'Mandated by local data residency rules to ensure all personal data remains within national jurisdiction.',
+      subParameters: [
+        { id: 'p3_sub1', text: 'Cloud hosting resource group configurations set to Acc-Zone or local servers.', description: 'Verifies datacentre leases physically reside in geographical regions inside Ghana.' },
+        { id: 'p3_sub2', text: 'Audit logs prove zero diagnostic records or DB replicas are synced outside national borders.', description: 'Ensures system backups or diagnostic caches do not trigger cross-border compliance breaches.' }
+      ]
+    },
+    {
+      id: 's1',
+      category: 'security',
+      text: 'System source code audited and certified against OWASP Top 10 vulnerabilities.',
+      description: 'Ensures software defense layers are robust against common exploits like injection attacks and broken authentication.',
+      subParameters: [
+        { id: 's1_sub1', text: 'Static (SAST) and dynamic (DAST) application security scans run on builds.', description: 'Integrates automated code checks into the Git deployment pipeline to spot code bugs.' },
+        { id: 's1_sub2', text: 'Dependency checks scheduled weekly with immediate patching triggers.', description: 'Keeps external package updates current, minimizing the risk of supply chain exploits.' }
+      ]
+    },
+    {
+      id: 's2',
+      category: 'security',
+      text: 'Semi-annual third-party penetration testing program and CVE logging scheduled under Act 1038.',
+      description: 'Guarantees periodic simulation of cyber-attacks to proactively discover and remediate security vulnerabilities.',
+      subParameters: [
+        { id: 's2_sub1', text: 'External certified cybersecurity agency penetration test reports logged.', description: 'Ensures independent audit validity via formal pen tests.' },
+        { id: 's2_sub2', text: 'CVE monitoring dashboard registered with the Cyber Security Authority.', description: 'Connects critical MDA systems to national vulnerability tracking channels.' }
+      ]
+    },
+    {
+      id: 's3',
+      category: 'security',
+      text: 'Automatic telemetry integration configured with National Cyber Security Authority alert systems.',
+      description: 'Allows real-time incident reporting and coordinated threat response during active DDoS or malware campaigns.',
+      subParameters: [
+        { id: 's3_sub1', text: 'IDS/IPS alerts hooked directly to national CERT-GH logs.', description: 'Fulfills cybersecurity reporting mandates for critical national infrastructure.' },
+        { id: 's3_sub2', text: 'Emergency kill switch triggers configured and simulated quarterly.', description: 'Tests automated procedures to isolate databases or models if active intrusions are detected.' }
+      ]
+    }
   ],
   'European Union': [
-    { id: 'f1', category: 'fairness', text: 'Algorithmic bias assessments conducted on protected characteristics (gender, race, ethnicity) under EU AI Act.', description: 'Validates model compliance with high-risk system obligations to eliminate demographic discrimination.' },
-    { id: 'f2', category: 'fairness', text: 'Representative dataset sampling to prevent discrimination against minority linguistic groups in Europe.', description: 'Ensures voice and text models support EU member states with smaller populations or distinct accents.' },
-    { id: 'f3', category: 'fairness', text: 'Conformance audit completed for European Accessibility Act (EAA) software guidelines.', description: 'Verifies that assistive interfaces allow citizens with visual or physical impairments to use the system.' },
-    { id: 't1', category: 'transparency', text: 'High-risk AI system registry filing completed and model documentation submitted to EU database.', description: 'Compliance registration under Article 51 of the EU AI Act before placing high-risk systems on the market.' },
-    { id: 't2', category: 'transparency', text: 'Downstream user explainability interface provided, stating how output is generated and how to override it.', description: 'Provides a human-interpretable explanation of automated decisions, fulfilling right-to-explanation policies.' },
-    { id: 't3', category: 'transparency', text: 'Cryptographic watermarks applied to all synthetic media to transparently label AI-generated content.', description: 'Prevents misinformation by identifying text, audio, and images created by generative algorithms.' },
-    { id: 'p1', category: 'privacy', text: 'Data Protection Impact Assessment (DPIA) performed and GDPR-compliant consent flow implemented.', description: 'A detailed assessment of systemic risks to privacy, mandatory under Article 35 of the GDPR.' },
-    { id: 'p2', category: 'privacy', text: 'Right to be forgotten (Article 17) mechanisms verified, enabling complete erasure of user records in 30 days.', description: 'Ensures citizen data can be purged from database indexes and backup logs on user demand.' },
-    { id: 'p3', category: 'privacy', text: 'Cross-border data transfer impact evaluation signed off, confirming no unauthorized transfer outside the EEA.', description: 'Reviews compliance with Schrems II regulations for external API calls and cloud processing.' },
-    { id: 's1', category: 'security', text: 'CE Mark security certification audit completed and compliance status active.', description: 'Certifies that the software conforms to mandatory European cybersecurity safety regulations.' },
-    { id: 's2', category: 'security', text: 'Incident response protocols established, with 72-hour regulatory notification capability for breaches.', description: 'Fulfills supervisory reporting requirements in the event of an active cyber incident or data breach.' },
-    { id: 's3', category: 'security', text: 'Software Bill of Materials (SBOM) compiled and continuously updated for third-party libraries.', description: 'Identifies security vulnerabilities across all nested packages to prevent supply chain exploits.' }
+    {
+      id: 'f1',
+      category: 'fairness',
+      text: 'Algorithmic bias assessments conducted on protected characteristics under EU AI Act.',
+      description: 'Validates model compliance with high-risk system obligations to eliminate demographic discrimination.',
+      subParameters: [
+        { id: 'f1_sub1', text: 'Bias evaluations run across gender, age, and race variables.', description: 'Ensures models are checked against primary protected categories before deployment.' },
+        { id: 'f1_sub2', text: 'Post-market bias monitoring pipelines configured and active.', description: 'Continually checks validation drift once the system runs on production streams.' }
+      ]
+    },
+    {
+      id: 'f2',
+      category: 'fairness',
+      text: 'Representative dataset sampling to prevent discrimination against minority linguistic groups in Europe.',
+      description: 'Ensures voice and text models support EU member states with smaller populations or distinct accents.',
+      subParameters: [
+        { id: 'f2_sub1', text: 'Representative audits cover non-central European accents and dialects.', description: 'Tests phonetic and text representation for countries outside primary linguistic zones.' },
+        { id: 'f2_sub2', text: 'Translation and response parity verified across official EU languages.', description: 'Checks translation services to guarantee equal accuracy regardless of the member state tongue.' }
+      ]
+    },
+    {
+      id: 'f3',
+      category: 'fairness',
+      text: 'Conformance audit completed for European Accessibility Act (EAA) software guidelines.',
+      description: 'Verifies that assistive interfaces allow citizens with visual or physical impairments to use the system.',
+      subParameters: [
+        { id: 'f3_sub1', text: 'System UI conforms fully to WCAG 2.1 AA keyboard navigation rules.', description: 'Ensures navigation and accessibility checks pass automatically.' },
+        { id: 'f3_sub2', text: 'Compatible screen-reader templates and alt-text registers populated.', description: 'Validates assistive audio readouts for text and graph assets.' }
+      ]
+    },
+    {
+      id: 't1',
+      category: 'transparency',
+      text: 'High-risk AI system registry filing completed and model documentation submitted to EU database.',
+      description: 'Compliance registration under Article 51 of the EU AI Act before placing high-risk systems on the market.',
+      subParameters: [
+        { id: 't1_sub1', text: 'EU AI Act Declaration of Conformance signed and filed.', description: 'Confirms formal executive certification of regulatory compliance.' },
+        { id: 't1_sub2', text: 'Model parameters, limits, and dataset provenance details uploaded to the EU portal.', description: 'Enables public and regulatory audit paths for high-stakes models.' }
+      ]
+    },
+    {
+      id: 't2',
+      category: 'transparency',
+      text: 'Downstream user explainability interface provided, stating how output is generated and how to override it.',
+      description: 'Provides a human-interpretable explanation of automated decisions, fulfilling right-to-explanation policies.',
+      subParameters: [
+        { id: 't2_sub1', text: 'Explainability dashboard displays primary decision factors for users.', description: 'Gives users plain sight of the variables driving their algorithmic outcomes.' },
+        { id: 't2_sub2', text: 'Human oversight overrides and escalation paths active.', description: 'Fulfills the Article 14 mandate of the EU AI Act for human fallback review.' }
+      ]
+    },
+    {
+      id: 't3',
+      category: 'transparency',
+      text: 'Cryptographic watermarks applied to all synthetic media to transparently label AI-generated content.',
+      description: 'Prevents misinformation by identifying text, audio, and images created by generative algorithms.',
+      subParameters: [
+        { id: 't3_sub1', text: 'Cryptographic metadata hashes embedded on image and video renders.', description: 'Allows downstream security checks to scan media for synthetic signatures.' },
+        { id: 't3_sub2', text: 'Inaudible high-frequency watermarks layered in voice/audio stream outputs.', description: 'Prevents vocal deepfakes and acoustic impersonation attacks.' }
+      ]
+    },
+    {
+      id: 'p1',
+      category: 'privacy',
+      text: 'Data Protection Impact Assessment (DPIA) performed and GDPR-compliant consent flow implemented.',
+      description: 'A detailed assessment of systemic risks to privacy, mandatory under Article 35 of the GDPR.',
+      subParameters: [
+        { id: 'p1_sub1', text: 'DPIA registered with national data protection supervisor.', description: 'Ensures the assessment is legally catalogued and audited.' },
+        { id: 'p1_sub2', text: 'GDPR consent management system checks freely given, granular consent.', description: 'Ensures affirmative consumer opt-ins for telemetry, cookies, and model training.' }
+      ]
+    },
+    {
+      id: 'p2',
+      category: 'privacy',
+      text: 'Right to be forgotten (Article 17) mechanisms verified, enabling complete erasure of user records in 30 days.',
+      description: 'Ensures citizen data can be purged from database indexes and backup logs on user demand.',
+      subParameters: [
+        { id: 'p2_sub1', text: 'Complete database deletion queries prepared and tested.', description: 'Deletes core profile data and training features with single request triggers.' },
+        { id: 'p2_sub2', text: 'Backup and log systems synced to purge data within the 30-day window.', description: 'Ensures offsite backups and recovery logs wipe user records completely.' }
+      ]
+    },
+    {
+      id: 'p3',
+      category: 'privacy',
+      text: 'Cross-border data transfer impact evaluation signed off, confirming no unauthorized transfer outside the EEA.',
+      description: 'Reviews compliance with Schrems II regulations for external API calls and cloud processing.',
+      subParameters: [
+        { id: 'p3_sub1', text: 'Standard Contractual Clauses (SCCs) active with all foreign processors.', description: 'Legally binds external partners to GDPR-equivalent safety rules.' },
+        { id: 'p3_sub2', text: 'All European user records stored inside European sovereign cloud systems.', description: 'Verifies database hosting resides physically inside EU boundaries.' }
+      ]
+    },
+    {
+      id: 's1',
+      category: 'security',
+      text: 'CE Mark security certification audit completed and compliance status active.',
+      description: 'Certifies that the software conforms to mandatory European cybersecurity safety regulations.',
+      subParameters: [
+        { id: 's1_sub1', text: 'Safety assessment report filed by a notified European compliance body.', description: 'Confirms third-party auditing of model safety and code resistance.' },
+        { id: 's1_sub2', text: 'CE documentation package uploaded to company registers.', description: 'Documents CE marker legality for product operations inside the EEA.' }
+      ]
+    },
+    {
+      id: 's2',
+      category: 'security',
+      text: 'Incident response protocols established, with 72-hour regulatory notification capability for breaches.',
+      description: 'Fulfills supervisory reporting requirements in the event of an active cyber incident or data breach.',
+      subParameters: [
+        { id: 's2_sub1', text: 'Security response team duty rosters active 24/7.', description: 'Guarantees immediate response capability to isolate network threats.' },
+        { id: 's2_sub2', text: 'Regulatory breach templates preloaded for immediate alert triggers.', description: 'Enables compliant reporting within the mandatory 72-hour data privacy window.' }
+      ]
+    },
+    {
+      id: 's3',
+      category: 'security',
+      text: 'Software Bill of Materials (SBOM) compiled and continuously updated for third-party libraries.',
+      description: 'Identifies security vulnerabilities across all nested packages to prevent supply chain exploits.',
+      subParameters: [
+        { id: 's3_sub1', text: 'SBOM generated dynamically in CycloneDX or SPDX standard format.', description: 'Outputs machine-readable inventories of libraries on build compiles.' },
+        { id: 's3_sub2', text: 'Dependency checks configured to block builds containing critical vulnerabilities.', description: 'Keeps external code safe against supply chain bugs.' }
+      ]
+    }
   ],
   'United States': [
-    { id: 'f1', category: 'fairness', text: 'Algorithmic impact assessments performed to evaluate civil rights impacts and disparate treatment.', description: 'Assesses bias impact on hiring, lending, or public assistance scoring systems per US Federal guidelines.' },
-    { id: 'f2', category: 'fairness', text: 'Disparate impact ratio tests executed for demographic parity using the Four-Fifths Rule.', description: 'Statistically measures whether selection rates for protected categories are within acceptable limits.' },
-    { id: 'f3', category: 'fairness', text: 'ADA Section 508 accessibility compliance verified for all user interfaces.', description: 'Assures that US federal agencies and public systems are accessible to employees and citizens with disabilities.' },
-    { id: 't1', category: 'transparency', text: 'AI system registry and public disclosure of generative model training dataset sources maintained.', description: 'Fulfills disclosure rules regarding the training data provenance and licensing status.' },
-    { id: 't2', category: 'transparency', text: 'NIST AI Risk Management Framework (RMF) scorecard generated and made public.', description: 'A voluntary framework guiding organizations to identify, measure, and manage AI risks.' },
-    { id: 't3', category: 'transparency', text: 'Model explainability logs (SHAP/LIME values) recorded for all automated decisions.', description: 'Maintains a mathematical record of which parameters most heavily influenced high-stakes model outputs.' },
-    { id: 'p1', category: 'privacy', text: 'HIPAA-compliant Business Associate Agreements (BAA) signed, or CCPA/CPRA data mapping active.', description: 'Assures data handling contracts protect health datasets or fulfill California privacy directives.' },
-    { id: 'p2', category: 'privacy', text: 'Opt-out registry for data sharing and machine learning training queries implemented.', description: 'Provides consumers a clear interface to restrict the sale or model-training use of their personal data.' },
-    { id: 'p3', category: 'privacy', text: 'Children\'s Online Privacy Protection Rule (COPPA) review completed for under-13 age restrictions.', description: 'Limits the collection of personal information from children without explicit parental consent.' },
-    { id: 's1', category: 'security', text: 'System meets NIST SP 800-53 security controls, with threat modeling performed on training pipelines.', description: 'Strict cybersecurity controls required for federal information systems and partners.' },
-    { id: 's2', category: 'security', text: 'FedRAMP / SOC 2 Type II audit report filed, and red-teaming exercises conducted.', description: 'Independent verification of security, availability, and processing integrity of cloud architectures.' },
-    { id: 's3', category: 'security', text: 'Adversarial ML attack defenses implemented (e.g. prompt injection mitigations).', description: 'Secures LLM endpoints and predictive nodes against specialized evasion or model extraction attacks.' }
+    {
+      id: 'f1',
+      category: 'fairness',
+      text: 'Algorithmic impact assessments performed to evaluate civil rights impacts and disparate treatment.',
+      description: 'Assesses bias impact on hiring, lending, or public assistance scoring systems per US Federal guidelines.',
+      subParameters: [
+        { id: 'f1_sub1', text: 'Bias evaluations run against race, gender, and age segments.', description: 'Ensures compliance with US civil rights audit expectations.' },
+        { id: 'f1_sub2', text: 'Continuous bias screening set up for high-stakes operational workflows.', description: 'Monitors prediction indices for drift in banking or public assistance models.' }
+      ]
+    },
+    {
+      id: 'f2',
+      category: 'fairness',
+      text: 'Disparate impact ratio tests executed for demographic parity using the Four-Fifths Rule.',
+      description: 'Statistically measures whether selection rates for protected categories are within acceptable limits.',
+      subParameters: [
+        { id: 'f2_sub1', text: 'Demographic selection rates calculated using the 80% selection rule.', description: 'Standard statistical test check to prove parity in hiring or lending models.' },
+        { id: 'f2_sub2', text: 'Corrective weight parameters added to balance predictive disparities.', description: 'Applies algorithm weights if selection rates fall outside acceptable parameters.' }
+      ]
+    },
+    {
+      id: 'f3',
+      category: 'fairness',
+      text: 'ADA Section 508 accessibility compliance verified for all user interfaces.',
+      description: 'Assures that US federal agencies and public systems are accessible to employees and citizens with disabilities.',
+      subParameters: [
+        { id: 'f3_sub1', text: 'Assistive keyboard shortcuts and accessibility indicators pass testing.', description: 'Confirms system compliance with Section 508 guidelines.' },
+        { id: 'f3_sub2', text: 'Auditory readout and high-contrast color themes integrated.', description: 'Ensures readability for visually impaired citizens.' }
+      ]
+    },
+    {
+      id: 't1',
+      category: 'transparency',
+      text: 'AI system registry and public disclosure of generative model training dataset sources maintained.',
+      description: 'Fulfills disclosure rules regarding the training data provenance and licensing status.',
+      subParameters: [
+        { id: 't1_sub1', text: 'Database of copyrighted datasets and training sources catalogued.', description: 'Tracks copyright compliance for generative model datasets.' },
+        { id: 't1_sub2', text: 'Public system registry declarations filed per Federal directives.', description: 'Maintains compliance with public sector transparency mandates.' }
+      ]
+    },
+    {
+      id: 't2',
+      category: 'transparency',
+      text: 'NIST AI Risk Management Framework (RMF) scorecard generated and made public.',
+      description: 'A voluntary framework guiding organizations to identify, measure, and manage AI risks.',
+      subParameters: [
+        { id: 't2_sub1', text: 'NIST AI RMF control checks mapped against system operational boundaries.', description: 'Checks model design against the NIST guidelines.' },
+        { id: 't2_sub2', text: 'Audit summaries and risk profiles published to public dashboards.', description: 'Provides stakeholders insight into model safety postures.' }
+      ]
+    },
+    {
+      id: 't3',
+      category: 'transparency',
+      text: 'Model explainability logs (SHAP/LIME values) recorded for all automated decisions.',
+      description: 'Maintains a mathematical record of which parameters most heavily influenced high-stakes model outputs.',
+      subParameters: [
+        { id: 't3_sub1', text: 'Decision logs generate SHAP explainability charts for every run.', description: 'Maps mathematical feature importances for predictions.' },
+        { id: 't3_sub2', text: 'Explaining texts converted to human-readable summaries in decision logs.', description: 'Allows users to see a clear list of what variables drove their outputs.' }
+      ]
+    },
+    {
+      id: 'p1',
+      category: 'privacy',
+      text: 'HIPAA-compliant Business Associate Agreements (BAA) signed, or CCPA/CPRA data mapping active.',
+      description: 'Assures data handling contracts protect health datasets or fulfill California privacy directives.',
+      subParameters: [
+        { id: 'p1_sub1', text: 'HIPAA BAA signed with all cloud hosting partners.', description: 'Ensures cloud resources protect health details under US federal law.' },
+        { id: 'p1_sub2', text: 'CCPA/CPRA data map lists and tracks where consumer records reside.', description: 'Prepares systems for consumer data queries or deletion requests.' }
+      ]
+    },
+    {
+      id: 'p2',
+      category: 'privacy',
+      text: 'Opt-out registry for data sharing and machine learning training queries implemented.',
+      description: 'Provides consumers a clear interface to restrict the sale or model-training use of their personal data.',
+      subParameters: [
+        { id: 'p2_sub1', text: 'Consumer opt-out button is clearly visible in user profiles.', description: 'Fulfills state consumer data access regulations.' },
+        { id: 'p2_sub2', text: 'Opted-out customer records deleted from training pipelines instantly.', description: 'Enforces dataset hygiene to ensure consumer preference is respected.' }
+      ]
+    },
+    {
+      id: 'p3',
+      category: 'privacy',
+      text: 'Children\'s Online Privacy Protection Rule (COPPA) review completed for under-13 age restrictions.',
+      description: 'Limits the collection of personal information from children without explicit parental consent.',
+      subParameters: [
+        { id: 'p3_sub1', text: 'Age gate and consent verification flows built for registrations.', description: 'Fulfills COPPA verification rules.' },
+        { id: 'p3_sub2', text: 'System automatically screens and blocks PII collection from under-13 users.', description: 'Prevents database logging of child records.' }
+      ]
+    },
+    {
+      id: 's1',
+      category: 'security',
+      text: 'System meets NIST SP 800-53 security controls, with threat modeling performed on training pipelines.',
+      description: 'Strict cybersecurity controls required for federal information systems and partners.',
+      subParameters: [
+        { id: 's1_sub1', text: 'NIST SP 800-53 control compliance certificate signed off.', description: 'Mandatory standard validation for cloud and public systems.' },
+        { id: 's1_sub2', text: 'Threat modeling audit conducted on database training workflows.', description: 'Prevent data injection or parameter manipulation bugs in ML models.' }
+      ]
+    },
+    {
+      id: 's2',
+      category: 'security',
+      text: 'FedRAMP / SOC 2 Type II audit report filed, and red-teaming exercises conducted.',
+      description: 'Independent verification of security, availability, and processing integrity of cloud architectures.',
+      subParameters: [
+        { id: 's2_sub1', text: 'SOC 2 Type II report signed by auditing agency.', description: 'Validates operational security controls over a multi-month window.' },
+        { id: 's2_sub2', text: 'Red-teaming attacks simulated against prompt injection weaknesses.', description: 'Ensures the model does not expose baseline system parameters.' }
+      ]
+    },
+    {
+      id: 's3',
+      category: 'security',
+      text: 'Adversarial ML attack defenses implemented (e.g. prompt injection mitigations).',
+      description: 'Secures LLM endpoints and predictive nodes against specialized evasion or model extraction attacks.',
+      subParameters: [
+        { id: 's3_sub1', text: 'Input sanitization layers block malicious prompts on all inputs.', description: 'Blocks jailbreaks or system override triggers.' },
+        { id: 's3_sub2', text: 'Rate limiting and anomaly checks flag bot query scripts.', description: 'Prevents mass queries aimed at stealing model weight details.' }
+      ]
+    }
   ],
   'Global Standards (ISO)': [
-    { id: 'f1', category: 'fairness', text: 'Algorithmic Fairness management policies established per ISO/IEC 42001 Annex A controls.', description: 'Aligns AI management processes with global standards for managing bias and discrimination.' },
-    { id: 'f2', category: 'fairness', text: 'Systematic bias monitoring systems operational in production pipelines to flag drifting predictions.', description: 'Ensures statistical fairness parameters do not degrade as real-world input distributions shift.' },
-    { id: 'f3', category: 'fairness', text: 'Linguistic and cultural localization guidelines verified across international deployments.', description: 'Prevents structural discrimination when deploying AI systems across different cultural contexts.' },
-    { id: 't1', category: 'transparency', text: 'System documentation and transparency statements published explaining AI capability boundaries.', description: 'Explicitly outlines what the AI system can and cannot do, preventing user over-reliance.' },
-    { id: 't2', category: 'transparency', text: 'Explainability logs maintained, allowing traceability of algorithmic logic for audit trails.', description: 'Fulfills ISO auditability requirements by logging explanation paths alongside model predictions.' },
-    { id: 't3', category: 'transparency', text: 'Third-party validation report generated verifying model generalization limits.', description: 'Proves the algorithm was tested on independent test sets and performs within declared boundaries.' },
-    { id: 'p1', category: 'privacy', text: 'Privacy Information Management System (PIMS) audited against ISO/IEC 27701.', description: 'Extends ISO 27001 security controls to incorporate privacy management requirements.' },
-    { id: 'p2', category: 'privacy', text: 'Cross-border data transfer compliance and automated data minimisation criteria active.', description: 'Restricts data storage to only necessary elements and ensures secure global transit.' },
-    { id: 'p3', category: 'privacy', text: 'Regular privacy posture reviews scheduled and data retention limits enforced.', description: 'Ensures that databases automatically prune expired user telemetry records to minimize exposure.' },
-    { id: 's1', category: 'security', text: 'Information Security Management System (ISMS) certified against ISO/IEC 27001.', description: 'The gold standard for establishing, implementing, and improving information security.' },
-    { id: 's2', category: 'security', text: 'Threat vector analysis for adversarial attacks (data poisoning, model inversion) updated quarterly.', description: 'Proactively models threats specific to machine learning weights and dataset security.' },
-    { id: 's3', category: 'security', text: 'Business continuity and disaster recovery drills simulated for AI outage vectors.', description: 'Ensures operations can fall back to non-AI or redundant systems during structural failures.' }
+    {
+      id: 'f1',
+      category: 'fairness',
+      text: 'Algorithmic Fairness management policies established per ISO/IEC 42001 Annex A controls.',
+      description: 'Aligns AI management processes with global standards for managing bias and discrimination.',
+      subParameters: [
+        { id: 'f1_sub1', text: 'Bias control policy drafted and approved by executive board.', description: 'Establishes clear, document-based management strategies for AI fairness.' },
+        { id: 'f1_sub2', text: 'ISO 42001 Annex A.6 controls verified on deployment scripts.', description: 'Checks engineering implementation of bias control goals.' }
+      ]
+    },
+    {
+      id: 'f2',
+      category: 'fairness',
+      text: 'System systematic bias monitoring systems operational in production pipelines.',
+      description: 'Ensures statistical fairness parameters do not degrade as real-world input distributions shift.',
+      subParameters: [
+        { id: 'f2_sub1', text: 'Automated alert trigger set if selection parity falls below 80%.', description: 'Triggers diagnostic reviews if model predictions drift towards bias.' },
+        { id: 'f2_sub2', text: 'Model dataset updates undergo automated bias audits before compile.', description: 'Ensures model training updates do not introduce new bias.' }
+      ]
+    },
+    {
+      id: 'f3',
+      category: 'fairness',
+      text: 'Linguistic and cultural localization guidelines verified across international deployments.',
+      description: 'Prevents structural discrimination when deploying AI systems across different cultural contexts.',
+      subParameters: [
+        { id: 'f3_sub1', text: 'Model localized testing validates accuracy in multi-lingual zones.', description: 'Prevents systematic errors when operating globally.' },
+        { id: 'f3_sub2', text: 'Cultural impact review signed by global localization committee.', description: 'Verifies model output respect regional values and context.' }
+      ]
+    },
+    {
+      id: 't1',
+      category: 'transparency',
+      text: 'System documentation and transparency statements explaining AI capability boundaries.',
+      description: 'Explicitly outlines what the AI system can and cannot do, preventing user over-reliance.',
+      subParameters: [
+        { id: 't1_sub1', text: 'Public documentation site details capabilities and limitations.', description: 'Fulfills transparency guidelines by warning users of limitation zones.' },
+        { id: 't1_sub2', text: 'Technical specification document details system datasets and features.', description: 'Provides in-depth specifications for downstream developers and integrators.' }
+      ]
+    },
+    {
+      id: 't2',
+      category: 'transparency',
+      text: 'Explainability logs maintained, allowing traceability of algorithmic logic for audit trails.',
+      description: 'Fulfills ISO auditability requirements by logging explanation paths alongside model predictions.',
+      subParameters: [
+        { id: 't2_sub1', text: 'Traceability database logs prediction IDs and explainability metrics.', description: 'Enables retroactive audit review of system decisions.' },
+        { id: 't2_sub2', text: 'Log database secures data against unauthorized edits.', description: 'Ensures audit log authenticity and compliance with strict standards.' }
+      ]
+    },
+    {
+      id: 't3',
+      category: 'transparency',
+      text: 'Third-party validation report generated verifying model generalization limits.',
+      description: 'Proves the algorithm was tested on independent test sets and performs within declared boundaries.',
+      subParameters: [
+        { id: 't3_sub1', text: 'Validation audit report signed by independent standards body.', description: 'Validates that testing was objective and rigorous.' },
+        { id: 't3_sub2', text: 'Out-of-distribution dataset accuracy test records logged.', description: 'Proves model resilience in unusual edge-case environments.' }
+      ]
+    },
+    {
+      id: 'p1',
+      category: 'privacy',
+      text: 'Privacy Information Management System (PIMS) audited against ISO/IEC 27701.',
+      description: 'Extends ISO 27001 security controls to incorporate privacy management requirements.',
+      subParameters: [
+        { id: 'p1_sub1', text: 'ISO 27701 internal auditor certificate filed.', description: 'Ensures internal audits are managed by a certified professional.' },
+        { id: 'p1_sub2', text: 'PIMS controls mapped against database schema structures.', description: 'Validates privacy controls protect real-world citizen databases.' }
+      ]
+    },
+    {
+      id: 'p2',
+      category: 'privacy',
+      text: 'Cross-border data transfer compliance and automated data minimisation criteria active.',
+      description: 'Restricts data storage to only necessary elements and ensures secure global transit.',
+      subParameters: [
+        { id: 'p2_sub1', text: 'Auto-prune processes wipe unused user profiles and telemetry fields.', description: 'Ensures databases only store details required for operations.' },
+        { id: 'p2_sub2', text: 'Encryption keys for international data transfers audited.', description: 'Prevents interception during cross-border transit.' }
+      ]
+    },
+    {
+      id: 'p3',
+      category: 'privacy',
+      text: 'Regular privacy posture reviews scheduled and data retention limits enforced.',
+      description: 'Ensures that databases automatically prune expired user telemetry records to minimize exposure.',
+      subParameters: [
+        { id: 'p3_sub1', text: 'Data retention script verified to delete inactive files after 180 days.', description: 'Automatically enforces the database hygiene guidelines.' },
+        { id: 'p3_sub2', text: 'Quarterly privacy audits log data minimisation results.', description: 'Maintains records of privacy-preserving performance.' }
+      ]
+    },
+    {
+      id: 's1',
+      category: 'security',
+      text: 'Information Security Management System (ISMS) certified against ISO/IEC 27001.',
+      description: 'The gold standard for establishing, implementing, and improving information security.',
+      subParameters: [
+        { id: 's1_sub1', text: 'ISO 27001 certificate verified and active.', description: 'Confirms baseline organizational security practices conform to international rules.' },
+        { id: 's1_sub2', text: 'Statement of Applicability (SoA) matches system control setups.', description: 'Ensures controls map directly to current system architectures.' }
+      ]
+    },
+    {
+      id: 's2',
+      category: 'security',
+      text: 'Threat vector analysis for adversarial attacks (data poisoning, model inversion) updated quarterly.',
+      description: 'Proactively models threats specific to machine learning weights and dataset security.',
+      subParameters: [
+        { id: 's2_sub1', text: 'Threat logs capture and analyze anomalous input patterns.', description: 'Spots zero-day evasion or parameter theft attempts.' },
+        { id: 's2_sub2', text: 'Adversarial threat assessments updated with newly discovered CVSS scores.', description: 'Monitors the landscape for newly discovered AI exploits.' }
+      ]
+    },
+    {
+      id: 's3',
+      category: 'security',
+      text: 'Business continuity and disaster recovery drills simulated for AI outage vectors.',
+      description: 'Ensures operations can fall back to non-AI or redundant systems during structural failures.',
+      subParameters: [
+        { id: 's3_sub1', text: 'Continuity protocols define offline manual fallback steps.', description: 'Ensures service operations remain stable if models crash.' },
+        { id: 's3_sub2', text: 'Redundant model server groups replicate databases real-time.', description: 'Provides instant failover capability during hardware issues.' }
+      ]
+    }
   ]
 };
 
@@ -139,47 +578,57 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
     if (!activeProject) return;
     const score = activeProject.compliance;
     const initialAnswers: Record<string, 'yes' | 'no'> = {
-      f1: score.fairness >= 60 ? 'yes' : 'no',
-      f2: score.fairness >= 80 ? 'yes' : 'no',
-      f3: score.fairness >= 100 ? 'yes' : 'no',
-      t1: score.transparency >= 60 ? 'yes' : 'no',
-      t2: score.transparency >= 80 ? 'yes' : 'no',
-      t3: score.transparency >= 100 ? 'yes' : 'no',
-      p1: score.privacy >= 60 ? 'yes' : 'no',
-      p2: score.privacy >= 80 ? 'yes' : 'no',
-      p3: score.privacy >= 100 ? 'yes' : 'no',
-      s1: score.security >= 60 ? 'yes' : 'no',
-      s2: score.security >= 80 ? 'yes' : 'no',
-      s3: score.security >= 100 ? 'yes' : 'no',
+      f1_sub1: score.fairness >= 60 ? 'yes' : 'no',
+      f1_sub2: score.fairness >= 80 ? 'yes' : 'no',
+      f2_sub1: score.fairness >= 80 ? 'yes' : 'no',
+      f2_sub2: score.fairness >= 100 ? 'yes' : 'no',
+      f3_sub1: score.fairness >= 100 ? 'yes' : 'no',
+      f3_sub2: score.fairness >= 100 ? 'yes' : 'no',
+      
+      t1_sub1: score.transparency >= 60 ? 'yes' : 'no',
+      t1_sub2: score.transparency >= 80 ? 'yes' : 'no',
+      t2_sub1: score.transparency >= 80 ? 'yes' : 'no',
+      t2_sub2: score.transparency >= 100 ? 'yes' : 'no',
+      t3_sub1: score.transparency >= 100 ? 'yes' : 'no',
+      t3_sub2: score.transparency >= 100 ? 'yes' : 'no',
+
+      p1_sub1: score.privacy >= 60 ? 'yes' : 'no',
+      p1_sub2: score.privacy >= 80 ? 'yes' : 'no',
+      p2_sub1: score.privacy >= 80 ? 'yes' : 'no',
+      p2_sub2: score.privacy >= 100 ? 'yes' : 'no',
+      p3_sub1: score.privacy >= 100 ? 'yes' : 'no',
+      p3_sub2: score.privacy >= 100 ? 'yes' : 'no',
+
+      s1_sub1: score.security >= 60 ? 'yes' : 'no',
+      s1_sub2: score.security >= 80 ? 'yes' : 'no',
+      s2_sub1: score.security >= 80 ? 'yes' : 'no',
+      s2_sub2: score.security >= 100 ? 'yes' : 'no',
+      s3_sub1: score.security >= 100 ? 'yes' : 'no',
+      s3_sub2: score.security >= 100 ? 'yes' : 'no',
     };
     setAnswers(initialAnswers);
-  }, [selectedProjectId]);
+  }, [selectedProjectId, activeProject]);
 
-  const handleAnswerChange = (qId: string, val: 'yes' | 'no') => {
+  const handleAnswerChange = (subId: string, val: 'yes' | 'no') => {
     const canAudit = ['Super Administrator', 'National AI Authority', 'Government Administrator', 'Auditor'].includes(currentRole);
     if (!canAudit) return;
 
     const newAnswers = {
       ...answers,
-      [qId]: val
+      [subId]: val
     };
     setAnswers(newAnswers);
 
-    const computeCategoryScore = (q1Id: string, q2Id: string, q3Id: string) => {
-      const q1Yes = newAnswers[q1Id] === 'yes';
-      const q2Yes = newAnswers[q2Id] === 'yes';
-      const q3Yes = newAnswers[q3Id] === 'yes';
-      let score = 40;
-      if (q1Yes) score += 20;
-      if (q2Yes) score += 20;
-      if (q3Yes) score += 20;
-      return score;
+    const computeCategoryScore = (subIds: string[]) => {
+      const yesCount = subIds.filter(id => newAnswers[id] === 'yes').length;
+      // Linear scaling: 40% baseline, each sub YES adds 10%
+      return 40 + (yesCount * 10);
     };
 
-    const fairness = computeCategoryScore('f1', 'f2', 'f3');
-    const transparency = computeCategoryScore('t1', 't2', 't3');
-    const privacy = computeCategoryScore('p1', 'p2', 'p3');
-    const security = computeCategoryScore('s1', 's2', 's3');
+    const fairness = computeCategoryScore(['f1_sub1', 'f1_sub2', 'f2_sub1', 'f2_sub2', 'f3_sub1', 'f3_sub2']);
+    const transparency = computeCategoryScore(['t1_sub1', 't1_sub2', 't2_sub1', 't2_sub2', 't3_sub1', 't3_sub2']);
+    const privacy = computeCategoryScore(['p1_sub1', 'p1_sub2', 'p2_sub1', 'p2_sub2', 'p3_sub1', 'p3_sub2']);
+    const security = computeCategoryScore(['s1_sub1', 's1_sub2', 's2_sub1', 's2_sub2', 's3_sub1', 's3_sub2']);
 
     const weightedNgs = (fairness * 0.20) + (transparency * 0.25) + (privacy * 0.20) + (security * 0.35);
 
@@ -245,6 +694,19 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
     return '';
   };
 
+  const getParentStatusIcon = (q: AuditQuestion) => {
+    const subIds = q.subParameters.map(s => s.id);
+    const yesCount = subIds.filter(id => answers[id] === 'yes').length;
+    
+    if (yesCount === 2) {
+      return <CheckCircle2 className="w-4 h-4 text-emerald-400" style={{ marginRight: '6px' }} />;
+    } else if (yesCount === 1) {
+      return <AlertCircle className="w-4 h-4 text-amber-400" style={{ marginRight: '6px' }} />;
+    } else {
+      return <XCircle className="w-4 h-4 text-rose-500" style={{ marginRight: '6px' }} />;
+    }
+  };
+
   const canAudit = ['Super Administrator', 'National AI Authority', 'Government Administrator', 'Auditor'].includes(currentRole);
 
   const renderQuestionGroup = (cat: 'fairness' | 'transparency' | 'privacy' | 'security') => {
@@ -263,91 +725,135 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
           textTransform: 'uppercase', 
           letterSpacing: '0.05em', 
           color: colorMap[cat] || 'var(--ghana-emerald)', 
-          marginBottom: '10px' 
+          marginBottom: '12px' 
         }}>
           {getCategoryTitle(cat)}
         </h4>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {(frameworkQuestions[framework] || frameworkQuestions['Ghana'])
             .filter(q => q.category === cat)
             .map(q => {
-              const isYes = answers[q.id] === 'yes';
-              const isNo = answers[q.id] === 'no';
               return (
-                <div 
-                  key={q.id}
-                  style={{ 
+                <div key={q.id} style={{ 
+                  background: 'rgba(0,0,0,0.12)', 
+                  border: '1px solid var(--border-color)', 
+                  borderRadius: '10px',
+                  padding: '14px'
+                }}>
+                  {/* Parent Parameter Header */}
+                  <div style={{ 
                     display: 'flex', 
-                    justifyContent: 'space-between',
                     alignItems: 'center', 
-                    gap: '16px', 
-                    padding: '12px 16px', 
-                    background: 'rgba(0,0,0,0.15)', 
-                    border: '1px solid var(--border-color)', 
-                    borderRadius: '8px',
-                    fontSize: '0.85rem'
-                  }}
-                >
-                  <span style={{ 
-                    color: isYes ? 'var(--text-primary)' : 'var(--text-secondary)',
-                    lineHeight: '1.4',
-                    flex: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    flexWrap: 'wrap'
+                    marginBottom: '12px',
+                    borderBottom: '1px solid rgba(255,255,255,0.04)',
+                    paddingBottom: '8px'
                   }}>
-                    {q.text}
-                    {/* Glassmorphic Tooltip on hover */}
-                    <span className="tooltip-container">
-                      <Info 
-                        className="w-4 h-4 text-sky-400 cursor-help hover:text-sky-300" 
-                        style={{ marginLeft: '6px', opacity: 0.7 }} 
-                      />
-                      <span className="tooltip-text">
-                        <strong style={{ color: '#38bdf8', display: 'block', marginBottom: '4px' }}>Parameter Explanation:</strong>
-                        {q.description}
+                    {getParentStatusIcon(q)}
+                    <span style={{ 
+                      color: 'var(--text-primary)',
+                      fontSize: '0.88rem',
+                      fontWeight: 600,
+                      lineHeight: '1.4',
+                      flex: 1,
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}>
+                      {q.text}
+                      <span className="tooltip-container">
+                        <Info 
+                          className="w-3.5 h-3.5 text-sky-400 cursor-help hover:text-sky-300" 
+                          style={{ marginLeft: '6px', opacity: 0.7 }} 
+                        />
+                        <span className="tooltip-text">
+                          <strong style={{ color: '#38bdf8', display: 'block', marginBottom: '4px' }}>Parameter Goal:</strong>
+                          {q.description}
+                        </span>
                       </span>
                     </span>
-                  </span>
-                  
-                  {/* Metadata Format Options (Yes/No Radio Buttons) */}
-                  <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                    <button
-                      onClick={() => handleAnswerChange(q.id, 'yes')}
-                      disabled={!canAudit}
-                      style={{
-                        padding: '6px 14px',
-                        borderRadius: '6px',
-                        border: '1px solid ' + (isYes ? '#10b981' : 'rgba(255,255,255,0.08)'),
-                        background: isYes ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255,255,255,0.01)',
-                        color: isYes ? '#34d399' : 'var(--text-muted)',
-                        fontSize: '0.72rem',
-                        fontWeight: 700,
-                        cursor: canAudit ? 'pointer' : 'default',
-                        transition: 'all 0.15s ease',
-                        boxShadow: isYes ? '0 0 8px rgba(16, 185, 129, 0.2)' : 'none'
-                      }}
-                    >
-                      YES
-                    </button>
-                    <button
-                      onClick={() => handleAnswerChange(q.id, 'no')}
-                      disabled={!canAudit}
-                      style={{
-                        padding: '6px 14px',
-                        borderRadius: '6px',
-                        border: '1px solid ' + (isNo ? '#f43f5e' : 'rgba(255,255,255,0.08)'),
-                        background: isNo ? 'rgba(244, 63, 94, 0.15)' : 'rgba(255,255,255,0.01)',
-                        color: isNo ? '#fb7185' : 'var(--text-muted)',
-                        fontSize: '0.72rem',
-                        fontWeight: 700,
-                        cursor: canAudit ? 'pointer' : 'default',
-                        transition: 'all 0.15s ease',
-                        boxShadow: isNo ? '0 0 8px rgba(244, 63, 94, 0.2)' : 'none'
-                      }}
-                    >
-                      NO
-                    </button>
+                  </div>
+
+                  {/* Child Sub-Parameters List */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingLeft: '22px' }}>
+                    {q.subParameters.map(sub => {
+                      const isYes = answers[sub.id] === 'yes';
+                      const isNo = answers[sub.id] === 'no';
+                      return (
+                        <div 
+                          key={sub.id}
+                          style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between',
+                            alignItems: 'center', 
+                            gap: '16px', 
+                            padding: '10px 12px', 
+                            background: 'rgba(255,255,255,0.01)', 
+                            border: '1px solid rgba(255,255,255,0.03)', 
+                            borderRadius: '6px',
+                            fontSize: '0.8rem'
+                          }}
+                        >
+                          <span style={{ 
+                            color: isYes ? 'var(--text-primary)' : 'var(--text-secondary)',
+                            lineHeight: '1.4',
+                            flex: 1,
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}>
+                            • {sub.text}
+                            <span className="tooltip-container">
+                              <Info 
+                                className="w-3.5 h-3.5 text-sky-400 cursor-help hover:text-sky-300" 
+                                style={{ marginLeft: '6px', opacity: 0.6 }} 
+                              />
+                              <span className="tooltip-text">
+                                <strong style={{ color: '#38bdf8', display: 'block', marginBottom: '4px' }}>Sub-parameter Requirement:</strong>
+                                {sub.description}
+                              </span>
+                            </span>
+                          </span>
+                          
+                          {/* Sub-Parameter Yes/No Controls */}
+                          <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                            <button
+                              onClick={() => handleAnswerChange(sub.id, 'yes')}
+                              disabled={!canAudit}
+                              style={{
+                                padding: '5px 11px',
+                                borderRadius: '5px',
+                                border: '1px solid ' + (isYes ? '#10b981' : 'rgba(255,255,255,0.06)'),
+                                background: isYes ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255,255,255,0.01)',
+                                color: isYes ? '#34d399' : 'var(--text-muted)',
+                                fontSize: '0.68rem',
+                                fontWeight: 700,
+                                cursor: canAudit ? 'pointer' : 'default',
+                                transition: 'all 0.12s ease',
+                                boxShadow: isYes ? '0 0 6px rgba(16, 185, 129, 0.15)' : 'none'
+                              }}
+                            >
+                              YES
+                            </button>
+                            <button
+                              onClick={() => handleAnswerChange(sub.id, 'no')}
+                              disabled={!canAudit}
+                              style={{
+                                padding: '5px 11px',
+                                borderRadius: '5px',
+                                border: '1px solid ' + (isNo ? '#f43f5e' : 'rgba(255,255,255,0.06)'),
+                                background: isNo ? 'rgba(244, 63, 94, 0.15)' : 'rgba(255,255,255,0.01)',
+                                color: isNo ? '#fb7185' : 'var(--text-muted)',
+                                fontSize: '0.68rem',
+                                fontWeight: 700,
+                                cursor: canAudit ? 'pointer' : 'default',
+                                transition: 'all 0.12s ease',
+                                boxShadow: isNo ? '0 0 6px rgba(244, 63, 94, 0.15)' : 'none'
+                              }}
+                            >
+                              NO
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );
