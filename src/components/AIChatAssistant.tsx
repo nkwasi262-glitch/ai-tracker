@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, MessageSquareCode } from 'lucide-react';
-import { AIProject } from '../data/sampleProjects';
+import { AIProject, formatNumberToWords } from '../data/sampleProjects';
 
 interface AIChatAssistantProps {
   projects: AIProject[];
@@ -294,9 +294,7 @@ export const AIChatAssistant: React.FC<AIChatAssistantProps> = ({ projects }) =>
       // Check categories
       if (matchedProject) {
         const p = matchedProject;
-        const budgetTotal = (p.budget.totalAllocated / 1000000).toFixed(2);
         const budgetDisbursed = (p.budget.disbursed / 1000000).toFixed(2);
-        const budgetUtilized = (p.budget.utilized / 1000000).toFixed(2);
         const budgetRemaining = (p.budget.remaining / 1000000).toFixed(2);
         const utilRate = ((p.budget.utilized / (p.budget.disbursed || 1)) * 100).toFixed(1);
 
@@ -327,10 +325,10 @@ export const AIChatAssistant: React.FC<AIChatAssistantProps> = ({ projects }) =>
 | **Timeline** | ${p.startDate} to ${p.expectedCompletionDate} |
 | **NARI Score** | **${p.readinessScore}%** |
 
-### 💰 Financing Details (GHS Millions)
-- **Total Allocated**: GHS ${budgetTotal}M
+### 💰 Financing Details
+- **Total Allocated**: ${formatNumberToWords(p.budget.totalAllocated)} GHS (GHS ${p.budget.totalAllocated.toLocaleString('en-US')})
 - **Disbursed**: GHS ${budgetDisbursed}M
-- **Utilized**: GHS ${budgetUtilized}M (Utilization Rate: **${utilRate}%**)
+- **Utilized**: ${formatNumberToWords(p.budget.utilized)} GHS (GHS ${p.budget.utilized.toLocaleString('en-US')}) (Utilization Rate: **${utilRate}%**)
 - **Remaining**: GHS ${budgetRemaining}M
 - **Funding Source**: ${p.budget.primaryFundingSource} (${p.budget.currency})
 
@@ -386,10 +384,11 @@ Here is the real-time aggregated dashboard status of the **Ghana National AI Pro
 - **National AI Readiness Index (NARI)**: **${avgReadiness}%**
 - **Governance Compliance Rate (Excellent/Good)**: **${(((complianceGrades['Excellent'] + complianceGrades['Good']) / totalProjects) * 100).toFixed(0)}%** (${complianceGrades['Excellent'] + complianceGrades['Good']} of ${totalProjects} projects)
 
-### 💰 Budget & Financing Summary (GHS Millions)
-| Financial Indicator | Approved Amount (GHS) | Utilized Amount (GHS) | Remaining (GHS) | Utilization Rate |
-|---|---|---|---|---|
-| **Overall Registry Portfolio** | GHS ${(totalAllocated / 1000000).toFixed(2)}M | GHS ${(totalUtilized / 1000000).toFixed(2)}M | GHS ${(totalRemaining / 1000000).toFixed(2)}M | **${((totalUtilized / (totalDisbursed || 1)) * 100).toFixed(1)}%** |
+### 💰 Budget & Financing Summary
+- **Overall Approved Budget Portfolio**: ${formatNumberToWords(totalAllocated)} GHS (GHS ${totalAllocated.toLocaleString('en-US')})
+- **Overall Utilized Funds Portfolio**: ${formatNumberToWords(totalUtilized)} GHS (GHS ${totalUtilized.toLocaleString('en-US')})
+- **Overall Remaining Funds Portfolio**: GHS ${(totalRemaining / 1000000).toFixed(2)}M
+- **Utilization Rate**: **${((totalUtilized / (totalDisbursed || 1)) * 100).toFixed(1)}%**
 
 > [!NOTE]
 > Funding efficiency is calculated as utilized funds divided by disbursed budget (**GHS ${(totalDisbursed / 1000000).toFixed(2)}M** disbursed portfolio wide).

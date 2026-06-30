@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Layers } from 'lucide-react';
-import { AIProject, ghanaRegions } from '../data/sampleProjects';
+import { AIProject, ghanaRegions, formatNumberToWords } from '../data/sampleProjects';
 
 interface GISGeospatialProps {
   projects: AIProject[];
@@ -90,7 +90,10 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
             <span>Lifecycle:</span> <strong style="color: #10b981">${p.stage}</strong>
           </div>
           <div class="map-tooltip-row">
-            <span>Budget:</span> <strong>GHS ${(p.budget.totalAllocated/100000).toFixed(0)}L</strong>
+            <span>Allocated Budget:</span> <strong>${formatNumberToWords(p.budget.totalAllocated)} GHS (GHS ${p.budget.totalAllocated.toLocaleString('en-US')})</strong>
+          </div>
+          <div class="map-tooltip-row">
+            <span>Utilized Funds:</span> <strong>${formatNumberToWords(p.budget.utilized)} GHS (GHS ${p.budget.utilized.toLocaleString('en-US')})</strong>
           </div>
           <div class="map-tooltip-row">
             <span>Compliance:</span> <strong style="color: ${p.compliance.overallGrade === 'Excellent' ? '#10b981' : '#fbbf24'}">${p.compliance.overallGrade}</strong>
