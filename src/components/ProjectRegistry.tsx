@@ -6,18 +6,29 @@ import { UserRole } from './RoleSwitcher';
 interface ProjectRegistryProps {
   projects: AIProject[];
   onAddProject: (newProject: AIProject) => void;
+  onDeleteProject: (projectId: string) => void;
+  onClearAllProjects: () => void;
   currentRole: UserRole;
 }
 
 export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({ 
   projects, 
   onAddProject, 
+  onDeleteProject,
+  onClearAllProjects,
   currentRole 
 }) => {
   // Lists filters
   const [searchTerm, setSearchTerm] = useState('');
   const [stageFilter, setStageFilter] = useState('All');
   const [selectedProject, setSelectedProject] = useState<AIProject | null>(projects[0] || null);
+
+  // Sync selection when projects list changes (e.g. deletions)
+  React.useEffect(() => {
+    if (!selectedProject || !projects.find(p => p.id === selectedProject.id)) {
+      setSelectedProject(projects[0] || null);
+    }
+  }, [projects, selectedProject]);
 
   // Form states
   const [name, setName] = useState('');
@@ -166,11 +177,35 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
         
         {/* LEFT COLUMN: Project Registry Browser */}
         <div className="glass-card" style={{ minHeight: '680px', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ marginBottom: '20px' }}>
-            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '6px' }}>AI Registry Browser</h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-              Explore and inspect artificial intelligence initiatives in Ghana.
-            </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <div>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '6px' }}>AI Registry Browser</h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                Explore and inspect artificial intelligence initiatives in Ghana.
+              </p>
+            </div>
+            {canWrite && projects.length > 0 && (
+              <button
+                onClick={() => {
+                  if (confirm('Are you sure you want to clear all projects in the registry? This will wipe the database.')) {
+                    onClearAllProjects();
+                  }
+                }}
+                style={{
+                  padding: '6px 12px',
+                  background: 'rgba(244,63,94,0.1)',
+                  border: '1px solid rgba(244,63,94,0.2)',
+                  borderRadius: '6px',
+                  color: '#fb7185',
+                  fontSize: '0.74rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.12s ease'
+                }}
+              >
+                Clear All
+              </button>
+            )}
           </div>
 
           {/* Search and filter bar */}
@@ -254,7 +289,31 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                   <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>{selectedProject.name}</h4>
                   <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{selectedProject.mda}</span>
                 </div>
-                <span className="badge badge-info" style={{ fontSize: '0.65rem' }}>{selectedProject.category}</span>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <span className="badge badge-info" style={{ fontSize: '0.65rem' }}>{selectedProject.category}</span>
+                  {canWrite && (
+                    <button
+                      onClick={() => {
+                        if (confirm(`Are you sure you want to delete ${selectedProject.name}?`)) {
+                          onDeleteProject(selectedProject.id);
+                        }
+                      }}
+                      style={{
+                        padding: '4px 8px',
+                        background: 'rgba(244,63,94,0.15)',
+                        border: '1px solid #f43f5e',
+                        borderRadius: '6px',
+                        color: '#fb7185',
+                        fontSize: '0.65rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        transition: 'all 0.12s ease'
+                      }}
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
               </div>
 
               <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: 1.45 }}>

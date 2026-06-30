@@ -24,6 +24,16 @@ function App() {
     setProjects(prev => [newProject, ...prev]);
   };
 
+  // Deletes projects from state
+  const handleDeleteProject = (projectId: string) => {
+    setProjects(prev => prev.filter(p => p.id !== projectId));
+  };
+
+  // Clears all projects from state
+  const handleClearAllProjects = () => {
+    setProjects([]);
+  };
+
   // Re-evaluates ethical indices and grades instantly
   const handleUpdateCompliance = (projectId: string, newScore: ComplianceScore) => {
     setProjects(prev => prev.map(p => {
@@ -95,7 +105,15 @@ function App() {
       case 'dashboard':
         return <Dashboard projects={projects} currentRole={currentRole} />;
       case 'registry':
-        return <ProjectRegistry projects={projects} onAddProject={handleAddProject} currentRole={currentRole} />;
+        return (
+          <ProjectRegistry 
+            projects={projects} 
+            onAddProject={handleAddProject} 
+            onDeleteProject={handleDeleteProject}
+            onClearAllProjects={handleClearAllProjects}
+            currentRole={currentRole} 
+          />
+        );
       case 'gis':
         return <GISGeospatial projects={projects} />;
       case 'governance':
