@@ -94,8 +94,7 @@ const tooltipStyles = `
     position: absolute;
     z-index: 9999;
     bottom: 130%;
-    left: 50%;
-    transform: translateX(-50%);
+    right: -10px;
     opacity: 0;
     transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
     font-size: 0.76rem;
@@ -110,8 +109,7 @@ const tooltipStyles = `
     content: "";
     position: absolute;
     top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
+    right: 14px;
     border-width: 6px;
     border-style: solid;
     border-color: rgba(15, 23, 42, 0.95) transparent transparent transparent;
@@ -119,7 +117,7 @@ const tooltipStyles = `
   .tooltip-container:hover .tooltip-text {
     visibility: visible;
     opacity: 1;
-    transform: translateX(-50%) translateY(-2px);
+    transform: translateY(-2px);
   }
 `;
 
@@ -288,34 +286,27 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
                     fontSize: '0.85rem'
                   }}
                 >
-                  <div style={{ 
+                  <span style={{ 
+                    color: isYes ? 'var(--text-primary)' : 'var(--text-secondary)',
+                    lineHeight: '1.4',
+                    flex: 1,
                     display: 'flex',
-                    flexDirection: 'column',
-                    gap: '4px',
-                    flex: 1
+                    alignItems: 'center',
+                    flexWrap: 'wrap'
                   }}>
-                    <span style={{ 
-                      color: isYes ? 'var(--text-primary)' : 'var(--text-secondary)',
-                      lineHeight: '1.4',
-                      fontWeight: 600
-                    }}>
-                      {q.text}
-                    </span>
-                    <span style={{ 
-                      color: 'var(--text-muted)',
-                      fontSize: '0.75rem',
-                      lineHeight: '1.4',
-                      display: 'flex',
-                      alignItems: 'center',
-                      opacity: 0.85
-                    }}>
+                    {q.text}
+                    {/* Glassmorphic Tooltip on hover */}
+                    <span className="tooltip-container">
                       <Info 
-                        className="text-sky-400" 
-                        style={{ width: '14px', height: '14px', marginRight: '6px', flexShrink: 0 }} 
+                        className="w-4 h-4 text-sky-400 cursor-help hover:text-sky-300" 
+                        style={{ marginLeft: '6px', opacity: 0.7 }} 
                       />
-                      {q.description}
+                      <span className="tooltip-text">
+                        <strong style={{ color: '#38bdf8', display: 'block', marginBottom: '4px' }}>Parameter Explanation:</strong>
+                        {q.description}
+                      </span>
                     </span>
-                  </div>
+                  </span>
                   
                   {/* Metadata Format Options (Yes/No Radio Buttons) */}
                   <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
@@ -414,7 +405,7 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.1fr', gap: '24px', alignItems: 'start' }}>
           
           {/* LEFT PANEL: Ethical Question Checklists */}
-          <div className="glass-card">
+          <div className="glass-card" style={{ position: 'relative', zIndex: 10 }}>
             <div style={{ 
               display: 'flex', 
               justifyContent: 'space-between', 
@@ -466,7 +457,7 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
           </div>
 
           {/* RIGHT PANEL: Live NGS Scorecard gauge & summary */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', position: 'relative', zIndex: 1 }}>
             
             <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '32px 24px', textAlign: 'center' }}>
               <div style={{ padding: '16px', borderRadius: '50%', background: 'rgba(255,255,255,0.015)', border: '1px solid var(--border-color)', marginBottom: '16px' }}>
