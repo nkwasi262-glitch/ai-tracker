@@ -85,39 +85,41 @@ const tooltipStyles = `
   }
   .tooltip-text {
     visibility: hidden;
-    width: 280px;
-    background-color: rgba(15, 23, 42, 0.95);
+    width: 300px;
+    background-color: rgba(15, 23, 42, 0.98);
     color: #f1f5f9;
     text-align: left;
     border-radius: 8px;
-    padding: 10px 14px;
+    padding: 12px 16px;
     position: absolute;
     z-index: 9999;
-    bottom: 130%;
-    right: -10px;
+    top: 50%;
+    left: 140%;
+    transform: translateY(-50%);
     opacity: 0;
     transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
-    font-size: 0.76rem;
+    font-size: 0.78rem;
     line-height: 1.4;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(12px);
     pointer-events: none;
     font-weight: normal;
   }
   .tooltip-text::after {
     content: "";
     position: absolute;
-    top: 100%;
-    right: 14px;
+    top: 50%;
+    right: 100%;
+    transform: translateY(-50%);
     border-width: 6px;
     border-style: solid;
-    border-color: rgba(15, 23, 42, 0.95) transparent transparent transparent;
+    border-color: transparent rgba(15, 23, 42, 0.98) transparent transparent;
   }
   .tooltip-container:hover .tooltip-text {
     visibility: visible;
     opacity: 1;
-    transform: translateY(-2px);
+    transform: translateY(-50%) translateX(4px);
   }
 `;
 
