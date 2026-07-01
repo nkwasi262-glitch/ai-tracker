@@ -11,6 +11,16 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
   const mapInstanceRef = useRef<any>(null);
   const [activeRegion, setActiveRegion] = useState<string>('All');
 
+  // Calculate live M&E registry portfolio stats
+  const totalProjectsCount = projects.length;
+  const activeProjectsCount = projects.filter(p => p.status === 'Active').length;
+  const delayedProjectsCount = projects.filter(p => p.status === 'Delayed').length;
+  const totalBudget = projects.reduce((acc, p) => acc + p.budget.totalAllocated, 0);
+  const totalUtilized = projects.reduce((acc, p) => acc + p.budget.utilized, 0);
+  const avgReadiness = totalProjectsCount > 0 
+    ? Math.round(projects.reduce((acc, p) => acc + p.readinessScore, 0) / totalProjectsCount) 
+    : 0;
+
   useEffect(() => {
     // 1. Check if global Leaflet instance L exists
     const L = (window as any).L;
@@ -179,7 +189,7 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
         </div>
 
         {/* Legend and Regional project breakdown panel */}
-        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', minHeight: '520px' }}>
+        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', minHeight: '520px', maxHeight: '560px', overflowY: 'auto' }}>
           <div style={{ marginBottom: '20px' }}>
             <h3 style={{ fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Layers className="w-4 h-4 text-emerald-400" />
@@ -188,6 +198,37 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
             <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
               Regional density weights and coordinate statistics.
             </p>
+          </div>
+
+          {/* M&E Dashboard Alignment telemetry */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: 'rgba(16,185,129,0.03)', padding: '14px', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.2)', marginBottom: '16px' }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--ghana-emerald)' }}>
+              Registry M&E KPI Linkage
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '4px' }}>
+              <div style={{ background: 'rgba(0,0,0,0.2)', padding: '6px 8px', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', display: 'block' }}>NARI Score</span>
+                <strong style={{ fontSize: '0.86rem', color: 'var(--text-primary)' }}>{avgReadiness}%</strong>
+              </div>
+              <div style={{ background: 'rgba(0,0,0,0.2)', padding: '6px 8px', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', display: 'block' }}>Active/Delayed</span>
+                <strong style={{ fontSize: '0.86rem', color: 'var(--text-primary)' }}>{activeProjectsCount}/{delayedProjectsCount}</strong>
+              </div>
+            </div>
+            <div style={{ fontSize: '0.66rem', color: 'var(--text-secondary)', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '6px', marginTop: '4px' }}>
+              <div style={{ marginBottom: '4px' }}>
+                <span style={{ display: 'block', color: 'var(--text-muted)', fontWeight: 600 }}>Total Approved Portfolio:</span>
+                <span style={{ wordBreak: 'break-word', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  {formatNumberToWords(totalBudget)} GHS (GHS {totalBudget.toLocaleString('en-US')})
+                </span>
+              </div>
+              <div>
+                <span style={{ display: 'block', color: 'var(--text-muted)', fontWeight: 600 }}>Total Utilized Portfolio:</span>
+                <span style={{ wordBreak: 'break-word', fontWeight: 700, color: 'var(--ghana-emerald)' }}>
+                  {formatNumberToWords(totalUtilized)} GHS (GHS {totalUtilized.toLocaleString('en-US')})
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Map legend items */}
