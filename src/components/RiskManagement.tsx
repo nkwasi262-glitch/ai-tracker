@@ -3,6 +3,85 @@ import { AlertOctagon, HelpCircle, ShieldCheck, Flame, Check } from 'lucide-reac
 import { AIProject, RiskItem } from '../data/sampleProjects';
 import { UserRole } from './RoleSwitcher';
 
+const riskCategoriesMap: Record<string, string> = {
+  'Technical Risk': 'System failures, software bugs, integration failures',
+  'Operational Risk': 'Human errors and inefficient processes',
+  'Cybersecurity Risk': 'Unauthorized access and cyberattacks',
+  'Data Quality Risk': 'Poor, inaccurate, duplicate, or incomplete project data',
+  'Data Privacy Risk': 'Exposure or misuse of sensitive information',
+  'Legal & Regulatory Risk': 'Non-compliance with national laws and regulations',
+  'AI Ethics Risk': 'AI systems violating ethical principles',
+  'Governance Risk': 'Weak oversight, unclear accountability, policy violations',
+  'Financial Risk': 'Budget overruns, funding shortages, misuse of funds',
+  'Strategic Risk': "Projects not aligned with Ghana's AI strategy",
+  'Reputational Risk': 'Damage to public trust or government credibility',
+  'Project Management Risk': 'Delays, poor planning, missed milestones',
+  'Vendor/Supplier Risk': 'Dependence on external contractors or cloud providers',
+  'Third-Party Integration Risk': 'External APIs or services becoming unavailable',
+  'Infrastructure Risk': 'Failures of hosting, networking, or power',
+  'Business Continuity Risk': 'Inability to continue operations after disruptions',
+  'Disaster Recovery Risk': 'Failure to restore services within required timelines',
+  'Change Management Risk': 'Poorly managed system updates or policy changes',
+  'Human Resource Risk': 'Shortage of skilled personnel or staff turnover',
+  'Stakeholder Risk': 'Poor collaboration among ministries and agencies',
+  'Political Risk': 'Government or policy changes affecting the system',
+  'Procurement Risk': 'Delays or irregularities in acquiring technology',
+  'Compliance & Audit Risk': 'Failure to meet audit or reporting standards',
+  'Performance Risk': 'System unable to handle expected workload',
+  'Scalability Risk': 'System cannot support increasing users or projects',
+  'Interoperability Risk': 'Incompatibility with other government systems',
+  'Knowledge Management Risk': 'Loss of institutional knowledge',
+  'Environmental Risk': 'Environmental factors affecting operations',
+  'Fraud & Corruption Risk': 'Intentional manipulation of information or funds',
+  'National Security Risk': 'Exposure of sensitive AI initiatives'
+};
+
+const tooltipStyles = `
+  .risk-tooltip-container {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+  .risk-tooltip-text {
+    visibility: hidden;
+    width: 250px;
+    background-color: rgba(15, 23, 42, 0.98);
+    color: #f1f5f9;
+    text-align: left;
+    border-radius: 8px;
+    padding: 10px 14px;
+    position: absolute;
+    z-index: 9999;
+    top: 50%;
+    left: 110%;
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+    font-size: 0.74rem;
+    line-height: 1.4;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(10px);
+    pointer-events: none;
+    font-weight: normal;
+  }
+  .risk-tooltip-text::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: 100%;
+    transform: translateY(-50%);
+    border-width: 5px;
+    border-style: solid;
+    border-color: transparent rgba(15, 23, 42, 0.98) transparent transparent;
+  }
+  .risk-tooltip-container:hover .risk-tooltip-text {
+    visibility: visible;
+    opacity: 1;
+    transform: translateY(-50%) translateX(4px);
+  }
+`;
+
 interface RiskManagementProps {
   projects: AIProject[];
   onUpdateRiskStatus: (projectId: string, riskId: string, status: 'Open' | 'Mitigated' | 'Escalated') => void;
@@ -71,6 +150,7 @@ export const RiskManagement: React.FC<RiskManagementProps> = ({
 
   return (
     <div>
+      <style>{tooltipStyles}</style>
       {/* Sector Header */}
       <div style={{
         display: 'flex',
@@ -185,8 +265,12 @@ export const RiskManagement: React.FC<RiskManagementProps> = ({
               <div style={{ display: 'flex', flexDirection: 'column', flex: 1, animation: 'fadeIn 0.3s ease' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                   <div>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--ghana-emerald)', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                    <span className="risk-tooltip-container" style={{ fontSize: '0.72rem', color: 'var(--ghana-emerald)', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'help' }}>
                       {focusedRisk.category} Risk Category
+                      <span className="risk-tooltip-text">
+                        <strong style={{ color: '#fbbf24', display: 'block', marginBottom: '4px' }}>Category Description:</strong>
+                        {riskCategoriesMap[focusedRisk.category] || 'No category description available.'}
+                      </span>
                     </span>
                     <h4 style={{ fontWeight: 600, color: 'var(--text-primary)', marginTop: '2px' }}>Vulnerability Node Info</h4>
                   </div>
@@ -258,7 +342,13 @@ export const RiskManagement: React.FC<RiskManagementProps> = ({
                 {activeProject.risks.map((r) => (
                   <tr key={r.id}>
                     <td>
-                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{r.category}</span>
+                      <span className="risk-tooltip-container" style={{ fontWeight: 600, color: 'var(--text-primary)', cursor: 'help' }}>
+                        {r.category}
+                        <span className="risk-tooltip-text">
+                          <strong style={{ color: '#fbbf24', display: 'block', marginBottom: '4px' }}>Category Description:</strong>
+                          {riskCategoriesMap[r.category] || 'No category description available.'}
+                        </span>
+                      </span>
                     </td>
                     <td>{getSeverityBadge(r.severity)}</td>
                     <td style={{ maxWidth: '280px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{r.description}</td>

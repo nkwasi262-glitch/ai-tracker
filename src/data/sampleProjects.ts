@@ -26,7 +26,7 @@ export interface ComplianceScore {
 
 export interface RiskItem {
   id: string;
-  category: 'Technical' | 'Financial' | 'Operational' | 'Ethical' | 'Cybersecurity' | 'Legal';
+  category: string;
   severity: 'Low' | 'Medium' | 'High' | 'Critical';
   likelihood: number; // 1-5
   impact: number;     // 1-5
@@ -114,7 +114,7 @@ export const sampleProjects: AIProject[] = [
     risks: [
       {
         id: "r1-1",
-        category: "Technical",
+        category: "Technical Risk",
         severity: "Medium",
         likelihood: 2,
         impact: 4,
@@ -124,7 +124,7 @@ export const sampleProjects: AIProject[] = [
       },
       {
         id: "r1-2",
-        category: "Operational",
+        category: "Operational Risk",
         severity: "Low",
         likelihood: 2,
         impact: 2,
@@ -180,7 +180,7 @@ export const sampleProjects: AIProject[] = [
     risks: [
       {
         id: "r2-1",
-        category: "Cybersecurity",
+        category: "Cybersecurity Risk",
         severity: "Critical",
         likelihood: 1,
         impact: 5,
@@ -236,7 +236,7 @@ export const sampleProjects: AIProject[] = [
     risks: [
       {
         id: "r3-1",
-        category: "Operational",
+        category: "Operational Risk",
         severity: "Medium",
         likelihood: 3,
         impact: 3,
@@ -292,7 +292,7 @@ export const sampleProjects: AIProject[] = [
     risks: [
       {
         id: "r4-1",
-        category: "Ethical",
+        category: "AI Ethics Risk",
         severity: "High",
         likelihood: 2,
         impact: 4,
@@ -348,7 +348,7 @@ export const sampleProjects: AIProject[] = [
     risks: [
       {
         id: "r5-1",
-        category: "Legal",
+        category: "Legal & Regulatory Risk",
         severity: "Medium",
         likelihood: 2,
         impact: 3,
@@ -404,7 +404,7 @@ export const sampleProjects: AIProject[] = [
     risks: [
       {
         id: "r6-1",
-        category: "Operational",
+        category: "Operational Risk",
         severity: "Medium",
         likelihood: 2,
         impact: 4,
