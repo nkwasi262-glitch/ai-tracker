@@ -326,7 +326,7 @@ export const RiskManagement: React.FC<RiskManagementProps> = ({
             <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>Risk Register Ledger</h3>
           </div>
           
-          <div className="table-wrapper">
+          <div className="table-wrapper" style={{ maxHeight: '480px', overflowY: 'auto' }}>
             <table className="custom-table">
               <thead>
                 <tr>
@@ -339,48 +339,79 @@ export const RiskManagement: React.FC<RiskManagementProps> = ({
                 </tr>
               </thead>
               <tbody>
-                {activeProject.risks.map((r) => (
-                  <tr key={r.id}>
-                    <td>
-                      <span className="risk-tooltip-container" style={{ fontWeight: 600, color: 'var(--text-primary)', cursor: 'help' }}>
-                        {r.category}
-                        <span className="risk-tooltip-text">
-                          <strong style={{ color: '#fbbf24', display: 'block', marginBottom: '4px' }}>Category Description:</strong>
-                          {riskCategoriesMap[r.category] || 'No category description available.'}
-                        </span>
-                      </span>
-                    </td>
-                    <td>{getSeverityBadge(r.severity)}</td>
-                    <td style={{ maxWidth: '280px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{r.description}</td>
-                    <td style={{ maxWidth: '280px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{r.mitigationPlan}</td>
-                    <td>
-                      {r.status === 'Mitigated' ? (
-                        <span className="badge badge-success" style={{ textTransform: 'uppercase' }}>Mitigated</span>
-                      ) : r.status === 'Escalated' ? (
-                        <span className="badge badge-danger" style={{ textTransform: 'uppercase' }}>Escalated</span>
-                      ) : (
-                        <span className="badge badge-warning" style={{ textTransform: 'uppercase' }}>Open</span>
-                      )}
-                    </td>
-                    <td>
-                      {r.status !== 'Mitigated' ? (
-                        <button
-                          onClick={() => handleMitigate(r.id)}
-                          className="btn btn-secondary"
-                          style={{ padding: '4px 10px', fontSize: '0.72rem' }}
-                          disabled={!canMitigate}
-                        >
-                          Mitigate
-                        </button>
-                      ) : (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--ghana-emerald)', fontSize: '0.75rem', fontWeight: 600 }}>
-                          <ShieldCheck className="w-4 h-4" />
-                          <span>Cleared</span>
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {Object.keys(riskCategoriesMap).map((catName) => {
+                  const activeRisk = activeProject.risks.find(r => r.category === catName);
+                  if (activeRisk) {
+                    return (
+                      <tr key={catName}>
+                        <td>
+                          <span className="risk-tooltip-container" style={{ fontWeight: 600, color: 'var(--text-primary)', cursor: 'help' }}>
+                            {catName}
+                            <span className="risk-tooltip-text">
+                              <strong style={{ color: '#fbbf24', display: 'block', marginBottom: '4px' }}>Category Description:</strong>
+                              {riskCategoriesMap[catName]}
+                            </span>
+                          </span>
+                        </td>
+                        <td>{getSeverityBadge(activeRisk.severity)}</td>
+                        <td style={{ maxWidth: '280px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{activeRisk.description}</td>
+                        <td style={{ maxWidth: '280px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{activeRisk.mitigationPlan}</td>
+                        <td>
+                          {activeRisk.status === 'Mitigated' ? (
+                            <span className="badge badge-success" style={{ textTransform: 'uppercase' }}>Mitigated</span>
+                          ) : activeRisk.status === 'Escalated' ? (
+                            <span className="badge badge-danger" style={{ textTransform: 'uppercase' }}>Escalated</span>
+                          ) : (
+                            <span className="badge badge-warning" style={{ textTransform: 'uppercase' }}>Open</span>
+                          )}
+                        </td>
+                        <td>
+                          {activeRisk.status !== 'Mitigated' ? (
+                            <button
+                              onClick={() => handleMitigate(activeRisk.id)}
+                              className="btn btn-secondary"
+                              style={{ padding: '4px 10px', fontSize: '0.72rem' }}
+                              disabled={!canMitigate}
+                            >
+                              Mitigate
+                            </button>
+                          ) : (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--ghana-emerald)', fontSize: '0.75rem', fontWeight: 600 }}>
+                              <ShieldCheck className="w-4 h-4" />
+                              <span>Cleared</span>
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  } else {
+                    return (
+                      <tr key={catName} style={{ opacity: 0.75 }}>
+                        <td>
+                          <span className="risk-tooltip-container" style={{ fontWeight: 600, color: 'var(--text-secondary)', cursor: 'help' }}>
+                            {catName}
+                            <span className="risk-tooltip-text">
+                              <strong style={{ color: '#fbbf24', display: 'block', marginBottom: '4px' }}>Category Description:</strong>
+                              {riskCategoriesMap[catName]}
+                            </span>
+                          </span>
+                        </td>
+                        <td><span className="badge badge-success" style={{ opacity: 0.7 }}>Low</span></td>
+                        <td style={{ maxWidth: '280px', fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>{riskCategoriesMap[catName]}</td>
+                        <td style={{ maxWidth: '280px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>Standard security and compliance protocols active.</td>
+                        <td>
+                          <span className="badge badge-success" style={{ textTransform: 'uppercase', opacity: 0.8 }}>Cleared</span>
+                        </td>
+                        <td>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--ghana-emerald)', fontSize: '0.75rem', opacity: 0.8 }}>
+                            <ShieldCheck className="w-4 h-4" />
+                            <span>Cleared</span>
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  }
+                })}
               </tbody>
             </table>
           </div>
