@@ -2,6 +2,32 @@ import React, { useState } from 'react';
 import { Plus, Search, Calendar, Landmark, MapPin, DollarSign, AlertCircle, Activity } from 'lucide-react';
 import { AIProject, formatNumberToWords } from '../data/sampleProjects';
 import { UserRole } from './RoleSwitcher';
+const standardMDAs = [
+  { name: 'Ministry of Communications and Digitalisation', code: 'MOCD' },
+  { name: 'National Information Technology Agency', code: 'NITA' },
+  { name: 'Data Protection Commission', code: 'DPC' },
+  { name: 'Ministry of Food and Agriculture', code: 'MOFA' },
+  { name: 'Ministry of Health', code: 'MOH' },
+  { name: 'Ministry of Education', code: 'MOE' },
+  { name: 'National Health Insurance Authority', code: 'NHIA' },
+  { name: 'Ministry of Gender, Children and Social Protection', code: 'MOGCSP' },
+  { name: 'Judicial Service of Ghana', code: 'JSG' },
+  { name: 'Ministry of Finance', code: 'MOF' },
+  { name: 'Ministry of Transport', code: 'MOT' },
+  { name: 'Ministry of Interior', code: 'MINTER' },
+];
+
+const standardRegions = [
+  { name: 'Greater Accra', center: [5.6037, -0.1870] },
+  { name: 'Ashanti', center: [6.6922, -1.6163] },
+  { name: 'Northern', center: [9.4075, -0.8533] },
+  { name: 'Western North', center: [6.2041, -1.7583] },
+  { name: 'Western', center: [5.5560, -2.2229] },
+  { name: 'Eastern', center: [6.2958, 0.0594] },
+  { name: 'Central', center: [6.2201, -2.1245] },
+  { name: 'Volta', center: [6.5781, 0.4504] }
+];
+
 
 interface ProjectRegistryProps {
   projects: AIProject[];
@@ -35,9 +61,9 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<any>('Machine Learning');
   const [sector, setSector] = useState<any>('Agriculture');
-  const [mda, setMda] = useState('');
-  const [mdaCode, setMdaCode] = useState('');
-  const [region, setRegion] = useState('');
+  const [mda, setMda] = useState('Ministry of Communications and Digitalisation');
+  const [mdaCode, setMdaCode] = useState('MOCD');
+  const [region, setRegion] = useState('Greater Accra');
   const [district, setDistrict] = useState('');
   const [lat, setLat] = useState('5.6037');
   const [lng, setLng] = useState('-0.1870');
@@ -45,6 +71,39 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
   const [funding, setFunding] = useState<any>('Government');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+
+  // Prefill and dropdown selection states
+  const [mdaSelect, setMdaSelect] = useState('Ministry of Communications and Digitalisation');
+  const [isCustomMda, setIsCustomMda] = useState(false);
+  const [regionSelect, setRegionSelect] = useState('Greater Accra');
+  const [dpcStatus, setDpcStatus] = useState<'Registered' | 'Pending' | 'Exempt'>('Registered');
+  const [isSovereignHosting, setIsSovereignHosting] = useState(true);
+
+  const handleRegionSelectChange = (newRegion: string) => {
+    setRegionSelect(newRegion);
+    setRegion(newRegion);
+    const regInfo = standardRegions.find(r => r.name === newRegion);
+    if (regInfo) {
+      setLat(regInfo.center[0].toFixed(4));
+      setLng(regInfo.center[1].toFixed(4));
+    }
+  };
+
+  const handleMdaSelectChange = (val: string) => {
+    setMdaSelect(val);
+    if (val === 'Other') {
+      setIsCustomMda(true);
+      setMda('');
+      setMdaCode('');
+    } else {
+      setIsCustomMda(false);
+      const chosen = standardMDAs.find(m => m.name === val);
+      if (chosen) {
+        setMda(chosen.name);
+        setMdaCode(chosen.code);
+      }
+    }
+  };
 
   // Form error state
   const [formError, setFormError] = useState('');
@@ -112,27 +171,27 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
         currency: 'GHS'
       },
       compliance: {
-        fairness: 60, // base starter values
-        transparency: 60,
-        accountability: 65,
-        privacy: 70,
-        security: 60,
-        overallGrade: 'Good'
+        fairness: dpcStatus === 'Registered' ? 80 : 40,
+        transparency: 70,
+        accountability: 75,
+        privacy: dpcStatus === 'Registered' ? 85 : 40,
+        security: isSovereignHosting ? 80 : 50,
+        overallGrade: dpcStatus === 'Registered' && isSovereignHosting ? 'Good' : 'Moderate'
       },
-      readinessScore: 50,
+      readinessScore: 60,
       milestones: [
         { id: `m${nextIdVal}-1`, title: 'Initial technical proposal drafting', dueDate: startDate, progressPercent: 100, status: 'Completed' },
-        { id: `m${nextIdVal}-2`, title: 'Approval and compliance routing', dueDate: endDate, progressPercent: 0, status: 'Pending' }
+        { id: `m${nextIdVal}-2`, title: 'Ethics & DPC regulatory alignment routing', dueDate: endDate, progressPercent: 10, status: 'Pending' }
       ],
       risks: [
         {
           id: `r${nextIdVal}-1`,
-          category: 'Technical',
-          severity: 'Medium',
-          likelihood: 2,
-          impact: 3,
-          description: 'Model deployment delay due to initial compute setups.',
-          mitigationPlan: 'Coordinate cloud resources with national digitalization center.',
+          category: 'Compliance & Audit Risk',
+          severity: dpcStatus !== 'Registered' ? 'High' : 'Low',
+          likelihood: dpcStatus !== 'Registered' ? 4 : 1,
+          impact: dpcStatus !== 'Registered' ? 4 : 2,
+          description: dpcStatus !== 'Registered' ? 'Mandatory DPC certificate registration pending under Ghana DPA Act 1038.' : 'Compliance monitoring setup with DPC.',
+          mitigationPlan: 'Coordinate compliance checklist review steps with national audit officers.',
           status: 'Open'
         }
       ],
@@ -146,13 +205,20 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
     // Resets form states
     setName('');
     setDescription('');
-    setMda('');
-    setMdaCode('');
-    setRegion('');
+    setMdaSelect('Ministry of Communications and Digitalisation');
+    setMda('Ministry of Communications and Digitalisation');
+    setMdaCode('MOCD');
+    setIsCustomMda(false);
+    setRegionSelect('Greater Accra');
+    setRegion('Greater Accra');
     setDistrict('');
+    setLat('5.6037');
+    setLng('-0.1870');
     setBudget('');
     setStartDate('');
     setEndDate('');
+    setDpcStatus('Registered');
+    setIsSovereignHosting(true);
   };
 
   const getStageBadge = (stage: string) => {
@@ -490,62 +556,99 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                     <option value="Energy">Energy</option>
                     <option value="Environment">Environment</option>
                     <option value="Justice">Justice</option>
+                    <option value="Transport">Transport</option>
+                    <option value="Local Government">Local Government</option>
                   </select>
                 </div>
               </div>
 
-              <div className="form-grid" style={{ gridTemplateColumns: '2fr 1fr', gap: '12px', marginBottom: 0 }}>
+              <div className="form-group">
+                <label className="form-label">Managing Institution (MDA) *</label>
+                <select
+                  value={mdaSelect}
+                  onChange={(e) => handleMdaSelectChange(e.target.value)}
+                  className="form-select"
+                  style={{ marginBottom: isCustomMda ? '12px' : '0' }}
+                >
+                  {standardMDAs.map(m => (
+                    <option key={m.name} value={m.name}>{m.name} ({m.code})</option>
+                  ))}
+                  <option value="Other">Other (Input Custom Agency)...</option>
+                </select>
+              </div>
+
+              {isCustomMda && (
+                <div className="form-grid" style={{ gridTemplateColumns: '2fr 1fr', gap: '12px', marginBottom: 0 }}>
+                  <div className="form-group">
+                    <label className="form-label">Custom MDA Name *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., Ghana Meteorological Agency"
+                      value={mda}
+                      onChange={(e) => setMda(e.target.value)}
+                      className="form-input"
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Custom MDA Code *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., GMet"
+                      value={mdaCode}
+                      onChange={(e) => setMdaCode(e.target.value)}
+                      className="form-input"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="form-grid" style={{ gridTemplateColumns: '1.2fr 1fr', gap: '12px', marginBottom: 0 }}>
                 <div className="form-group">
-                  <label className="form-label">Managing Institution (MDA) *</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Ministry of Communications"
-                    value={mda}
-                    onChange={(e) => setMda(e.target.value)}
-                    className="form-input"
-                    required
-                  />
+                  <label className="form-label">Region *</label>
+                  <select
+                    value={regionSelect}
+                    onChange={(e) => handleRegionSelectChange(e.target.value)}
+                    className="form-select"
+                  >
+                    {standardRegions.map(r => (
+                      <option key={r.name} value={r.name}>{r.name} Region</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">MDA Code *</label>
+                  <label className="form-label">District / Municipality *</label>
                   <input
                     type="text"
-                    placeholder="e.g., MoCD"
-                    value={mdaCode}
-                    onChange={(e) => setMdaCode(e.target.value)}
+                    placeholder="e.g., Accra Metropolitan"
+                    value={district}
+                    onChange={(e) => setDistrict(e.target.value)}
                     className="form-input"
                     required
                   />
                 </div>
               </div>
 
-              <div className="form-grid" style={{ gridTemplateColumns: '1.2fr 1fr 1fr', gap: '12px', marginBottom: 0 }}>
+              <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: 0 }}>
                 <div className="form-group">
-                  <label className="form-label">Region *</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Western Region"
-                    value={region}
-                    onChange={(e) => setRegion(e.target.value)}
-                    className="form-input"
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Lat Coordinate *</label>
+                  <label className="form-label">Latitude Coordinate *</label>
                   <input
                     type="text"
                     value={lat}
                     onChange={(e) => setLat(e.target.value)}
                     className="form-input"
+                    required
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Lng Coordinate *</label>
+                  <label className="form-label">Longitude Coordinate *</label>
                   <input
                     type="text"
                     value={lng}
                     onChange={(e) => setLng(e.target.value)}
                     className="form-input"
+                    required
                   />
                 </div>
               </div>
@@ -598,6 +701,45 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                     className="form-input"
                     required
                   />
+                </div>
+              </div>
+
+              <div style={{ 
+                padding: '14px', 
+                background: 'rgba(255,255,255,0.015)', 
+                border: '1px solid var(--border-color)', 
+                borderRadius: '8px',
+                marginTop: '4px'
+              }}>
+                <div style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-secondary)', marginBottom: '10px' }}>
+                  National Governance Declarations
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-primary)' }}>DPC Registration Status</span>
+                    <select
+                      value={dpcStatus}
+                      onChange={(e) => setDpcStatus(e.target.value as any)}
+                      className="form-select"
+                      style={{ width: '130px', padding: '4px 8px', fontSize: '0.75rem' }}
+                    >
+                      <option value="Registered">Registered</option>
+                      <option value="Pending">Pending</option>
+                      <option value="Exempt">Exempt</option>
+                    </select>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-primary)' }}>Sovereign Data Residency</span>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={isSovereignHosting}
+                        onChange={(e) => setIsSovereignHosting(e.target.checked)}
+                        style={{ width: '16px', height: '16px', accentColor: 'var(--ghana-emerald)' }}
+                      />
+                      <span style={{ fontSize: '0.75rem', marginLeft: '6px', color: 'var(--text-secondary)' }}>Host inside Ghana</span>
+                    </label>
+                  </div>
                 </div>
               </div>
 
