@@ -3,37 +3,163 @@ import { AlertOctagon, HelpCircle, ShieldCheck, Flame, Check } from 'lucide-reac
 import { AIProject, RiskItem } from '../data/sampleProjects';
 import { UserRole } from './RoleSwitcher';
 
-const riskCategoriesMap: Record<string, string> = {
-  'Technical Risk': 'System failures, software bugs, integration failures',
-  'Operational Risk': 'Human errors and inefficient processes',
-  'Cybersecurity Risk': 'Unauthorized access and cyberattacks',
-  'Data Quality Risk': 'Poor, inaccurate, duplicate, or incomplete project data',
-  'Data Privacy Risk': 'Exposure or misuse of sensitive information',
-  'Legal & Regulatory Risk': 'Non-compliance with national laws and regulations',
-  'AI Ethics Risk': 'AI systems violating ethical principles',
-  'Governance Risk': 'Weak oversight, unclear accountability, policy violations',
-  'Financial Risk': 'Budget overruns, funding shortages, misuse of funds',
-  'Strategic Risk': "Projects not aligned with Ghana's AI strategy",
-  'Reputational Risk': 'Damage to public trust or government credibility',
-  'Project Management Risk': 'Delays, poor planning, missed milestones',
-  'Vendor/Supplier Risk': 'Dependence on external contractors or cloud providers',
-  'Third-Party Integration Risk': 'External APIs or services becoming unavailable',
-  'Infrastructure Risk': 'Failures of hosting, networking, or power',
-  'Business Continuity Risk': 'Inability to continue operations after disruptions',
-  'Disaster Recovery Risk': 'Failure to restore services within required timelines',
-  'Change Management Risk': 'Poorly managed system updates or policy changes',
-  'Human Resource Risk': 'Shortage of skilled personnel or staff turnover',
-  'Stakeholder Risk': 'Poor collaboration among ministries and agencies',
-  'Political Risk': 'Government or policy changes affecting the system',
-  'Procurement Risk': 'Delays or irregularities in acquiring technology',
-  'Compliance & Audit Risk': 'Failure to meet audit or reporting standards',
-  'Performance Risk': 'System unable to handle expected workload',
-  'Scalability Risk': 'System cannot support increasing users or projects',
-  'Interoperability Risk': 'Incompatibility with other government systems',
-  'Knowledge Management Risk': 'Loss of institutional knowledge',
-  'Environmental Risk': 'Environmental factors affecting operations',
-  'Fraud & Corruption Risk': 'Intentional manipulation of information or funds',
-  'National Security Risk': 'Exposure of sensitive AI initiatives'
+interface StandardMapping {
+  desc: string;
+  nist: string;
+  iso: string;
+}
+
+const riskCategoriesMap: Record<string, StandardMapping> = {
+  'Technical Risk': {
+    desc: 'System failures, software bugs, integration failures',
+    nist: 'NIST AI RMF: Measure & Manage',
+    iso: 'ISO/IEC 42001: Clause 8 (Operation)'
+  },
+  'Operational Risk': {
+    desc: 'Human errors and inefficient processes',
+    nist: 'NIST AI RMF: Map & Manage',
+    iso: 'ISO/IEC 42001: Clause 8 (Operation)'
+  },
+  'Cybersecurity Risk': {
+    desc: 'Unauthorized access and cyberattacks',
+    nist: 'NIST AI RMF: Measure & Manage',
+    iso: 'ISO/IEC 42001: Annex A.8 (Security of AI Systems)'
+  },
+  'Data Quality Risk': {
+    desc: 'Poor, inaccurate, duplicate, or incomplete project data',
+    nist: 'NIST AI RMF: Map & Measure',
+    iso: 'ISO/IEC 42001: Annex A.7 (Data for AI Systems)'
+  },
+  'Data Privacy Risk': {
+    desc: 'Exposure or misuse of sensitive information',
+    nist: 'NIST AI RMF: Map & Measure',
+    iso: 'ISO/IEC 42001: Annex A.7 (Data for AI Systems)'
+  },
+  'Legal & Regulatory Risk': {
+    desc: 'Non-compliance with national laws and regulations',
+    nist: 'NIST AI RMF: Govern',
+    iso: 'ISO/IEC 42001: Clause 6 (Planning)'
+  },
+  'AI Ethics Risk': {
+    desc: 'AI systems violating ethical principles',
+    nist: 'NIST AI RMF: Govern & Map',
+    iso: 'ISO/IEC 42001: Clause 6 (Planning)'
+  },
+  'Governance Risk': {
+    desc: 'Weak oversight, unclear accountability, policy violations',
+    nist: 'NIST AI RMF: Govern',
+    iso: 'ISO/IEC 42001: Clause 5 (Leadership) & Clause 9'
+  },
+  'Financial Risk': {
+    desc: 'Budget overruns, funding shortages, misuse of funds',
+    nist: 'NIST AI RMF: Govern',
+    iso: 'ISO/IEC 42001: Clause 6 (Planning)'
+  },
+  'Strategic Risk': {
+    desc: "Projects not aligned with Ghana's AI strategy",
+    nist: 'NIST AI RMF: Govern & Map',
+    iso: 'ISO/IEC 42001: Clause 4 (Context) & Clause 6'
+  },
+  'Reputational Risk': {
+    desc: 'Damage to public trust or government credibility',
+    nist: 'NIST AI RMF: Govern',
+    iso: 'ISO/IEC 42001: Clause 4 (Context)'
+  },
+  'Project Management Risk': {
+    desc: 'Delays, poor planning, missed milestones',
+    nist: 'NIST AI RMF: Govern',
+    iso: 'ISO/IEC 42001: Clause 6 (Planning)'
+  },
+  'Vendor/Supplier Risk': {
+    desc: 'Dependence on external contractors or cloud providers',
+    nist: 'NIST AI RMF: Map',
+    iso: 'ISO/IEC 42001: Annex A.9 (Supplier Relations)'
+  },
+  'Third-Party Integration Risk': {
+    desc: 'External APIs or services becoming unavailable',
+    nist: 'NIST AI RMF: Measure & Manage',
+    iso: 'ISO/IEC 42001: Clause 8 (Operation)'
+  },
+  'Infrastructure Risk': {
+    desc: 'Failures of hosting, networking, or power',
+    nist: 'NIST AI RMF: Measure & Manage',
+    iso: 'ISO/IEC 42001: Clause 8 (Operation)'
+  },
+  'Business Continuity Risk': {
+    desc: 'Inability to continue operations after disruptions',
+    nist: 'NIST AI RMF: Manage',
+    iso: 'ISO/IEC 42001: Clause 8 (Operation)'
+  },
+  'Disaster Recovery Risk': {
+    desc: 'Failure to restore services within required timelines',
+    nist: 'NIST AI RMF: Manage',
+    iso: 'ISO/IEC 42001: Clause 8 (Operation)'
+  },
+  'Change Management Risk': {
+    desc: 'Poorly managed system updates or policy changes',
+    nist: 'NIST AI RMF: Manage',
+    iso: 'ISO/IEC 42001: Clause 8 (Operation)'
+  },
+  'Human Resource Risk': {
+    desc: 'Shortage of skilled personnel or staff turnover',
+    nist: 'NIST AI RMF: Govern',
+    iso: 'ISO/IEC 42001: Clause 7 (Support)'
+  },
+  'Stakeholder Risk': {
+    desc: 'Poor collaboration among ministries and agencies',
+    nist: 'NIST AI RMF: Govern',
+    iso: 'ISO/IEC 42001: Clause 5 (Leadership)'
+  },
+  'Political Risk': {
+    desc: 'Government or policy changes affecting the system',
+    nist: 'NIST AI RMF: Govern',
+    iso: 'ISO/IEC 42001: Clause 4 (Context)'
+  },
+  'Procurement Risk': {
+    desc: 'Delays or irregularities in acquiring technology',
+    nist: 'NIST AI RMF: Govern',
+    iso: 'ISO/IEC 42001: Clause 6 (Planning)'
+  },
+  'Compliance & Audit Risk': {
+    desc: 'Failure to meet audit or reporting standards',
+    nist: 'NIST AI RMF: Govern & Measure',
+    iso: 'ISO/IEC 42001: Clause 9 (Performance evaluation)'
+  },
+  'Performance Risk': {
+    desc: 'System unable to handle expected workload',
+    nist: 'NIST AI RMF: Measure & Manage',
+    iso: 'ISO/IEC 42001: Clause 9 (Performance evaluation)'
+  },
+  'Scalability Risk': {
+    desc: 'System cannot support increasing users or projects',
+    nist: 'NIST AI RMF: Measure & Manage',
+    iso: 'ISO/IEC 42001: Clause 9 (Performance evaluation)'
+  },
+  'Interoperability Risk': {
+    desc: 'Incompatibility with other government systems',
+    nist: 'NIST AI RMF: Map & Measure',
+    iso: 'ISO/IEC 42001: Clause 8 (Operation)'
+  },
+  'Knowledge Management Risk': {
+    desc: 'Loss of institutional knowledge',
+    nist: 'NIST AI RMF: Govern',
+    iso: 'ISO/IEC 42001: Clause 7 (Support)'
+  },
+  'Environmental Risk': {
+    desc: 'Environmental factors affecting operations',
+    nist: 'NIST AI RMF: Map & Measure',
+    iso: 'ISO/IEC 42001: Clause 8 (Operation)'
+  },
+  'Fraud & Corruption Risk': {
+    desc: 'Intentional manipulation of information or funds',
+    nist: 'NIST AI RMF: Govern',
+    iso: 'ISO/IEC 42001: Clause 9 (Performance evaluation)'
+  },
+  'National Security Risk': {
+    desc: 'Exposure of sensitive AI initiatives',
+    nist: 'NIST AI RMF: Map & Manage',
+    iso: 'ISO/IEC 42001: Clause 8 (Operation)'
+  }
 };
 
 const tooltipStyles = `
@@ -267,9 +393,15 @@ export const RiskManagement: React.FC<RiskManagementProps> = ({
                   <div>
                     <span className="risk-tooltip-container" style={{ fontSize: '0.72rem', color: 'var(--ghana-emerald)', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'help' }}>
                       {focusedRisk.category} Risk Category
-                      <span className="risk-tooltip-text">
+                      <span className="risk-tooltip-text" style={{ textTransform: 'none' }}>
                         <strong style={{ color: '#fbbf24', display: 'block', marginBottom: '4px' }}>Category Description:</strong>
-                        {riskCategoriesMap[focusedRisk.category] || 'No category description available.'}
+                        {riskCategoriesMap[focusedRisk.category]?.desc || 'No category description available.'}
+                        {riskCategoriesMap[focusedRisk.category] && (
+                          <span style={{ display: 'block', borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '6px', paddingTop: '6px', fontSize: '0.66rem', color: '#94a3b8' }}>
+                            <strong>{riskCategoriesMap[focusedRisk.category].nist}</strong><br/>
+                            <strong>{riskCategoriesMap[focusedRisk.category].iso}</strong>
+                          </span>
+                        )}
                       </span>
                     </span>
                     <h4 style={{ fontWeight: 600, color: 'var(--text-primary)', marginTop: '2px' }}>Vulnerability Node Info</h4>
@@ -349,7 +481,11 @@ export const RiskManagement: React.FC<RiskManagementProps> = ({
                             {catName}
                             <span className="risk-tooltip-text">
                               <strong style={{ color: '#fbbf24', display: 'block', marginBottom: '4px' }}>Category Description:</strong>
-                              {riskCategoriesMap[catName]}
+                              {riskCategoriesMap[catName].desc}
+                              <span style={{ display: 'block', borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '6px', paddingTop: '6px', fontSize: '0.66rem', color: '#94a3b8' }}>
+                                <strong>{riskCategoriesMap[catName].nist}</strong><br/>
+                                <strong>{riskCategoriesMap[catName].iso}</strong>
+                              </span>
                             </span>
                           </span>
                         </td>
@@ -392,12 +528,16 @@ export const RiskManagement: React.FC<RiskManagementProps> = ({
                             {catName}
                             <span className="risk-tooltip-text">
                               <strong style={{ color: '#fbbf24', display: 'block', marginBottom: '4px' }}>Category Description:</strong>
-                              {riskCategoriesMap[catName]}
+                              {riskCategoriesMap[catName].desc}
+                              <span style={{ display: 'block', borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '6px', paddingTop: '6px', fontSize: '0.66rem', color: '#94a3b8' }}>
+                                <strong>{riskCategoriesMap[catName].nist}</strong><br/>
+                                <strong>{riskCategoriesMap[catName].iso}</strong>
+                              </span>
                             </span>
                           </span>
                         </td>
                         <td><span className="badge badge-success" style={{ opacity: 0.7 }}>Low</span></td>
-                        <td style={{ maxWidth: '280px', fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>{riskCategoriesMap[catName]}</td>
+                        <td style={{ maxWidth: '280px', fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>{riskCategoriesMap[catName].desc}</td>
                         <td style={{ maxWidth: '280px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>Standard security and compliance protocols active.</td>
                         <td>
                           <span className="badge badge-success" style={{ textTransform: 'uppercase', opacity: 0.8 }}>Cleared</span>

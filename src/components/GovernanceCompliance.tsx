@@ -511,6 +511,250 @@ const frameworkQuestions: Record<string, AuditQuestion[]> = {
         { id: 's3_sub2', text: 'Redundant model server groups replicate databases real-time.', description: 'Provides instant failover capability during hardware issues.' }
       ]
     }
+  ],
+  'NIST AI RMF': [
+    {
+      id: 'f1',
+      category: 'fairness',
+      text: 'Map Function (MAP-1): System context is analyzed to identify socio-technical implications, bias, and equity.',
+      description: 'Ensures that AI system design documentation details potential demographic disparities and bias vectors.',
+      subParameters: [
+        { id: 'f1_sub1', text: 'AI system design documentation details potential demographic disparities and bias vectors.', description: 'Validates that designers explicitly mapped potential bias risks before system creation.' },
+        { id: 'f1_sub2', text: 'System undergoes ongoing demographic testing across all 16 Ghanaian regions.', description: 'Ensures models perform equitably for residents in Northern and Southern zones alike.' }
+      ]
+    },
+    {
+      id: 'f2',
+      category: 'fairness',
+      text: 'Govern Function (GOVERN-1): Organizational policies and procedures are established to manage AI safety.',
+      description: 'Reviews governance compliance structures and leadership oversight over AI decisions.',
+      subParameters: [
+        { id: 'f2_sub1', text: 'Executive oversight roles and compliance policies formally adopted.', description: 'Establishes legal ownership and compliance accountability chains.' },
+        { id: 'f2_sub2', text: 'Socio-economic impact mitigations (like local dialects voice IVR prompts) active.', description: 'Maintains inclusion by resolving accessibility hurdles for all citizen classes.' }
+      ]
+    },
+    {
+      id: 'f3',
+      category: 'fairness',
+      text: 'Map Function (MAP-3): Customer and user demographics are analyzed to ensure accessibility.',
+      description: 'Verifies user interfaces are accessible to citizens with physical or technical limitations.',
+      subParameters: [
+        { id: 'f3_sub1', text: 'Offline SMS or USSD channels active for remote, network-starved regions.', description: 'Bypasses cellular internet dependencies to support rural citizens.' },
+        { id: 'f3_sub2', text: 'Web UI fully conforms to international keyboard and contrast accessibility rules.', description: 'Allows visually or physically challenged users to navigate portals comfortably.' }
+      ]
+    },
+    {
+      id: 't1',
+      category: 'transparency',
+      text: 'Measure Function (MEASURE-1): AI systems are analyzed using quantitative and qualitative metrics.',
+      description: 'Establishes open model metrics and limits to prevent user over-reliance.',
+      subParameters: [
+        { id: 't1_sub1', text: 'Standardized model card details neural architectures and limitations.', description: 'Details operational limitations to downstream engineers and users.' },
+        { id: 't1_sub2', text: 'Training dataset metadata and provenance registries catalogued.', description: 'Provides clear logs of where training assets were sourced and labeled.' }
+      ]
+    },
+    {
+      id: 't2',
+      category: 'transparency',
+      text: 'Manage Function (MANAGE-1): Risk response strategies are executed to limit potential harms.',
+      description: 'Monitors explainability and oversight procedures in live deployment states.',
+      subParameters: [
+        { id: 't2_sub1', text: 'Traceability database logs prediction inputs and SHAP/LIME explainability metrics.', description: 'Enables auditable explanation chains for automated outcomes.' },
+        { id: 't2_sub2', text: 'Human oversight override channels and fallback reviews operational.', description: 'Allows manual review escalation if automated models trigger anomalies.' }
+      ]
+    },
+    {
+      id: 't3',
+      category: 'transparency',
+      text: 'Govern Function (GOVERN-4): Public transparency and documentation standards published.',
+      description: 'Ensures public-facing indicators clearly state if content is synthetic or AI-driven.',
+      subParameters: [
+        { id: 't3_sub1', text: 'Cryptographic watermarks applied to all generative outputs.', description: 'Prevents misinformation by validating synthetic file signatures.' },
+        { id: 't3_sub2', text: 'Plain-text explanations generated in English and local languages.', description: 'Fulfills public transparency guidelines by translating decision outputs for local citizens.' }
+      ]
+    },
+    {
+      id: 'p1',
+      category: 'privacy',
+      text: 'Govern / Map (GOVERN-5): Privacy impact assessments are integrated into system lifecycle.',
+      description: 'Assesses database ingestion pipelines to protect personal data from exposure.',
+      subParameters: [
+        { id: 'p1_sub1', text: 'Automated PII detection filters screen incoming files at intake.', description: 'Wipes raw phone numbers or identities before database storage.' },
+        { id: 'p1_sub2', text: 'Cryptographic salted hashes anonymize personal citizen fields.', description: 'Protects citizen databases against reverse mapping attempts.' }
+      ]
+    },
+    {
+      id: 'p2',
+      category: 'privacy',
+      text: 'Measure / Manage (MANAGE-4): Sovereign data security and minimization checks enforced.',
+      description: 'Ensures database storage is restricted to essential profiles and kept in local boundaries.',
+      subParameters: [
+        { id: 'p2_sub1', text: 'Sovereign hosting rules confirm datacentre servers reside inside Ghana.', description: 'Maintains national data residency control.' },
+        { id: 'p2_sub2', text: 'Standard contractual clauses active with external cloud resources.', description: 'Protects data transit security across cloud bounds.' }
+      ]
+    },
+    {
+      id: 'p3',
+      category: 'privacy',
+      text: 'Manage Function (MANAGE-3): Data retention schedules configured and audited.',
+      description: 'Ensures telemetry logs and profiling records are purged periodically to limit risks.',
+      subParameters: [
+        { id: 'p3_sub1', text: 'Automated retention scripts purge inactive user profiles after 180 days.', description: 'Enforces database hygiene protocols.' },
+        { id: 'p3_sub2', text: 'GDPR/Act 843 compliant right-to-be-forgotten deletion workflows active.', description: 'Allows citizens to request total profile erasure within a 30-day window.' }
+      ]
+    },
+    {
+      id: 's1',
+      category: 'security',
+      text: 'Measure Function (MEASURE-2.4): Adversarial vulnerability testing (red-teaming) performed.',
+      description: 'Proactively tests code and models against adversarial evasion and injection attacks.',
+      subParameters: [
+        { id: 's1_sub1', text: 'SAST/DAST scanner checks code against OWASP vulnerabilities.', description: 'Mitigates common software authorization or injection bugs.' },
+        { id: 's1_sub2', text: 'CVE library updates scheduled weekly to prevent supply chain exploits.', description: 'Maintains packages safety against known threat listings.' }
+      ]
+    },
+    {
+      id: 's2',
+      category: 'security',
+      text: 'Manage Function (MANAGE-2): Dynamic ML security checks and injection mitigations.',
+      description: 'Secures model input interfaces to block adversarial jailbreaks or theft attempts.',
+      subParameters: [
+        { id: 's2_sub1', text: 'Input sanitization rules block prompt injection patterns.', description: 'Blocks system rule overrides on input text boxes.' },
+        { id: 's2_sub2', text: 'Rate limiting and query checks flag mass automated scrapers.', description: 'Prevents extraction attacks aimed at stealing neural parameters.' }
+      ]
+    },
+    {
+      id: 's3',
+      category: 'security',
+      text: 'Manage Function (MANAGE-2.3): Emergency failovers and incident alerts integrated.',
+      description: 'Links the system to national incident centers for real-time cyberdefense coordination.',
+      subParameters: [
+        { id: 's3_sub1', text: 'Incident alerts synced real-time with National Cyber Security Authority.', description: 'Fulfills reporting requirements to CERT-GH during cyberattacks.' },
+        { id: 's3_sub2', text: 'Offline manuals fallback and server failover simulated quarterly.', description: 'Ensures services stay stable if neural networks experience structural failures.' }
+      ]
+    }
+  ],
+  'ISO/IEC 42001 (AIMS)': [
+    {
+      id: 'f1',
+      category: 'fairness',
+      text: 'Clause 6.1 (Actions to address risks and opportunities): Assess impact on fairness and equality.',
+      description: 'Aligns AI risk management with global expectations for bias and discrimination control.',
+      subParameters: [
+        { id: 'f1_sub1', text: 'Bias control policy drafted and approved by executive board.', description: 'Establishes clear corporate guidelines to mitigate discrimination.' },
+        { id: 'f1_sub2', text: 'Algorithmic fairness reviews validate performance parity in agricultural/urban zones.', description: 'Guarantees models support both rural farmers and city populations equitably.' }
+      ]
+    },
+    {
+      id: 'f2',
+      category: 'fairness',
+      text: 'Clause 8.3 (AI system design and development): Inclusivity guidelines integrated into design.',
+      description: 'Requires interfaces to support local language accessibility and diverse users.',
+      subParameters: [
+        { id: 'f2_sub1', text: 'Representative speech samples cover regional Ghanaian dialects (Ga, Ewe).', description: 'Prevents acoustic mismatch errors for minority regional languages.' },
+        { id: 'f2_sub2', text: 'IVR and local language audio narration tools active.', description: 'Assists citizens who cannot read or write text.' }
+      ]
+    },
+    {
+      id: 'f3',
+      category: 'fairness',
+      text: 'Clause 8.3.3: Systematic accessibility channels operational in software designs.',
+      description: 'Guarantees alternative navigation features for low-network or disabled demographics.',
+      subParameters: [
+        { id: 'f3_sub1', text: 'Offline USSD channels active for remote deployment.', description: 'Enables core functionality without cellular internet connections.' },
+        { id: 'f3_sub2', text: 'System UI conforms fully to WCAG accessibility guidelines.', description: 'Enables keyboard navigation and screen-reader assistance.' }
+      ]
+    },
+    {
+      id: 't1',
+      category: 'transparency',
+      text: 'Clause 8.4 (AI system provisioning): Model documentation and limitation cards published.',
+      description: 'Provides standardized capability disclosures to downstream implementers.',
+      subParameters: [
+        { id: 't1_sub1', text: 'Model card details neural parameters and limitations.', description: 'Outlines model performance bounds clearly.' },
+        { id: 't1_sub2', text: 'Third-party validation audits confirm system capabilities.', description: 'Ensures independent verification of accuracy declarations.' }
+      ]
+    },
+    {
+      id: 't2',
+      category: 'transparency',
+      text: 'Clause 9 (Performance evaluation): Transparency and explainability dashboard active.',
+      description: 'Requires automated explanation systems for high-impact decisions.',
+      subParameters: [
+        { id: 't2_sub1', text: 'User explainability interface explain automated outcomes using LIME/SHAP.', description: 'Helps users see which parameters drove their automated results.' },
+        { id: 't2_sub2', text: 'Traceability database logs decisions, preventing unauthorized changes.', description: 'Maintains tamper-proof records for auditing.' }
+      ]
+    },
+    {
+      id: 't3',
+      category: 'transparency',
+      text: 'Clause 8.4.3: Synthetic media watermark labeling active.',
+      description: 'Ensures generative content is flagged to prevent misinformation.',
+      subParameters: [
+        { id: 't3_sub1', text: 'Metadata watermarks and synthetic hashes embedded in outputs.', description: 'Enables downstream detection of AI-generated media.' },
+        { id: 't3_sub2', text: 'Plain-English automated summary reports generated for decisions.', description: 'Explains complex decisions in simple words.' }
+      ]
+    },
+    {
+      id: 'p1',
+      category: 'privacy',
+      text: 'Clause 8.2 (AI risk assessment): Data management policies and consent flows configured.',
+      description: 'Ensures the AI system respects data privacy and handles consent flows correctly.',
+      subParameters: [
+        { id: 'p1_sub1', text: 'Consent verification mechanisms ensure voluntary consumer opt-in.', description: 'Collects positive opt-ins before profiling or training model updates.' },
+        { id: 'p1_sub2', text: 'Salted cryptographic hashes anonymize personal citizen fields.', description: 'Prevents identity matching inside central databases.' }
+      ]
+    },
+    {
+      id: 'p2',
+      category: 'privacy',
+      text: 'Clause 8.5 (AI system operation): Data minimization and sovereign hosting verified.',
+      description: 'Validates that data residency requirements and sovereign boundaries are enforced.',
+      subParameters: [
+        { id: 'p2_sub1', text: 'Sovereign datacentre hosting rules confirm files reside inside Ghana.', description: 'Maintains national data residency.' },
+        { id: 'p2_sub2', text: 'Privacy posture reviews are managed by an ISO 27701 certified PIMS.', description: 'Ensures privacy assessments are catalogued and audited.' }
+      ]
+    },
+    {
+      id: 'p3',
+      category: 'privacy',
+      text: 'Clause 8.5.2: Privacy retention limits and deletion flows active.',
+      description: 'Allows users to control their data lifecycle, conforming to strict privacy standards.',
+      subParameters: [
+        { id: 'p3_sub1', text: 'Automated retention script purges expired files after 180 days.', description: 'Wipes diagnostic records and log files.' },
+        { id: 'p3_sub2', text: 'GDPR/Act 843 compliant right-to-be-forgotten deletion workflows active.', description: 'Purges profile records within 30 days.' }
+      ]
+    },
+    {
+      id: 's1',
+      category: 'security',
+      text: 'Clause 8 (Operational planning and control): ISMS certified against ISO/IEC 27001.',
+      description: 'Ensures baseline security controls protect AI computing environments.',
+      subParameters: [
+        { id: 's1_sub1', text: 'System operates inside active ISO 27001 ISMS.', description: 'Validates corporate security posture conforms to global rules.' },
+        { id: 's1_sub2', text: 'SBOM generates dynamic code inventories on compiler runs.', description: 'Identifies software library vulnerabilities dynamically.' }
+      ]
+    },
+    {
+      id: 's2',
+      category: 'security',
+      text: 'Clause 10 (Improvement): Adversarial vulnerability audits and CVE logging.',
+      description: 'Continually checks the security posture against new adversarial threat patterns.',
+      subParameters: [
+        { id: 's2_sub1', text: 'Static and dynamic checks block OWASP vulnerability patterns.', description: 'Prevents security bypasses on deployments.' },
+        { id: 's2_sub2', text: 'CVE vulnerability logging is active and registered with national centers.', description: 'Links system checks to active vulnerability indexes.' }
+      ]
+    },
+    {
+      id: 's3',
+      category: 'security',
+      text: 'Clause 8.2.4: System security failovers and injection defenses.',
+      description: 'Mitigates the risk of system hijack or parameters theft during execution.',
+      subParameters: [
+        { id: 's3_sub1', text: 'Input sanitization rules block prompt injection jailbreaks.', description: 'Mitigates the threat of system rule bypasses.' },
+        { id: 's3_sub2', text: 'Manual disaster failover simulated and tested quarterly.', description: 'Verifies continuity protocols are operational.' }
+      ]
+    }
   ]
 };
 
@@ -674,21 +918,30 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
 
   const getCategoryTitle = (cat: 'fairness' | 'transparency' | 'privacy' | 'security') => {
     if (cat === 'fairness') {
-      return framework === 'Ghana' ? 'Fairness & Tribal Equity (20% Weight)' : 'Fairness & Demographic Equity (20% Weight)';
+      if (framework === 'Ghana') return 'Fairness & Tribal Equity (20% Weight)';
+      if (framework === 'NIST AI RMF') return 'Socio-Technical Bias & Equity (MAP-1) (20% Weight)';
+      if (framework === 'ISO/IEC 42001 (AIMS)') return 'AIMS Fairness & Localization (20% Weight)';
+      return 'Fairness & Demographic Equity (20% Weight)';
     }
     if (cat === 'transparency') {
+      if (framework === 'NIST AI RMF') return 'Auditability & Explainability (MEASURE) (25% Weight)';
+      if (framework === 'ISO/IEC 42001 (AIMS)') return 'Transparency & Provisioning (25% Weight)';
       return 'Transparency & Explainability (25% Weight)';
     }
     if (cat === 'privacy') {
       if (framework === 'Ghana') return 'Citizen Privacy & Act 843 Compliance (20% Weight)';
       if (framework === 'European Union') return 'Citizen Privacy & GDPR Compliance (20% Weight)';
       if (framework === 'United States') return 'Citizen Privacy & HIPAA/CCPA Compliance (20% Weight)';
+      if (framework === 'NIST AI RMF') return 'Privacy Governance & NIST Controls (20% Weight)';
+      if (framework === 'ISO/IEC 42001 (AIMS)') return 'Privacy Management & ISO AIMS (20% Weight)';
       return 'Citizen Privacy & ISO/IEC Compliance (20% Weight)';
     }
     if (cat === 'security') {
       if (framework === 'Ghana') return 'Cybersecurity & Act 1038 Prevention (35% Weight)';
       if (framework === 'European Union') return 'Cybersecurity & CE Certification (35% Weight)';
       if (framework === 'United States') return 'Cybersecurity & NIST Framework (35% Weight)';
+      if (framework === 'NIST AI RMF') return 'Adversarial Vulnerability & Failovers (35% Weight)';
+      if (framework === 'ISO/IEC 42001 (AIMS)') return 'Operational planning & security controls (35% Weight)';
       return 'Cybersecurity & Threat Prevention (35% Weight)';
     }
     return '';
@@ -948,10 +1201,12 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
                     width: '180px'
                   }}
                 >
-                  <option value="Ghana">🇬🇭 Ghana (DPA / Cybersecurity)</option>
-                  <option value="European Union">🇪🇺 European Union (EU AI Act / GDPR)</option>
-                  <option value="United States">🇺🇸 United States (NIST / HIPAA)</option>
+                  <option value="Ghana">🇬🇭 Ghana (DPA / Act 1038)</option>
+                  <option value="European Union">🇪🇺 European Union (EU AI Act)</option>
+                  <option value="United States">🇺🇸 United States (HIPAA / CCPA)</option>
                   <option value="Global Standards (ISO)">🌐 Global Standards (ISO/IEC)</option>
+                  <option value="NIST AI RMF">🛡️ NIST AI RMF Core Functions</option>
+                  <option value="ISO/IEC 42001 (AIMS)">⚙️ ISO/IEC 42001:2023 (AIMS)</option>
                 </select>
               </div>
             </div>
