@@ -28,121 +28,121 @@ const frameworkQuestions: Record<string, AuditQuestion[]> = {
     {
       id: 'f1',
       category: 'fairness',
-      text: 'Training datasets evaluated and balanced across all 16 Ghanaian regions to prevent regional bias.',
-      description: 'Ensures that agricultural, demographic, and financial models perform equally well across the Northern, Southern, Eastern, and Western zones of Ghana.',
+      text: 'Training datasets evaluated and balanced across all target regions and demographics to prevent localized bias.',
+      description: 'Ensures that models perform equally well across different geographical zones and target administrative regions.',
       subParameters: [
-        { id: 'f1_sub1', text: 'Training records represent Northern, Savannah, and North East agricultural zones.', description: 'Validates model accuracy in historically under-sampled rural farming cooperatives.' },
-        { id: 'f1_sub2', text: 'Training records represent Southern, coastal, and forest belt economic hubs.', description: 'Validates model performance in highly populated urban regions like Greater Accra and Ashanti.' }
+        { id: 'f1_sub1', text: 'Training records represent historically under-sampled geographic or rural zones.', description: 'Validates model accuracy in historically under-sampled rural segments.' },
+        { id: 'f1_sub2', text: 'Training records represent major urban and highly populated economic hubs.', description: 'Validates model performance in highly populated urban regions.' }
       ]
     },
     {
       id: 'f2',
       category: 'fairness',
-      text: 'Model algorithms tested for gender and tribal label parity (e.g. Twi/Fante speech samples equal representation).',
-      description: 'Mitigates linguistic bias by validating that dialectal variations and gender voices are accurately recognized and represented.',
+      text: 'Model algorithms tested for gender, demographic, and linguistic label parity to prevent systemic bias.',
+      description: 'Mitigates demographic bias by validating that variations in voice, text, or background are accurately recognized and represented.',
       subParameters: [
-        { id: 'f2_sub1', text: 'Speech/text validation sets contain 50%+ representation of Akan family dialects.', description: 'Ensures the largest dialect family has clean, noise-free samples for baseline validation.' },
-        { id: 'f2_sub2', text: 'Speech/text validation sets contain equal metrics for Ga-Adangbe and Ewe language samples.', description: 'Prevents predictive degradation or acoustic mismatch errors for minority regional languages.' }
+        { id: 'f2_sub1', text: 'Validation datasets contain representative samples of primary demographic groups.', description: 'Ensures primary user demographics have clean, noise-free samples for baseline validation.' },
+        { id: 'f2_sub2', text: 'Validation datasets contain representative samples of minority demographic groups to prevent predictive degradation.', description: 'Prevents predictive degradation or mismatch errors for minority target user demographics.' }
       ]
     },
     {
       id: 'f3',
       category: 'fairness',
-      text: 'Socio-Economic Inclusivity features implemented (e.g. local language voice prompts for low-literacy segments).',
-      description: 'Enables rural and low-literacy citizens to access benefits and services without facing tech-exclusion barriers.',
+      text: 'Socio-economic accessibility features implemented to accommodate low-literacy or network-constrained user segments.',
+      description: 'Enables all target citizens to access system benefits and services without facing technology-exclusion barriers.',
       subParameters: [
-        { id: 'f3_sub1', text: 'Offline SMS or USSD channel built for remote deployment.', description: 'Allows queries without requiring a smartphone or stable 3G/4G network access.' },
-        { id: 'f3_sub2', text: 'Interactive voice response (IVR) or local dialect audio narration available.', description: 'Provides audio guidance in local dialects for citizens who cannot read or write text.' }
+        { id: 'f3_sub1', text: 'Alternative low-bandwidth or offline channels (e.g. SMS, USSD, or analog channels) are operational.', description: 'Allows queries without requiring a smartphone or stable high-speed network access.' },
+        { id: 'f3_sub2', text: 'Alternative interface guidance (e.g. voice narration, visual aids, or local languages) is active.', description: 'Provides audio or alternative guidance for citizens who cannot read or write text.' }
       ]
     },
     {
       id: 't1',
       category: 'transparency',
-      text: 'Comprehensive Model Card detailing neural architecture, hyper-parameters, and limitations published.',
+      text: 'Comprehensive Model Card detailing system architecture, hyperparameters, and operational limitations published.',
       description: 'Provides a standardized reference document for system design, training runs, and operational limits of the AI.',
       subParameters: [
-        { id: 't1_sub1', text: 'Neural network layers, quantization levels, and compression techniques documented.', description: 'Lists optimization records, especially when compressing weights for local MDA servers.' },
+        { id: 't1_sub1', text: 'Neural network layers, quantization levels, and compression techniques documented.', description: 'Lists optimization records, especially when compressing weights for local production servers.' },
         { id: 't1_sub2', text: 'Accuracy metrics, failure modes, and training boundary thresholds declared.', description: 'Allows auditors to inspect when and where the model outputs become untrustworthy.' }
       ]
     },
     {
       id: 't2',
       category: 'transparency',
-      text: 'Source dataset origins and labeling metadata catalogued and accessible for civil audits.',
+      text: 'Source dataset origins and labeling metadata catalogued and accessible for compliance audits.',
       description: 'Enables transparency by recording who gathered the data, who annotated it, and how consent was obtained.',
       subParameters: [
-        { id: 't2_sub1', text: 'Data provenance register details collector MDA and participant consent sheets.', description: 'Confirms that datasets were compiled legally and in line with ethical requirements.' },
-        { id: 't2_sub2', text: 'Labeler qualification guidelines and inter-annotator agreement metrics logged.', description: 'Validates that labels were created under strict rules to prevent human annotator bias.' }
+        { id: 't2_sub1', text: 'Data provenance register details collection entities and participant consent sheets.', description: 'Confirms that datasets were compiled legally and in line with ethical requirements.' },
+        { id: 't2_sub2', text: 'Labeler qualification guidelines and annotator consensus metrics logged.', description: 'Validates that labels were created under strict rules to prevent human annotator bias.' }
       ]
     },
     {
       id: 't3',
       category: 'transparency',
-      text: 'Plain-English and local language summary explanations generated automatically for end-user decisions.',
-      description: 'Translates complex decision nodes into local terms so citizens can understand why an automated action was taken.',
+      text: 'Plain-language summary explanations generated automatically for end-user decisions.',
+      description: 'Translates complex decision nodes into plain terms so citizens can understand why an automated action was taken.',
       subParameters: [
         { id: 't3_sub1', text: 'Generates automated plain-text explainability summaries using SHAP or LIME metrics.', description: 'Details what mathematical factors drove a specific model prediction or decision.' },
-        { id: 't3_sub2', text: 'Explanations translated and readable in Twi, Ga, and Ewe languages.', description: 'Fulfills public transparency guidelines by translating decision outputs for local citizens.' }
+        { id: 't3_sub2', text: 'Explanations translated and readable in primary local languages of the target audience.', description: 'Fulfills public transparency guidelines by translating decision outputs for local citizens.' }
       ]
     },
     {
       id: 'p1',
       category: 'privacy',
-      text: 'Data Protection Officer (DPO) appointed and officially registered under the Ghana Data Protection Commission.',
-      description: 'Fulfills Act 843 requirements by registering a legal supervisor to handle data privacy compliance and citizen complaints.',
+      text: 'Data Protection Officer (DPO) appointed and officially registered under the national data protection authority.',
+      description: 'Fulfills legal requirements by registering a legal supervisor to handle data privacy compliance and citizen complaints.',
       subParameters: [
-        { id: 'p1_sub1', text: 'DPO certificate of registration verified with the Data Protection Commission.', description: 'Ensures the MDA has a legal, certified representative supervising database storage rules.' },
+        { id: 'p1_sub1', text: 'DPO certificate of registration verified with the national data protection regulator.', description: 'Ensures the entity has a legal, certified representative supervising database storage rules.' },
         { id: 'p1_sub2', text: 'DPO compliance calendar and internal privacy audit logs established.', description: 'Maintains active internal monitoring instead of static, one-time approvals.' }
       ]
     },
     {
       id: 'p2',
       category: 'privacy',
-      text: 'All personal records (PII) anonymized at database ingestion using salted cryptographic hashing (SHA-256).',
+      text: 'All personal records (PII) anonymized at database ingestion using cryptographic hashing or masking.',
       description: 'Ensures that no identifiable citizen records are stored in plain text, securing database logs against privacy leaks.',
       subParameters: [
-        { id: 'p2_sub1', text: 'Automated PII detection filters intercept names and phone numbers at intake.', description: 'Applies regular expressions or NLP filters to screen raw data streams for sensitive personal info.' },
+        { id: 'p2_sub1', text: 'Automated PII detection filters intercept sensitive personal fields at intake.', description: 'Applies regular expressions or NLP filters to screen raw data streams for sensitive personal info.' },
         { id: 'p2_sub2', text: 'Hash tables salted cryptographically with key rotation cycles configured.', description: 'Prevents database dump matching (rainbow attacks) from reversing patient/citizen hashes.' }
       ]
     },
     {
       id: 'p3',
       category: 'privacy',
-      text: 'Verify database hosting meets sovereign localization rules (physically hosted inside Ghana\'s borders).',
+      text: 'Verify database hosting meets sovereign data localization and residency regulations.',
       description: 'Mandated by local data residency rules to ensure all personal data remains within national jurisdiction.',
       subParameters: [
-        { id: 'p3_sub1', text: 'Cloud hosting resource group configurations set to Acc-Zone or local servers.', description: 'Verifies datacentre leases physically reside in geographical regions inside Ghana.' },
-        { id: 'p3_sub2', text: 'Audit logs prove zero diagnostic records or DB replicas are synced outside national borders.', description: 'Ensures system backups or diagnostic caches do not trigger cross-border compliance breaches.' }
+        { id: 'p3_sub1', text: 'Hosting resource configurations set to regional servers within compliant geographical boundaries.', description: 'Verifies server leases physically reside in geographical regions inside compliant zones.' },
+        { id: 'p3_sub2', text: 'Audit logs prove zero personal data records or replicas are synced outside compliant jurisdictions.', description: 'Ensures system backups or diagnostic caches do not trigger cross-border compliance breaches.' }
       ]
     },
     {
       id: 's1',
       category: 'security',
-      text: 'System source code audited and certified against OWASP Top 10 vulnerabilities.',
+      text: 'System source code audited and certified against standard application vulnerabilities (e.g. OWASP Top 10).',
       description: 'Ensures software defense layers are robust against common exploits like injection attacks and broken authentication.',
       subParameters: [
-        { id: 's1_sub1', text: 'Static (SAST) and dynamic (DAST) application security scans run on builds.', description: 'Integrates automated code checks into the Git deployment pipeline to spot code bugs.' },
-        { id: 's1_sub2', text: 'Dependency checks scheduled weekly with immediate patching triggers.', description: 'Keeps external package updates current, minimizing the risk of supply chain exploits.' }
+        { id: 's1_sub1', text: 'Static (SAST) and dynamic (DAST) application security scans run on builds.', description: 'Integrates automated code checks into the deployment pipeline to spot code bugs.' },
+        { id: 's1_sub2', text: 'Dependency checks scheduled regularly with immediate patching triggers.', description: 'Keeps external package updates current, minimizing the risk of supply chain exploits.' }
       ]
     },
     {
       id: 's2',
       category: 'security',
-      text: 'Semi-annual third-party penetration testing program and CVE logging scheduled under Act 1038.',
+      text: 'Periodic third-party penetration testing and vulnerability logging scheduled under security regulations.',
       description: 'Guarantees periodic simulation of cyber-attacks to proactively discover and remediate security vulnerabilities.',
       subParameters: [
         { id: 's2_sub1', text: 'External certified cybersecurity agency penetration test reports logged.', description: 'Ensures independent audit validity via formal pen tests.' },
-        { id: 's2_sub2', text: 'CVE monitoring dashboard registered with the Cyber Security Authority.', description: 'Connects critical MDA systems to national vulnerability tracking channels.' }
+        { id: 's2_sub2', text: 'Vulnerability monitoring dashboard registered with the national security authority.', description: 'Connects critical systems to national vulnerability tracking channels.' }
       ]
     },
     {
       id: 's3',
       category: 'security',
-      text: 'Automatic telemetry integration configured with National Cyber Security Authority alert systems.',
+      text: 'Automatic telemetry integration configured with national cybersecurity alert systems.',
       description: 'Allows real-time incident reporting and coordinated threat response during active DDoS or malware campaigns.',
       subParameters: [
-        { id: 's3_sub1', text: 'IDS/IPS alerts hooked directly to national CERT-GH logs.', description: 'Fulfills cybersecurity reporting mandates for critical national infrastructure.' },
-        { id: 's3_sub2', text: 'Emergency kill switch triggers configured and simulated quarterly.', description: 'Tests automated procedures to isolate databases or models if active intrusions are detected.' }
+        { id: 's3_sub1', text: 'Intrusion detection alerts hooked directly to the national security incident response logs.', description: 'Fulfills cybersecurity reporting mandates for critical national infrastructure.' },
+        { id: 's3_sub2', text: 'Emergency kill switch triggers configured and simulated periodically.', description: 'Tests automated procedures to isolate databases or models if active intrusions are detected.' }
       ]
     }
   ],
@@ -366,7 +366,7 @@ const frameworkQuestions: Record<string, AuditQuestion[]> = {
       description: 'Strict cybersecurity controls required for federal information systems and partners.',
       subParameters: [
         { id: 's1_sub1', text: 'NIST SP 800-53 control compliance certificate signed off.', description: 'Mandatory standard validation for cloud and public systems.' },
-        { id: 's1_sub2', text: 'Threat modeling audit conducted on database training workflows.', description: 'Prevent data injection or parameter manipulation bugs in ML models.' }
+        { id: 's1_sub2', text: 'Threat modeling audit conducted on database training workflows.', description: 'Prevent data data injections or parameter manipulations in ML models.' }
       ]
     },
     {
@@ -520,7 +520,7 @@ const frameworkQuestions: Record<string, AuditQuestion[]> = {
       description: 'Ensures that AI system design documentation details potential demographic disparities and bias vectors.',
       subParameters: [
         { id: 'f1_sub1', text: 'AI system design documentation details potential demographic disparities and bias vectors.', description: 'Validates that designers explicitly mapped potential bias risks before system creation.' },
-        { id: 'f1_sub2', text: 'System undergoes ongoing demographic testing across all 16 Ghanaian regions.', description: 'Ensures models perform equitably for residents in Northern and Southern zones alike.' }
+        { id: 'f1_sub2', text: 'System undergoes ongoing demographic testing across all target user geographic regions.', description: 'Ensures models perform equitably for residents across all target demographic areas.' }
       ]
     },
     {
@@ -530,7 +530,7 @@ const frameworkQuestions: Record<string, AuditQuestion[]> = {
       description: 'Reviews governance compliance structures and leadership oversight over AI decisions.',
       subParameters: [
         { id: 'f2_sub1', text: 'Executive oversight roles and compliance policies formally adopted.', description: 'Establishes legal ownership and compliance accountability chains.' },
-        { id: 'f2_sub2', text: 'Socio-economic impact mitigations (like local dialects voice IVR prompts) active.', description: 'Maintains inclusion by resolving accessibility hurdles for all citizen classes.' }
+        { id: 'f2_sub2', text: 'Socio-economic impact mitigations (such as regional language translations and alternate accessibility options) are active.', description: 'Maintains inclusion by resolving accessibility hurdles for all user segments.' }
       ]
     },
     {
@@ -539,7 +539,7 @@ const frameworkQuestions: Record<string, AuditQuestion[]> = {
       text: 'Map Function (MAP-3): Customer and user demographics are analyzed to ensure accessibility.',
       description: 'Verifies user interfaces are accessible to citizens with physical or technical limitations.',
       subParameters: [
-        { id: 'f3_sub1', text: 'Offline SMS or USSD channels active for remote, network-starved regions.', description: 'Bypasses cellular internet dependencies to support rural citizens.' },
+        { id: 'f3_sub1', text: 'Alternative low-bandwidth channels active for remote or network-starved regions.', description: 'Bypasses high network bandwidth dependencies to support remote user segments.' },
         { id: 'f3_sub2', text: 'Web UI fully conforms to international keyboard and contrast accessibility rules.', description: 'Allows visually or physically challenged users to navigate portals comfortably.' }
       ]
     },
@@ -570,7 +570,7 @@ const frameworkQuestions: Record<string, AuditQuestion[]> = {
       description: 'Ensures public-facing indicators clearly state if content is synthetic or AI-driven.',
       subParameters: [
         { id: 't3_sub1', text: 'Cryptographic watermarks applied to all generative outputs.', description: 'Prevents misinformation by validating synthetic file signatures.' },
-        { id: 't3_sub2', text: 'Plain-text explanations generated in English and local languages.', description: 'Fulfills public transparency guidelines by translating decision outputs for local citizens.' }
+        { id: 't3_sub2', text: 'Plain-text explanations generated in standard and local languages.', description: 'Fulfills public transparency guidelines by translating decision outputs for local users.' }
       ]
     },
     {
@@ -580,7 +580,7 @@ const frameworkQuestions: Record<string, AuditQuestion[]> = {
       description: 'Assesses database ingestion pipelines to protect personal data from exposure.',
       subParameters: [
         { id: 'p1_sub1', text: 'Automated PII detection filters screen incoming files at intake.', description: 'Wipes raw phone numbers or identities before database storage.' },
-        { id: 'p1_sub2', text: 'Cryptographic salted hashes anonymize personal citizen fields.', description: 'Protects citizen databases against reverse mapping attempts.' }
+        { id: 'p1_sub2', text: 'Cryptographic salted hashes anonymize personal citizen fields.', description: 'Protects user databases against reverse mapping attempts.' }
       ]
     },
     {
@@ -589,7 +589,7 @@ const frameworkQuestions: Record<string, AuditQuestion[]> = {
       text: 'Measure / Manage (MANAGE-4): Sovereign data security and minimization checks enforced.',
       description: 'Ensures database storage is restricted to essential profiles and kept in local boundaries.',
       subParameters: [
-        { id: 'p2_sub1', text: 'Sovereign hosting rules confirm datacentre servers reside inside Ghana.', description: 'Maintains national data residency control.' },
+        { id: 'p2_sub1', text: 'Sovereign hosting rules confirm datacentre servers reside within compliant geographical boundaries.', description: 'Maintains compliant data residency control.' },
         { id: 'p2_sub2', text: 'Standard contractual clauses active with external cloud resources.', description: 'Protects data transit security across cloud bounds.' }
       ]
     },
@@ -600,7 +600,7 @@ const frameworkQuestions: Record<string, AuditQuestion[]> = {
       description: 'Ensures telemetry logs and profiling records are purged periodically to limit risks.',
       subParameters: [
         { id: 'p3_sub1', text: 'Automated retention scripts purge inactive user profiles after 180 days.', description: 'Enforces database hygiene protocols.' },
-        { id: 'p3_sub2', text: 'GDPR/Act 843 compliant right-to-be-forgotten deletion workflows active.', description: 'Allows citizens to request total profile erasure within a 30-day window.' }
+        { id: 'p3_sub2', text: 'Compliance-based right-to-be-forgotten deletion workflows active.', description: 'Allows citizens to request total profile erasure within a 30-day window.' }
       ]
     },
     {
@@ -629,7 +629,7 @@ const frameworkQuestions: Record<string, AuditQuestion[]> = {
       text: 'Manage Function (MANAGE-2.3): Emergency failovers and incident alerts integrated.',
       description: 'Links the system to national incident centers for real-time cyberdefense coordination.',
       subParameters: [
-        { id: 's3_sub1', text: 'Incident alerts synced real-time with National Cyber Security Authority.', description: 'Fulfills reporting requirements to CERT-GH during cyberattacks.' },
+        { id: 's3_sub1', text: 'Incident alerts synced real-time with the national cybersecurity response center.', description: 'Fulfills reporting requirements to security centers during cyberattacks.' },
         { id: 's3_sub2', text: 'Offline manuals fallback and server failover simulated quarterly.', description: 'Ensures services stay stable if neural networks experience structural failures.' }
       ]
     }
@@ -642,7 +642,7 @@ const frameworkQuestions: Record<string, AuditQuestion[]> = {
       description: 'Aligns AI risk management with global expectations for bias and discrimination control.',
       subParameters: [
         { id: 'f1_sub1', text: 'Bias control policy drafted and approved by executive board.', description: 'Establishes clear corporate guidelines to mitigate discrimination.' },
-        { id: 'f1_sub2', text: 'Algorithmic fairness reviews validate performance parity in agricultural/urban zones.', description: 'Guarantees models support both rural farmers and city populations equitably.' }
+        { id: 'f1_sub2', text: 'Algorithmic fairness reviews validate performance parity across diverse demographic and geographic user groups.', description: 'Guarantees models support all target user segments equitably.' }
       ]
     },
     {
@@ -651,8 +651,8 @@ const frameworkQuestions: Record<string, AuditQuestion[]> = {
       text: 'Clause 8.3 (AI system design and development): Inclusivity guidelines integrated into design.',
       description: 'Requires interfaces to support local language accessibility and diverse users.',
       subParameters: [
-        { id: 'f2_sub1', text: 'Representative speech samples cover regional Ghanaian dialects (Ga, Ewe).', description: 'Prevents acoustic mismatch errors for minority regional languages.' },
-        { id: 'f2_sub2', text: 'IVR and local language audio narration tools active.', description: 'Assists citizens who cannot read or write text.' }
+        { id: 'f2_sub1', text: 'Representative dataset samples cover target regional dialects and minority demographics.', description: 'Prevents validation degradation or mismatch errors for minority regional demographics.' },
+        { id: 'f2_sub2', text: 'Accessible translations and alternative audio narration tools are active.', description: 'Assists users who cannot read or write text.' }
       ]
     },
     {
@@ -661,7 +661,7 @@ const frameworkQuestions: Record<string, AuditQuestion[]> = {
       text: 'Clause 8.3.3: Systematic accessibility channels operational in software designs.',
       description: 'Guarantees alternative navigation features for low-network or disabled demographics.',
       subParameters: [
-        { id: 'f3_sub1', text: 'Offline USSD channels active for remote deployment.', description: 'Enables core functionality without cellular internet connections.' },
+        { id: 'f3_sub1', text: 'Offline alternative channels active for remote deployment.', description: 'Enables core functionality without high network bandwidth connections.' },
         { id: 'f3_sub2', text: 'System UI conforms fully to WCAG accessibility guidelines.', description: 'Enables keyboard navigation and screen-reader assistance.' }
       ]
     },
@@ -692,7 +692,7 @@ const frameworkQuestions: Record<string, AuditQuestion[]> = {
       description: 'Ensures generative content is flagged to prevent misinformation.',
       subParameters: [
         { id: 't3_sub1', text: 'Metadata watermarks and synthetic hashes embedded in outputs.', description: 'Enables downstream detection of AI-generated media.' },
-        { id: 't3_sub2', text: 'Plain-English automated summary reports generated for decisions.', description: 'Explains complex decisions in simple words.' }
+        { id: 't3_sub2', text: 'Plain-language automated summary reports generated for decisions.', description: 'Explains complex decisions in simple words.' }
       ]
     },
     {
@@ -711,7 +711,7 @@ const frameworkQuestions: Record<string, AuditQuestion[]> = {
       text: 'Clause 8.5 (AI system operation): Data minimization and sovereign hosting verified.',
       description: 'Validates that data residency requirements and sovereign boundaries are enforced.',
       subParameters: [
-        { id: 'p2_sub1', text: 'Sovereign datacentre hosting rules confirm files reside inside Ghana.', description: 'Maintains national data residency.' },
+        { id: 'p2_sub1', text: 'Sovereign datacentre hosting rules confirm files reside within compliant geographical boundaries.', description: 'Maintains compliant data residency.' },
         { id: 'p2_sub2', text: 'Privacy posture reviews are managed by an ISO 27701 certified PIMS.', description: 'Ensures privacy assessments are catalogued and audited.' }
       ]
     },
@@ -722,7 +722,7 @@ const frameworkQuestions: Record<string, AuditQuestion[]> = {
       description: 'Allows users to control their data lifecycle, conforming to strict privacy standards.',
       subParameters: [
         { id: 'p3_sub1', text: 'Automated retention script purges expired files after 180 days.', description: 'Wipes diagnostic records and log files.' },
-        { id: 'p3_sub2', text: 'GDPR/Act 843 compliant right-to-be-forgotten deletion workflows active.', description: 'Purges profile records within 30 days.' }
+        { id: 'p3_sub2', text: 'Compliance-based right-to-be-forgotten deletion workflows active.', description: 'Purges profile records within 30 days.' }
       ]
     },
     {
@@ -756,9 +756,7 @@ const frameworkQuestions: Record<string, AuditQuestion[]> = {
       ]
     }
   ]
-};
-
-const tooltipStyles = `
+};const tooltipStyles = `
   .tooltip-container {
     position: relative;
     display: inline-flex;
@@ -811,16 +809,25 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
   onUpdateCompliance,
   currentRole
 }) => {
-  const [selectedProjectId, setSelectedProjectId] = useState<string>(projects[0]?.id || '');
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('general');
   const activeProject = projects.find(p => p.id === selectedProjectId);
+
+  const [generalCompliance, setGeneralCompliance] = useState<ComplianceScore>({
+    fairness: 70,
+    transparency: 70,
+    accountability: 70,
+    privacy: 70,
+    security: 70,
+    overallGrade: 'Good'
+  });
 
   const [framework, setFramework] = useState<string>('Ghana');
   const [answers, setAnswers] = useState<Record<string, 'yes' | 'no'>>({});
 
   // Initialize metadata answers based on active project's current compliance scores
   useEffect(() => {
-    if (!activeProject) return;
-    const score = activeProject.compliance;
+    const score = selectedProjectId === 'general' ? generalCompliance : activeProject?.compliance;
+    if (!score) return;
     const initialAnswers: Record<string, 'yes' | 'no'> = {
       f1_sub1: score.fairness >= 60 ? 'yes' : 'no',
       f1_sub2: score.fairness >= 80 ? 'yes' : 'no',
@@ -851,7 +858,7 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
       s3_sub2: score.security >= 100 ? 'yes' : 'no',
     };
     setAnswers(initialAnswers);
-  }, [selectedProjectId, activeProject]);
+  }, [selectedProjectId]);
 
   const handleAnswerChange = (subId: string, val: 'yes' | 'no') => {
     const canAudit = ['Super Administrator', 'National AI Authority', 'Government Administrator', 'Auditor'].includes(currentRole);
@@ -891,7 +898,11 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
       overallGrade
     };
 
-    onUpdateCompliance(selectedProjectId, newScore);
+    if (selectedProjectId === 'general') {
+      setGeneralCompliance(newScore);
+    } else {
+      onUpdateCompliance(selectedProjectId, newScore);
+    }
   };
 
   const getGradeIcon = (grade: string) => {
@@ -1116,11 +1127,13 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
     );
   };
 
-  const calculatedScore = activeProject
-    ? (activeProject.compliance.fairness * 0.20) + 
-      (activeProject.compliance.transparency * 0.25) + 
-      (activeProject.compliance.privacy * 0.20) + 
-      (activeProject.compliance.security * 0.35)
+  const activeScore = (selectedProjectId === 'general' ? generalCompliance : activeProject?.compliance) || generalCompliance;
+
+  const calculatedScore = activeScore
+    ? (activeScore.fairness * 0.20) + 
+      (activeScore.transparency * 0.25) + 
+      (activeScore.privacy * 0.20) + 
+      (activeScore.security * 0.35)
     : 0;
 
   return (
@@ -1153,8 +1166,9 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
             value={selectedProjectId}
             onChange={(e) => setSelectedProjectId(e.target.value)}
             className="form-select"
-            style={{ width: '220px', padding: '8px 12px' }}
+            style={{ width: '260px', padding: '8px 12px' }}
           >
+            <option value="general">📁 General AI System Audit (Standalone)</option>
             {projects.map(p => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
@@ -1162,7 +1176,7 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
         </div>
       </div>
 
-      {activeProject && (
+      {(selectedProjectId === 'general' || activeProject) && (
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.1fr', gap: '24px', alignItems: 'start' }}>
           
           {/* LEFT PANEL: Ethical Question Checklists */}
@@ -1224,7 +1238,7 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
             
             <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '32px 24px', textAlign: 'center' }}>
               <div style={{ padding: '16px', borderRadius: '50%', background: 'rgba(255,255,255,0.015)', border: '1px solid var(--border-color)', marginBottom: '16px' }}>
-                {getGradeIcon(activeProject.compliance.overallGrade)}
+                {getGradeIcon(activeScore.overallGrade)}
               </div>
               
               <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
@@ -1232,8 +1246,8 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
               </div>
               
               <div style={{ margin: '8px 0' }}>
-                <span className={`badge ${getGradeClass(activeProject.compliance.overallGrade)}`} style={{ fontSize: '1rem', padding: '6px 18px' }}>
-                  {activeProject.compliance.overallGrade}
+                <span className={`badge ${getGradeClass(activeScore.overallGrade)}`} style={{ fontSize: '1rem', padding: '6px 18px' }}>
+                  {activeScore.overallGrade}
                 </span>
               </div>
 
@@ -1254,10 +1268,10 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', marginBottom: '4px' }}>
                     <span style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>Fairness & Inclusivity (20%)</span>
-                    <strong style={{ color: 'var(--text-primary)' }}>{activeProject.compliance.fairness}%</strong>
+                    <strong style={{ color: 'var(--text-primary)' }}>{activeScore.fairness}%</strong>
                   </div>
                   <div style={{ width: '100%', height: '5px', background: 'rgba(255,255,255,0.05)', borderRadius: '99px' }}>
-                    <div style={{ width: `${activeProject.compliance.fairness}%`, height: '100%', background: 'var(--ghana-emerald)', borderRadius: '99px' }}></div>
+                    <div style={{ width: `${activeScore.fairness}%`, height: '100%', background: 'var(--ghana-emerald)', borderRadius: '99px' }}></div>
                   </div>
                 </div>
 
@@ -1265,10 +1279,10 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', marginBottom: '4px' }}>
                     <span style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>Transparency & Explainability (25%)</span>
-                    <strong style={{ color: 'var(--text-primary)' }}>{activeProject.compliance.transparency}%</strong>
+                    <strong style={{ color: 'var(--text-primary)' }}>{activeScore.transparency}%</strong>
                   </div>
                   <div style={{ width: '100%', height: '5px', background: 'rgba(255,255,255,0.05)', borderRadius: '99px' }}>
-                    <div style={{ width: `${activeProject.compliance.transparency}%`, height: '100%', background: '#38bdf8', borderRadius: '99px' }}></div>
+                    <div style={{ width: `${activeScore.transparency}%`, height: '100%', background: '#38bdf8', borderRadius: '99px' }}></div>
                   </div>
                 </div>
 
@@ -1276,10 +1290,10 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', marginBottom: '4px' }}>
                     <span style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>Privacy & Data Security (20%)</span>
-                    <strong style={{ color: 'var(--text-primary)' }}>{activeProject.compliance.privacy}%</strong>
+                    <strong style={{ color: 'var(--text-primary)' }}>{activeScore.privacy}%</strong>
                   </div>
                   <div style={{ width: '100%', height: '5px', background: 'rgba(255,255,255,0.05)', borderRadius: '99px' }}>
-                    <div style={{ width: `${activeProject.compliance.privacy}%`, height: '100%', background: '#fb7185', borderRadius: '99px' }}></div>
+                    <div style={{ width: `${activeScore.privacy}%`, height: '100%', background: '#fb7185', borderRadius: '99px' }}></div>
                   </div>
                 </div>
 
@@ -1287,10 +1301,10 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', marginBottom: '4px' }}>
                     <span style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>Security & Threat Resistance (35%)</span>
-                    <strong style={{ color: 'var(--text-primary)' }}>{activeProject.compliance.security}%</strong>
+                    <strong style={{ color: 'var(--text-primary)' }}>{activeScore.security}%</strong>
                   </div>
                   <div style={{ width: '100%', height: '5px', background: 'rgba(255,255,255,0.05)', borderRadius: '99px' }}>
-                    <div style={{ width: `${activeProject.compliance.security}%`, height: '100%', background: '#f43f5e', borderRadius: '99px' }}></div>
+                    <div style={{ width: `${activeScore.security}%`, height: '100%', background: '#f43f5e', borderRadius: '99px' }}></div>
                   </div>
                 </div>
               </div>
