@@ -21,6 +21,12 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
     ? Math.round(projects.reduce((acc, p) => acc + p.readinessScore, 0) / totalProjectsCount) 
     : 0;
 
+  // Calculate dynamic project counts per region
+  const regionProjectCounts = projects.reduce((acc, p) => {
+    acc[p.region] = (acc[p.region] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
   useEffect(() => {
     // 1. Check if global Leaflet instance L exists
     const L = (window as any).L;
@@ -47,17 +53,20 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
       maxZoom: 20
     }).addTo(map);
 
-    // 5. Draw dynamic Region Density/Heat Circle markers
+    // 5. Draw dynamic Region Density/Heat Circle markers only for regions with active projects
     ghanaRegions.forEach(reg => {
-      const circleColor = reg.projectCount > 1 ? '#10b981' : '#fbbf24';
+      const dynamicCount = regionProjectCounts[reg.name] || 0;
+      if (dynamicCount === 0) return; // Skip if no projects belong to this region
+
+      const circleColor = dynamicCount > 1 ? '#10b981' : '#fbbf24';
       const circle = L.circle(reg.center, {
         color: circleColor,
         fillColor: circleColor,
         fillOpacity: 0.12,
-        radius: 40000 + (reg.projectCount * 12000) // dynamic radius based on project count
+        radius: 40000 + (dynamicCount * 12000) // dynamic radius based on project count
       }).addTo(map);
 
-      circle.bindTooltip(`<strong>${reg.name} Region</strong><br/>Density: ${reg.projectCount} Active Projects`, {
+      circle.bindTooltip(`<strong>${reg.name} Region</strong><br/>Density: ${dynamicCount} Active Projects`, {
         permanent: false,
         direction: 'top'
       });
@@ -278,7 +287,7 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>Click to focal center</div>
                   </div>
                   <span className="badge badge-info" style={{ fontSize: '0.65rem', padding: '2px 8px' }}>
-                    {reg.projectCount} {reg.projectCount > 1 ? 'Projects' : 'Project'}
+                    {regionProjectCounts[reg.name] || 0} {(regionProjectCounts[reg.name] || 0) === 1 ? 'Project' : 'Projects'}
                   </span>
                 </div>
               ))}
