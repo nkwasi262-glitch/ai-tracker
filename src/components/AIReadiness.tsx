@@ -280,7 +280,6 @@ const tooltipStyles = `
 `;
 
 export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
-  const [activeBranch, setActiveBranch] = useState<'institutional' | 'marketable'>('institutional');
   const [activeThickboxParam, setActiveThickboxParam] = useState<ReadinessParameter | null>(null);
 
   // Initialize checklist answer states dynamically
@@ -501,7 +500,6 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
 
   const maturity = getMaturityLevel(overallScore);
   const recs = generateRecommendations().slice(0, 4);
-  const currentParameters = activeBranch === 'institutional' ? institutionalParameters : marketableParameters;
 
   return (
     <div>
@@ -528,59 +526,13 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.45fr 1fr', gap: '24px', alignItems: 'stretch' }}>
         
-        {/* LEFT COLUMN: Switcher + Sub-Parameters Audit Grid */}
-        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', position: 'relative', zIndex: 10 }}>
+        {/* LEFT COLUMN: Horizontal Sub-Parameters Audit Checklist */}
+        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '24px', position: 'relative', zIndex: 10 }}>
           
-          {/* Tabs switch */}
-          <div style={{ 
-            display: 'flex', 
-            background: 'rgba(0, 0, 0, 0.25)', 
-            padding: '4px', 
-            borderRadius: '8px', 
-            border: '1px solid var(--border-color)' 
-          }}>
-            <button
-              onClick={() => setActiveBranch('institutional')}
-              style={{
-                flex: 1,
-                padding: '8px 12px',
-                borderRadius: '6px',
-                border: 'none',
-                background: activeBranch === 'institutional' ? 'rgba(16, 185, 129, 0.15)' : 'transparent',
-                color: activeBranch === 'institutional' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                boxShadow: activeBranch === 'institutional' ? '0 1px 3px rgba(0,0,0,0.3)' : 'none'
-              }}
-            >
-              🏢 Institutional AI Readiness
-            </button>
-            <button
-              onClick={() => setActiveBranch('marketable')}
-              style={{
-                flex: 1,
-                padding: '8px 12px',
-                borderRadius: '6px',
-                border: 'none',
-                background: activeBranch === 'marketable' ? 'rgba(16, 185, 129, 0.15)' : 'transparent',
-                color: activeBranch === 'marketable' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                boxShadow: activeBranch === 'marketable' ? '0 1px 3px rgba(0,0,0,0.3)' : 'none'
-              }}
-            >
-              🛒 Marketable AI Readiness
-            </button>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
             <div>
-              <h3 style={{ fontSize: '0.95rem', fontWeight: 700 }}>
-                {activeBranch === 'institutional' ? 'Institutional Assessment Parameters' : 'Marketable Assessment Parameters'}
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>
+                AI Readiness Verification Audit
               </h3>
               <p style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
                 Verify and answer yes/no for each nested checkpoint parameters.
@@ -591,38 +543,41 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
             )}
           </div>
 
-          {/* Grid Checklist parameters */}
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: '1fr 1fr', 
-            gap: '14px' 
-          }}>
-            {currentParameters.map(p => {
-              return (
+          {/* Section 1: Institutional AI Readiness */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--ghana-emerald)', paddingBottom: '6px', borderBottom: '1px solid rgba(255,255,255,0.04)', marginBottom: '4px' }}>
+              🏢 Institutional AI Readiness Checklist
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {institutionalParameters.map(p => (
                 <div key={p.id} style={{ 
-                  background: 'rgba(0,0,0,0.12)', 
+                  display: 'flex', 
+                  alignItems: 'center',
+                  background: 'rgba(255,255,255,0.01)', 
                   border: '1px solid var(--border-color)', 
                   borderRadius: '10px',
-                  padding: '12px'
+                  padding: '12px 16px',
+                  gap: '20px'
                 }}>
                   {/* Parameter title block */}
                   <div style={{ 
+                    width: '280px', 
                     display: 'flex', 
                     alignItems: 'center', 
-                    marginBottom: '10px',
-                    borderBottom: '1px solid rgba(255,255,255,0.04)',
-                    paddingBottom: '6px'
+                    gap: '10px',
+                    borderRight: '1px solid rgba(255,255,255,0.05)',
+                    paddingRight: '16px',
+                    flexShrink: 0
                   }}>
                     {getParentStatusIcon(p)}
                     <span style={{ 
                       color: 'var(--text-primary)',
                       fontSize: '0.82rem',
                       fontWeight: 600,
-                      lineHeight: '1.3',
-                      flex: 1,
+                      lineHeight: '1.35',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px'
+                      gap: '6px'
                     }}>
                       {p.title}
                       <button
@@ -646,7 +601,7 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
                   </div>
 
                   {/* Child parameters checklist */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ display: 'flex', gap: '14px', flex: 1 }}>
                     {p.subParameters.map(sub => {
                       const isYes = answers[sub.id] === 'yes';
                       const isNo = answers[sub.id] === 'no';
@@ -657,17 +612,18 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
                             display: 'flex', 
                             justifyContent: 'space-between',
                             alignItems: 'center', 
-                            gap: '8px', 
-                            padding: '6px 8px', 
+                            gap: '12px', 
+                            padding: '8px 12px', 
                             background: 'rgba(255,255,255,0.01)', 
                             border: '1px solid rgba(255,255,255,0.02)', 
-                            borderRadius: '6px',
-                            fontSize: '0.74rem'
+                            borderRadius: '8px',
+                            fontSize: '0.76rem',
+                            flex: 1
                           }}
                         >
                           <span style={{ 
                             color: isYes ? 'var(--text-primary)' : 'var(--text-secondary)',
-                            lineHeight: '1.3',
+                            lineHeight: '1.4',
                             flex: 1,
                             display: 'flex',
                             alignItems: 'center'
@@ -683,17 +639,17 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
                           </span>
                           
                           {/* Toggle controls */}
-                          <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                          <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                             <button
                               onClick={() => handleAnswerChange(sub.id, 'yes')}
                               disabled={!canEdit}
                               style={{
-                                padding: '4px 8px',
+                                padding: '5px 10px',
                                 borderRadius: '4px',
                                 border: '1px solid ' + (isYes ? '#10b981' : 'rgba(255,255,255,0.06)'),
                                 background: isYes ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255,255,255,0.01)',
                                 color: isYes ? '#34d399' : 'var(--text-muted)',
-                                fontSize: '0.64rem',
+                                fontSize: '0.66rem',
                                 fontWeight: 700,
                                 cursor: canEdit ? 'pointer' : 'default',
                                 transition: 'all 0.12s ease'
@@ -705,12 +661,12 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
                               onClick={() => handleAnswerChange(sub.id, 'no')}
                               disabled={!canEdit}
                               style={{
-                                padding: '4px 8px',
+                                padding: '5px 10px',
                                 borderRadius: '4px',
                                 border: '1px solid ' + (isNo ? '#f43f5e' : 'rgba(255,255,255,0.06)'),
                                 background: isNo ? 'rgba(244, 63, 94, 0.15)' : 'rgba(255,255,255,0.01)',
                                 color: isNo ? '#fb7185' : 'var(--text-muted)',
-                                fontSize: '0.64rem',
+                                fontSize: '0.66rem',
                                 fontWeight: 700,
                                 cursor: canEdit ? 'pointer' : 'default',
                                 transition: 'all 0.12s ease'
@@ -724,8 +680,149 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
                     })}
                   </div>
                 </div>
-              );
-            })}
+              ))}
+            </div>
+          </div>
+
+          {/* Section 2: Marketable AI Readiness */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '20px' }}>
+            <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#38bdf8', paddingBottom: '6px', borderBottom: '1px solid rgba(255,255,255,0.04)', marginBottom: '4px' }}>
+              🛒 Marketable AI Readiness Checklist
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {marketableParameters.map(p => (
+                <div key={p.id} style={{ 
+                  display: 'flex', 
+                  alignItems: 'center',
+                  background: 'rgba(255,255,255,0.01)', 
+                  border: '1px solid var(--border-color)', 
+                  borderRadius: '10px',
+                  padding: '12px 16px',
+                  gap: '20px'
+                }}>
+                  {/* Parameter title block */}
+                  <div style={{ 
+                    width: '280px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '10px',
+                    borderRight: '1px solid rgba(255,255,255,0.05)',
+                    paddingRight: '16px',
+                    flexShrink: 0
+                  }}>
+                    {getParentStatusIcon(p)}
+                    <span style={{ 
+                      color: 'var(--text-primary)',
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      lineHeight: '1.35',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}>
+                      {p.title}
+                      <button
+                        onClick={() => setActiveThickboxParam(p)}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '2px',
+                          color: '#38bdf8',
+                          opacity: 0.8,
+                          transition: 'opacity 0.15s ease'
+                        }}
+                        title="Click to open detailed explanation modal"
+                      >
+                        <Info className="w-3.5 h-3.5" />
+                      </button>
+                    </span>
+                  </div>
+
+                  {/* Child parameters checklist */}
+                  <div style={{ display: 'flex', gap: '14px', flex: 1 }}>
+                    {p.subParameters.map(sub => {
+                      const isYes = answers[sub.id] === 'yes';
+                      const isNo = answers[sub.id] === 'no';
+                      return (
+                        <div 
+                          key={sub.id}
+                          style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between',
+                            alignItems: 'center', 
+                            gap: '12px', 
+                            padding: '8px 12px', 
+                            background: 'rgba(255,255,255,0.01)', 
+                            border: '1px solid rgba(255,255,255,0.02)', 
+                            borderRadius: '8px',
+                            fontSize: '0.76rem',
+                            flex: 1
+                          }}
+                        >
+                          <span style={{ 
+                            color: isYes ? 'var(--text-primary)' : 'var(--text-secondary)',
+                            lineHeight: '1.4',
+                            flex: 1,
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}>
+                            • {sub.text}
+                            <span className="readiness-tooltip-container">
+                              <Info className="w-3.5 h-3.5 text-sky-400 cursor-help opacity-70 hover:opacity-100" style={{ marginLeft: '4px' }} />
+                              <span className="readiness-tooltip-text">
+                                <strong style={{ color: '#38bdf8', display: 'block', marginBottom: '3px' }}>Simple Explanation:</strong>
+                                {sub.description}
+                              </span>
+                            </span>
+                          </span>
+                          
+                          {/* Toggle controls */}
+                          <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                            <button
+                              onClick={() => handleAnswerChange(sub.id, 'yes')}
+                              disabled={!canEdit}
+                              style={{
+                                padding: '5px 10px',
+                                borderRadius: '4px',
+                                border: '1px solid ' + (isYes ? '#10b981' : 'rgba(255,255,255,0.06)'),
+                                background: isYes ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255,255,255,0.01)',
+                                color: isYes ? '#34d399' : 'var(--text-muted)',
+                                fontSize: '0.66rem',
+                                fontWeight: 700,
+                                cursor: canEdit ? 'pointer' : 'default',
+                                transition: 'all 0.12s ease'
+                              }}
+                            >
+                              YES
+                            </button>
+                            <button
+                              onClick={() => handleAnswerChange(sub.id, 'no')}
+                              disabled={!canEdit}
+                              style={{
+                                padding: '5px 10px',
+                                borderRadius: '4px',
+                                border: '1px solid ' + (isNo ? '#f43f5e' : 'rgba(255,255,255,0.06)'),
+                                background: isNo ? 'rgba(244, 63, 94, 0.15)' : 'rgba(255,255,255,0.01)',
+                                color: isNo ? '#fb7185' : 'var(--text-muted)',
+                                fontSize: '0.66rem',
+                                fontWeight: 700,
+                                cursor: canEdit ? 'pointer' : 'default',
+                                transition: 'all 0.12s ease'
+                              }}
+                            >
+                              NO
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
         </div>
