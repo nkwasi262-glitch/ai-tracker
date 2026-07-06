@@ -128,7 +128,7 @@ const institutionalParameters: ReadinessParameter[] = [
   }
 ];
 
-const marketableParameters: ReadinessParameter[] = [
+const marketParameters: ReadinessParameter[] = [
   {
     id: 'm1',
     title: 'Vendor/Solution Availability',
@@ -311,7 +311,7 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
     }));
   };
 
-  const getBranchScore = (branch: 'institutional' | 'marketable') => {
+  const getBranchScore = (branch: 'institutional' | 'market') => {
     const prefix = branch === 'institutional' ? 'i' : 'm';
     const subIds = [];
     for (let p = 1; p <= 10; p++) {
@@ -323,7 +323,7 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
   };
 
   const instScore = getBranchScore('institutional');
-  const marketScore = getBranchScore('marketable');
+  const marketScore = getBranchScore('market');
   const overallScore = Math.round((instScore + marketScore) / 2);
 
   const getMaturityLevel = (score: number) => {
@@ -418,8 +418,8 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
       }
     });
 
-    // Scan Marketable Parameters
-    marketableParameters.forEach(p => {
+    // Scan Market Parameters
+    marketParameters.forEach(p => {
       const sub1 = answers[`${p.id}_sub1`];
       const sub2 = answers[`${p.id}_sub2`];
       if (sub1 === 'no' || sub2 === 'no') {
@@ -519,7 +519,7 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
         <div>
           <h2 style={{ fontSize: '1.2rem', fontWeight: 700 }}>AI Readiness Assessment Checklist</h2>
           <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-            Evaluate and audit capability levels for Institutional and Marketable AI deployments
+            Evaluate and audit capability levels for Institutional and Market AI deployments
           </p>
         </div>
       </div>
@@ -552,22 +552,21 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
               {institutionalParameters.map(p => (
                 <div key={p.id} style={{ 
                   display: 'flex', 
-                  alignItems: 'center',
+                  flexDirection: 'column',
                   background: 'rgba(255,255,255,0.01)', 
                   border: '1px solid var(--border-color)', 
                   borderRadius: '10px',
                   padding: '12px 16px',
-                  gap: '20px'
+                  gap: '10px'
                 }}>
                   {/* Parameter title block */}
                   <div style={{ 
-                    width: '280px', 
                     display: 'flex', 
                     alignItems: 'center', 
                     gap: '10px',
-                    borderRight: '1px solid rgba(255,255,255,0.05)',
-                    paddingRight: '16px',
-                    flexShrink: 0
+                    borderBottom: '1px solid rgba(255,255,255,0.04)',
+                    paddingBottom: '8px',
+                    width: '100%'
                   }}>
                     {getParentStatusIcon(p)}
                     <span style={{ 
@@ -601,7 +600,7 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
                   </div>
 
                   {/* Child parameters checklist */}
-                  <div style={{ display: 'flex', gap: '14px', flex: 1 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
                     {p.subParameters.map(sub => {
                       const isYes = answers[sub.id] === 'yes';
                       const isNo = answers[sub.id] === 'no';
@@ -613,12 +612,11 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
                             justifyContent: 'space-between',
                             alignItems: 'center', 
                             gap: '12px', 
-                            padding: '8px 12px', 
+                            padding: '6px 10px', 
                             background: 'rgba(255,255,255,0.01)', 
                             border: '1px solid rgba(255,255,255,0.02)', 
                             borderRadius: '8px',
-                            fontSize: '0.76rem',
-                            flex: 1
+                            fontSize: '0.76rem'
                           }}
                         >
                           <span style={{ 
@@ -684,31 +682,30 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
             </div>
           </div>
 
-          {/* Section 2: Marketable AI Readiness */}
+          {/* Section 2: Market AI Readiness */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '20px' }}>
             <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#38bdf8', paddingBottom: '6px', borderBottom: '1px solid rgba(255,255,255,0.04)', marginBottom: '4px' }}>
-              🛒 Marketable AI Readiness Checklist
+              🛒 Market AI Readiness Checklist
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {marketableParameters.map(p => (
+              {marketParameters.map(p => (
                 <div key={p.id} style={{ 
                   display: 'flex', 
-                  alignItems: 'center',
+                  flexDirection: 'column',
                   background: 'rgba(255,255,255,0.01)', 
                   border: '1px solid var(--border-color)', 
                   borderRadius: '10px',
                   padding: '12px 16px',
-                  gap: '20px'
+                  gap: '10px'
                 }}>
                   {/* Parameter title block */}
                   <div style={{ 
-                    width: '280px', 
                     display: 'flex', 
                     alignItems: 'center', 
                     gap: '10px',
-                    borderRight: '1px solid rgba(255,255,255,0.05)',
-                    paddingRight: '16px',
-                    flexShrink: 0
+                    borderBottom: '1px solid rgba(255,255,255,0.04)',
+                    paddingBottom: '8px',
+                    width: '100%'
                   }}>
                     {getParentStatusIcon(p)}
                     <span style={{ 
@@ -742,7 +739,7 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
                   </div>
 
                   {/* Child parameters checklist */}
-                  <div style={{ display: 'flex', gap: '14px', flex: 1 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
                     {p.subParameters.map(sub => {
                       const isYes = answers[sub.id] === 'yes';
                       const isNo = answers[sub.id] === 'no';
@@ -754,12 +751,11 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
                             justifyContent: 'space-between',
                             alignItems: 'center', 
                             gap: '12px', 
-                            padding: '8px 12px', 
+                            padding: '6px 10px', 
                             background: 'rgba(255,255,255,0.01)', 
                             border: '1px solid rgba(255,255,255,0.02)', 
                             borderRadius: '8px',
-                            fontSize: '0.76rem',
-                            flex: 1
+                            fontSize: '0.76rem'
                           }}
                         >
                           <span style={{ 
@@ -864,7 +860,7 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
                 <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>{instScore}%</div>
               </div>
               <div>
-                <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>Marketable</div>
+                <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>Market</div>
                 <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>{marketScore}%</div>
               </div>
             </div>
