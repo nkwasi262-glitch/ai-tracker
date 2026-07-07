@@ -202,10 +202,10 @@ const marketParameters: ReadinessParameter[] = [
   {
     id: 'm8',
     title: 'Support and SLA Ecosystem',
-    description: 'This ensures the vendor provides a contract to fix system issues quickly (under 4 hours) and has a support hotline in Ghana.',
+    description: 'This ensures the vendor provides a contract to fix system issues quickly and has a support hotline in Ghana.',
     icon: <Activity className="w-4 h-4 text-emerald-400" />,
     subParameters: [
-      { id: 'm8_sub1', text: 'Does the vendor offer a response SLA of under 4 hours for critical issues?', description: 'This guarantees that if the AI crashes, the vendor\'s engineering team will begin fixing it within 4 hours.' },
+      { id: 'm8_sub1', text: 'Does the vendor offer a response SLA for critical issues?', description: 'This guarantees that if the AI crashes, the vendor\'s engineering team will begin fixing it immediately.' },
       { id: 'm8_sub2', text: 'Is there localized customer support with telephone hotlines in Ghana?', description: 'Local support phone numbers ensure you can talk to an engineer instantly without international call latency.' }
     ]
   },
@@ -469,7 +469,7 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
           list.push({
             icon: p.icon,
             title: 'Enforce Local Technical SLAs',
-            text: 'Require critical response SLAs under 4 hours and verify telephone support hotlines exist locally.'
+            text: 'Require critical response SLAs and verify telephone support hotlines exist locally.'
           });
         } else if (p.id === 'm9') {
           list.push({
