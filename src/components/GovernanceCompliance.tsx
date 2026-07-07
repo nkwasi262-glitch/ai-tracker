@@ -92,7 +92,8 @@ const frameworkQuestions: Record<string, AuditQuestion[]> = {
       description: 'Fulfills legal requirements by registering a legal supervisor to handle data privacy compliance and citizen complaints.',
       subParameters: [
         { id: 'p1_sub1', text: 'DPO certificate of registration verified with the national data protection regulator.', description: 'Ensures the entity has a legal, certified representative supervising database storage rules.' },
-        { id: 'p1_sub2', text: 'DPO compliance calendar and internal privacy audit logs established.', description: 'Maintains active internal monitoring instead of static, one-time approvals.' }
+        { id: 'p1_sub2', text: 'DPO compliance calendar and internal privacy audit logs established.', description: 'Maintains active internal monitoring instead of static, one-time approvals.' },
+        { id: 'p1_sub3', text: 'Verify that the whole institution is officially certified as data protection compliant under Act 843.', description: 'Confirms institution-wide compliance status registry with the Data Protection Commission (DPC).' }
       ]
     },
     {
@@ -953,6 +954,7 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
 
       p1_sub1: score.privacy >= 60 ? 'yes' : 'no',
       p1_sub2: score.privacy >= 80 ? 'yes' : 'no',
+      p1_sub3: score.privacy >= 100 ? 'yes' : 'no',
       p2_sub1: score.privacy >= 80 ? 'yes' : 'no',
       p2_sub2: score.privacy >= 100 ? 'yes' : 'no',
       p3_sub1: score.privacy >= 100 ? 'yes' : 'no',
@@ -989,7 +991,7 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
 
     const fairness = computeCategoryScore(['f1_sub1', 'f1_sub2', 'f2_sub1', 'f2_sub2', 'f3_sub1', 'f3_sub2']);
     const transparency = computeCategoryScore(['t1_sub1', 't1_sub2', 't2_sub1', 't2_sub2', 't3_sub1', 't3_sub2']);
-    const privacy = computeCategoryScore(['p1_sub1', 'p1_sub2', 'p2_sub1', 'p2_sub2', 'p3_sub1', 'p3_sub2', 'p4_sub1']);
+    const privacy = computeCategoryScore(['p1_sub1', 'p1_sub2', 'p1_sub3', 'p2_sub1', 'p2_sub2', 'p3_sub1', 'p3_sub2', 'p4_sub1']);
     const security = computeCategoryScore(['s1_sub1', 's1_sub2', 's2_sub1', 's2_sub2', 's3_sub1', 's3_sub2', 's4_sub1']);
 
     const weightedNgs = (fairness * 0.20) + (transparency * 0.25) + (privacy * 0.20) + (security * 0.35);
