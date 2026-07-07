@@ -144,6 +144,24 @@ const frameworkQuestions: Record<string, AuditQuestion[]> = {
         { id: 's3_sub1', text: 'Intrusion detection alerts hooked directly to the national security incident response logs.', description: 'Fulfills cybersecurity reporting mandates for critical national infrastructure.' },
         { id: 's3_sub2', text: 'Emergency kill switch triggers configured and simulated periodically.', description: 'Tests automated procedures to isolate databases or models if active intrusions are detected.' }
       ]
+    },
+    {
+      id: 'p4',
+      category: 'privacy',
+      text: 'Third-party data processor compliance covenants signed and verified.',
+      description: 'Ensures external software suppliers and processors adhere to national data protection standards.',
+      subParameters: [
+        { id: 'p4_sub1', text: 'Standard DPC contractual data processor clauses appended to all vendor agreements.', description: 'Validates legal data-handling compliance of external partners.' }
+      ]
+    },
+    {
+      id: 's4',
+      category: 'security',
+      text: 'National critical information infrastructure security logs synced weekly.',
+      description: 'Maintains active connection and logging safety checks with national monitoring systems.',
+      subParameters: [
+        { id: 's4_sub1', text: 'System audit trails are backed up to secure national datacentre nodes.', description: 'Ensures disaster recovery access for audit logs.' }
+      ]
     }
   ],
   'European Union': [
@@ -265,6 +283,24 @@ const frameworkQuestions: Record<string, AuditQuestion[]> = {
       subParameters: [
         { id: 's3_sub1', text: 'SBOM generated dynamically in CycloneDX or SPDX standard format.', description: 'Outputs machine-readable inventories of libraries on build compiles.' },
         { id: 's3_sub2', text: 'Dependency checks configured to block builds containing critical vulnerabilities.', description: 'Keeps external code safe against supply chain bugs.' }
+      ]
+    },
+    {
+      id: 'p4',
+      category: 'privacy',
+      text: 'Third-party vendor data processing agreements (DPA) verified.',
+      description: 'Ensures compliance with GDPR Article 28 processing requirements.',
+      subParameters: [
+        { id: 'p4_sub1', text: 'Model API subprocessors sign standard EU contractual clauses (SCC).', description: 'Enforces privacy guarantees across global service integrations.' }
+      ]
+    },
+    {
+      id: 's4',
+      category: 'security',
+      text: 'CE marking continuous compliance monitoring system established.',
+      description: 'Tracks product conformity requirements continuously over operational lifespan.',
+      subParameters: [
+        { id: 's4_sub1', text: 'Incident tracking reports are automatically formatted for EU authorities.', description: 'Simplifies required regulatory declarations.' }
       ]
     }
   ],
@@ -388,6 +424,24 @@ const frameworkQuestions: Record<string, AuditQuestion[]> = {
         { id: 's3_sub1', text: 'Input sanitization layers block malicious prompts on all inputs.', description: 'Blocks jailbreaks or system override triggers.' },
         { id: 's3_sub2', text: 'Rate limiting and anomaly checks flag bot query scripts.', description: 'Prevents mass queries aimed at stealing model weight details.' }
       ]
+    },
+    {
+      id: 'p4',
+      category: 'privacy',
+      text: 'Vendor data use agreements (DUA) audited and verified.',
+      description: 'Limits how cloud and model providers handle uploaded datasets.',
+      subParameters: [
+        { id: 'p4_sub1', text: 'Service level contracts specify strict limits on training data secondary usage.', description: 'Prevents external vendors from using customer data for their own model training.' }
+      ]
+    },
+    {
+      id: 's4',
+      category: 'security',
+      text: 'Federal agency vulnerability disclosures and tracking logs maintained.',
+      description: 'Tracks CVE and software threat vectors in compliance with federal procurement standards.',
+      subParameters: [
+        { id: 's4_sub1', text: 'Security scans are logged and registered under federal systems.', description: 'Maintains institutional security logs compliance.' }
+      ]
     }
   ],
   'Global Standards (ISO)': [
@@ -509,6 +563,24 @@ const frameworkQuestions: Record<string, AuditQuestion[]> = {
       subParameters: [
         { id: 's3_sub1', text: 'Continuity protocols define offline manual fallback steps.', description: 'Ensures service operations remain stable if models crash.' },
         { id: 's3_sub2', text: 'Redundant model server groups replicate databases real-time.', description: 'Provides instant failover capability during hardware issues.' }
+      ]
+    },
+    {
+      id: 'p4',
+      category: 'privacy',
+      text: 'External supplier data protection agreements audited per ISO/IEC 27001 guidance.',
+      description: 'Extends supply chain security policies to cover privacy management covenants.',
+      subParameters: [
+        { id: 'p4_sub1', text: 'Supplier management security reviews verify processor encryption capabilities.', description: 'Checks that vendors encrypt transit data safely.' }
+      ]
+    },
+    {
+      id: 's4',
+      category: 'security',
+      text: 'Information security continuity plans simulated per ISO/IEC 27001.',
+      description: 'Ensures disaster plans are tested and operationally ready.',
+      subParameters: [
+        { id: 's4_sub1', text: 'Disaster recovery databases are synchronized across redundant zones.', description: 'Maintains system availability during failovers.' }
       ]
     }
   ],
@@ -632,6 +704,24 @@ const frameworkQuestions: Record<string, AuditQuestion[]> = {
         { id: 's3_sub1', text: 'Incident alerts synced real-time with the national cybersecurity response center.', description: 'Fulfills reporting requirements to security centers during cyberattacks.' },
         { id: 's3_sub2', text: 'Offline manuals fallback and server failover simulated quarterly.', description: 'Ensures services stay stable if neural networks experience structural failures.' }
       ]
+    },
+    {
+      id: 'p4',
+      category: 'privacy',
+      text: 'Govern Function (GOVERN-6): Third-party vendor AI risk management standards established.',
+      description: 'Minimizes third-party risk exposure across integrated libraries and modules.',
+      subParameters: [
+        { id: 'p4_sub1', text: 'Vendor software deliverables undergo independent verification checks.', description: 'Verifies third-party products do not introduce hidden bugs.' }
+      ]
+    },
+    {
+      id: 's4',
+      category: 'security',
+      text: 'Manage Function (MANAGE-3.2): System backup, failover, and business continuity simulated.',
+      description: 'Assures resilience against infrastructure outages or target component failures.',
+      subParameters: [
+        { id: 's4_sub1', text: 'Drills test manual service operations if algorithmic components crash.', description: 'Validates that fallback procedures are operational.' }
+      ]
     }
   ],
   'ISO/IEC 42001 (AIMS)': [
@@ -754,6 +844,24 @@ const frameworkQuestions: Record<string, AuditQuestion[]> = {
         { id: 's3_sub1', text: 'Input sanitization rules block prompt injection jailbreaks.', description: 'Mitigates the threat of system rule bypasses.' },
         { id: 's3_sub2', text: 'Manual disaster failover simulated and tested quarterly.', description: 'Verifies continuity protocols are operational.' }
       ]
+    },
+    {
+      id: 'p4',
+      category: 'privacy',
+      text: 'Clause 8.6 (Relations with interested parties): Supplier compliance guidelines enforced.',
+      description: 'Maintains AIMS boundary safety across supplier relationships.',
+      subParameters: [
+        { id: 'p4_sub1', text: 'Contractual agreements mandate regular third-party compliance reviews.', description: 'Requires audit permissions for external suppliers.' }
+      ]
+    },
+    {
+      id: 's4',
+      category: 'security',
+      text: 'Clause 10.2 (Continuous improvement): Post-incident reviews and threat model updates.',
+      description: 'Feeds real-world incident experiences back into safety revisions.',
+      subParameters: [
+        { id: 's4_sub1', text: 'Root cause analyses drive patches to prevent repeat security failures.', description: 'Closes security exploit loops systematically.' }
+      ]
     }
   ]
 };const tooltipStyles = `
@@ -849,6 +957,7 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
       p2_sub2: score.privacy >= 100 ? 'yes' : 'no',
       p3_sub1: score.privacy >= 100 ? 'yes' : 'no',
       p3_sub2: score.privacy >= 100 ? 'yes' : 'no',
+      p4_sub1: score.privacy >= 100 ? 'yes' : 'no',
 
       s1_sub1: score.security >= 60 ? 'yes' : 'no',
       s1_sub2: score.security >= 80 ? 'yes' : 'no',
@@ -856,6 +965,7 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
       s2_sub2: score.security >= 100 ? 'yes' : 'no',
       s3_sub1: score.security >= 100 ? 'yes' : 'no',
       s3_sub2: score.security >= 100 ? 'yes' : 'no',
+      s4_sub1: score.security >= 100 ? 'yes' : 'no',
     };
     setAnswers(initialAnswers);
   }, [selectedProjectId]);
@@ -872,14 +982,15 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
 
     const computeCategoryScore = (subIds: string[]) => {
       const yesCount = subIds.filter(id => newAnswers[id] === 'yes').length;
-      // Linear scaling: 40% baseline, each sub YES adds 10%
-      return 40 + (yesCount * 10);
+      if (subIds.length === 0) return 100;
+      // Dynamically scale from 40% baseline to 100% based on total sub-parameters in group
+      return Math.round(40 + (yesCount / subIds.length) * 60);
     };
 
     const fairness = computeCategoryScore(['f1_sub1', 'f1_sub2', 'f2_sub1', 'f2_sub2', 'f3_sub1', 'f3_sub2']);
     const transparency = computeCategoryScore(['t1_sub1', 't1_sub2', 't2_sub1', 't2_sub2', 't3_sub1', 't3_sub2']);
-    const privacy = computeCategoryScore(['p1_sub1', 'p1_sub2', 'p2_sub1', 'p2_sub2', 'p3_sub1', 'p3_sub2']);
-    const security = computeCategoryScore(['s1_sub1', 's1_sub2', 's2_sub1', 's2_sub2', 's3_sub1', 's3_sub2']);
+    const privacy = computeCategoryScore(['p1_sub1', 'p1_sub2', 'p2_sub1', 'p2_sub2', 'p3_sub1', 'p3_sub2', 'p4_sub1']);
+    const security = computeCategoryScore(['s1_sub1', 's1_sub2', 's2_sub1', 's2_sub2', 's3_sub1', 's3_sub2', 's4_sub1']);
 
     const weightedNgs = (fairness * 0.20) + (transparency * 0.25) + (privacy * 0.20) + (security * 0.35);
 
