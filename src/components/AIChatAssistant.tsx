@@ -219,12 +219,12 @@ export const AIChatAssistant: React.FC<AIChatAssistantProps> = ({ projects }) =>
   }, [messages]);
 
   const sampleQuestions = [
-    "What is the total registry budget and active project count?",
+    "What is the GNAPRMS platform and its key interactive features?",
     "Explain the 2026 Ghana National AI Strategy & Initiatives",
-    "Show Ghana AI Projects & Key Regulators table",
-    "Explain Ghana Data Protection Act 2012 (Act 843) rules",
-    "How does the system enforce Cybersecurity Act 2020 (Act 1038)?",
-    "Describe the microservices system architecture & databases",
+    "Describe the microservices system IT architecture & databases",
+    "What are the security standards, encryption, and MFA details?",
+    "Which legal Acts and Bills govern AI systems in Ghana?",
+    "What is the total registry budget and active project count?",
     "What are the 8 user roles and access boundaries (RBAC/ABAC)?"
   ];
 
@@ -291,8 +291,33 @@ export const AIChatAssistant: React.FC<AIChatAssistantProps> = ({ projects }) =>
 
       const matchedProject = findProject(query);
 
-      // Check categories
-      if (matchedProject) {
+      // Helper matching functions with word boundaries for general terms
+      const matchesKeyword = (kw: string) => {
+        if (kw.includes(' ')) {
+          return query.includes(kw);
+        }
+        return new RegExp(`\\b${kw}\\b`, 'i').test(query);
+      };
+      const matchesAnyKeyword = (kws: string[]) => kws.some(matchesKeyword);
+
+      const isProjectSpecificQuery = (q: string) => {
+        const projectTerms = [
+          'gps', 'postgps', 'card', 'biometric', 'cocoa', 'cobod', 'cocobod',
+          'justice', 'court', 'nhis', 'nhia', 'leap', 'aicare', 'bawa', 'bawahealth',
+          'sesi', 'agritech', 'oze', 'kudigo', 'regulon', 'khaya', 'bloop', 'nexus',
+          'gn-ai', 'proj-', 'claims', 'insurance', 'beneficiary', 'poverty'
+        ];
+        return projectTerms.some(term => q.includes(term));
+      };
+
+      const containsGeneralSystem = matchesAnyKeyword(['system', 'gnaprms', 'platform', 'software', 'app', 'portal', 'tracker', 'website', 'about the project', 'what is this']);
+      const containsGeneralIT = matchesAnyKeyword(['it', 'technology', 'infrastructure', 'backend', 'frontend', 'server', 'hardware']);
+      const containsGeneralSecurity = matchesAnyKeyword(['security', 'cyber', 'cybersecurity', 'encrypt', 'protect', 'auth', 'mfa', 'otp', 'token', 'jwt', 'rbac', 'abac', 'role', 'permission', 'access', 'audit', 'cert', 'cii', 'switcher']);
+      const containsGeneralAct = matchesAnyKeyword(['act', 'law', 'legislation', 'regulation', 'bill', 'legal', 'act 843', 'act 1038', 'data protection', 'privacy']);
+      const containsGeneralAI = matchesAnyKeyword(['ai', 'artificial intelligence', 'strategy', 'roadmap', 'national ai strategy', 'national strategy', 'observatory', 'synergy', 'responsible ai authority']);
+
+      // 1. Strong Project Specific matches first
+      if (matchedProject && isProjectSpecificQuery(query)) {
         const p = matchedProject;
         const budgetDisbursed = (p.budget.disbursed / 1000000).toFixed(2);
         const budgetRemaining = (p.budget.remaining / 1000000).toFixed(2);
@@ -351,6 +376,159 @@ ${risksStr}
 ${docsStr}
 `;
       }
+      // 2. System / Platform Overview General Topic
+      else if (containsGeneralSystem) {
+        replyText = `## 🇬🇭 Ghana National AI Projects Registry & Monitoring System (GNAPRMS)
+GNAPRMS is the sovereign single source of truth for Artificial Intelligence initiatives being developed or deployed across the Republic of Ghana. Designed for IT Regulators, M&E Officers, and Ministry Auditors, it ensures complete ethical compliance, financial tracking, and secure record keeping.
+
+### 🚀 Key Interactive Portal Features
+1. **M&E Dashboard**: Real-time KPI counters tracking registered projects, budgets, and compliance distribution with dynamic Recharts plots.
+2. **Project Registry**: Drill-down project browser and project submission form with live validation rules.
+3. **GIS Geospatial Map**: Interactive open-data map centered on Ghana utilizing **Leaflet.js** and CartoDB Dark Matter.
+4. **Governance & Ethics Scorecard**: Calculates the **National Governance Score (NGS)** based on Fairness, Transparency, Privacy, and Security.
+5. **AI Readiness Maturity Wizard**: Measures institutional capabilities to classify departments into 4 maturity levels.
+6. **Risk Management Matrix**: Classic 5x5 threat matrix mapping likelihood vs impact with interactive mitigations.
+7. **Document Management & OCR**: Sovereign object storage (MinIO simulation) and a **Full-Text OCR Search Engine** using Tesseract.
+8. **National AI Observatory**: Coordination hub for academic partnerships (KNUST, UG, Ashesi) and synergy recommendations.
+9. **Dynamic Role Switcher**: Identity swapper to simulate Super Admin, Authority, PM, Auditor, or Public User access in real-time.
+`;
+      }
+      // 3. IT, Architecture & Backend Technologies
+      else if (containsGeneralIT || query.includes('architecture') || query.includes('microservice') || query.includes('nest') || query.includes('asp.net') || query.includes('gateway') || query.includes('kong') || query.includes('rabbitmq') || query.includes('database') || query.includes('postgres') || query.includes('sql') || query.includes('mongo') || query.includes('redis') || query.includes('elasticsearch') || query.includes('s3') || query.includes('minio') || query.includes('hybrid') || query.includes('erd') || query.includes('index') || query.includes('table') || query.includes('collection') || query.includes('schema') || query.includes('devops') || query.includes('docker') || query.includes('kubernetes') || query.includes('k8s') || query.includes('ci/cd') || query.includes('prometheus') || query.includes('hpa') || query.includes('scaling') || query.includes('pgbouncer') || query.includes('canary') || query.includes('compose') || query.includes('metrics')) {
+        replyText = `## ⚙️ GNAPRMS Enterprise System Architecture & Databases
+The platform is designed with a state-of-the-art **Microservices Topology**, a **Hybrid Database Strategy**, and sovereign scaling deployments:
+
+### 🌐 Microservice Topology
+1. **Kong API Gateway**: Single entry point handling rate limiting, SSL termination (TLS 1.3), and path routing.
+2. **Auth Service (NestJS)**: Manages authentication, SSO OIDC integration, and session blacklists cached in Redis.
+3. **Registry Service (NestJS)**: Transactional REST/GraphQL APIs for project lifecycle registries.
+4. **Governance Service (ASP.NET Core)**: Implements C# engines for calculating compliance scorecards.
+5. **AI Analytics Service (Python/FastAPI)**: Conducts Scikit-learn predictive modeling for project success, budget overrun margins, and delay estimates.
+6. **RabbitMQ Event Bus**: Facilitates asynchronous, event-driven integrations (e.g. triggering notifications, background OCR indexing).
+
+### 🗄️ Hybrid Database Stack & Table Schemas
+- **PostgreSQL (Transactional Store)**: Handles relational integrity across \`MDAs\`, \`USERS\`, \`PROJECTS\`, \`MILESTONES\`, \`BUDGETS\`, \`COMPLIANCE_ASSESSMENTS\`, \`RISKS\`, and \`AUDIT_LOGS\`.
+- **MongoDB (Document Store)**: Handles fast-changing unstructured records, including \`documents_metadata\` (S3 paths, OCR text, digital signature trees) and \`readiness_evaluations\` history.
+- **Redis (Token Cache)**: Stores JWT session keys and revoked token blocklists.
+- **Elasticsearch**: Indexes OCR text extracted via Tesseract from project contract PDFs for full-text search.
+- **MinIO**: Sovereign S3 object storage vault.
+
+### 🐳 DevOps, K8s & Scalability
+- **Docker Compose**: Orchestrates PostgreSQL (port 5432), MongoDB (27017), MinIO (9000/9001), Redis (6379), and Kong Gateway (8000/8443) locally.
+- **Kubernetes**: 3 master and 4 worker nodes spanning separate availability zones.
+- **Auto-Scaling (HPA)**: Pods scale dynamically when CPU > 75% or Memory > 80%.
+- **CI/CD & Canary Deployments**: Enforces SAST scans (SonarQube) and dependency scanning (Snyk), routing 5% of traffic to canary releases, scaling up to 100% over 4 hours.
+`;
+      }
+      // 4. Security, Auth, MFA & Access Control
+      else if (containsGeneralSecurity) {
+        replyText = `## 🔒 Security Architecture, Cryptography & Access Control
+GNAPRMS is built for national-scale production workloads, enforcing robust cryptographic standards and fine-grained data isolation in accordance with Ghana's Cybersecurity Act 2020 (Act 1038).
+
+### 🔑 Authentication & MFA
+- **OIDC & OAuth 2.0**: Centralized identity system integrating with the **Ghanaian Government Single Sign-On (Gov-SSO)** portal.
+- **Argon2id Hashing**: Password hashes are computed with Argon2id (64MB memory, 3 iterations, 4 parallelism).
+- **MFA Challenge**: Enforced OTP via local SMS gateways or Google Authenticator (TOTP ciphers).
+- **Brute-Force Protection**: IP/username-based rate limiting at Kong API Gateway (max 5 failed login attempts in 10 minutes).
+
+### 👥 Access Control: RBAC & ABAC
+- **Role-Based Access Control (RBAC)**:
+  - **Super Administrator**: Configure system, manage staff accounts, override compliance status, and inspect system audit logs.
+  - **National AI Authority**: Global read access to review national AI pipelines, analyze budgets, and evaluate M&E trends.
+  - **Government Administrator**: Sector-wide oversight (e.g., MoCD, MoH). Pulls agency reports and approves registry sub-entries.
+  - **Project Manager**: Manages specific assigned projects, adjusts milestone progress, logs risks, and uploads agreements.
+  - **M&E Officer**: Regional inspector. Updates compliance scoring, logs GIS verification points, and uploads site evidence.
+  - **Auditor**: Global read-only auditor for projects, budgets, and compliance registers.
+  - **Public User**: Read-only access to GIS maps, public dashboard metrics, and approved open-data exports.
+- **Attribute-Based Access Control (ABAC)**:
+  - *Ministerial Isolation*: Users of 'MoH' can only read or edit projects where \`project.mda_owner == 'MoH'\`. Accessing other ministries is blocked.
+  - *Geospatial Boundary*: Regional M&E Officers can only log inspections inside their assigned region.
+
+### 🛡️ Cryptographic Data Protection
+- **Transit Encryption**: Enforced TLS 1.3 across all endpoints; weak ciphers are disabled at the Kong Gateway.
+- **Rest Encryption**: PostgreSQL database volumes encrypted via AES-256-XTS; MinIO S3 document store encrypted server-side with AES-256-GCM.
+- **Immutable Audit Trails**: Edits trigger database-level triggers that append immutable, append-only logs to MongoDB, capturing operator, timestamp, and diffs (immutable even for Super Admins).
+`;
+      }
+      // 5. Legislative Acts & Bills (Act 843, Act 1038, Emerging Tech Bill)
+      else if (containsGeneralAct) {
+        replyText = `## ⚖️ National Legislative Framework & AI Compliance Acts
+GNAPRMS directly enforces compliance with Ghana's sovereign legislative mandates:
+
+### 🛡️ Data Protection Act, 2012 (Act 843) Requirements
+- **Sovereign Hosting Restriction**: In compliance with Act 843, all production databases and object stores hosting citizen records must be physically hosted on servers located inside Ghana's national borders to prevent unauthorized overseas processing.
+- **Data Minimization & Anonymization**: Systems collect only technical parameters; no unnecessary personally identifiable information (PII) is kept. Citizen records are anonymized using SHA-256 hashing.
+- **Data Protection Officer (DPO)**: Project teams must designate a certified, registered DPO responsible for logging reviews.
+- **Consent Logs**: Digital consent workflows and signature audits are recorded inside the document registry.
+
+### 🔒 Cybersecurity Act, 2020 (Act 1038) Requirements
+- **Critical National Information Infrastructure (CII)**: Essential national AI installations (like Akosombo Dam Smart Gates or GNAPRMS itself) are classified as CII under Act 1038, requiring network isolation and CERT-GH integration.
+- **Immutable Audit Trail**: All database edits trigger database-level triggers that append immutable, append-only logs to MongoDB, capturing the precise timestamp, operator, IP address, and schema diff.
+- **Independent Auditing**: Semi-annual independent technical audits, pen testing, and vulnerability disclosures are mandatory for projects targeting operational stages.
+
+### 🏛️ Emerging Technologies Bill (Draft)
+- Sets legal boundaries, data protection guidelines, and accountability mechanisms for advanced systems (AI, Blockchain, Robotics).
+- Governs AI risk categorization, model card registrations, and biometric verification workflows.
+`;
+      }
+      // 6. AI & Strategy Details
+      else if (containsGeneralAI || query.includes('strategy') || query.includes('national ai strategy') || query.includes('roadmap') || query.includes('mahama') || query.includes('authority') || query.includes('fund') || query.includes('computing centre') || query.includes('coders') || query.includes('omcp') || query.includes('bill') || query.includes('ethics') || query.includes('governance') || query.includes('pillar') || query.includes('fairness') || query.includes('transparency') || query.includes('accountability') || query.includes('explainability') || query.includes('scorecard') || query.includes('ngs') || query.includes('weight') || query.includes('seis') || query.includes('impact') || query.includes('roi') || query.includes('readiness') || query.includes('maturity') || query.includes('observatory') || query.includes('synergy') || query.includes('recommendation') || query.includes('partnership') || query.includes('university') || query.includes('ashesi') || query.includes('knust')) {
+        
+        // Sub-route specifically to Ethics & Scorecard if keywords match
+        if (query.includes('ethics') || query.includes('governance') || query.includes('scorecard') || query.includes('ngs') || query.includes('weight') || query.includes('seis') || query.includes('readiness') || query.includes('maturity')) {
+          replyText = `## ⚖️ National AI Ethics Framework, NGS Scorecard & SEIS
+To evaluate AI safety and socio-economic value, GNAPRMS applies the **National AI Governance Score (NGS)** scorecard and the **Socio-Economic Impact Score (SEIS)**:
+
+### 📊 NGS Scoring Formula & Weights
+The final NGS grade is computed as a weighted average:
+$$\\text{NGS} = 0.20(Fairness) + 0.25(Transparency) + 0.20(Privacy) + 0.35(Security)$$
+
+- **Fairness & Tribal Equity (F) - 20%**: Zero discrimination by region, tribe, language, or socioeconomic class.
+- **Transparency & Explainability (T&E) - 25%**: Documented model cards, dataset lineages, and non-technical explanations.
+- **Privacy (P) - 20%**: Strict Act 843 adherence, anonymization, and encryption.
+- **Security (S) - 35%**: Act 1038 adherence, pen testing, and threat prevention.
+
+### 📈 Compliance Grades & Risk Bands
+- **Excellent** (NGS 90-100%): Safe for national production deployment.
+- **Good** (NGS 75-89%): Minor improvements required in explainability.
+- **Moderate** (NGS 50-74%): Notable gaps detected. Requires mandatory review.
+- **High Risk** (NGS < 50%): Suspended licenses. Immediate technical mitigations required.
+
+---
+
+### 📊 Socio-Economic Impact Scorecard (SEIS)
+Calculated for projects in operational or completed stages across three pillars:
+1. **Economic Impact (35% weight)**: Operating cost savings and Return on Investment (ROI).
+2. **Social Impact (35% weight)**: Citizen accessibility (local language support), job upskilling, and regional inclusion.
+3. **Innovation & Intellectual Property (30% weight)**: Local code ownership percentage and collaboration with top universities (**Ashesi University**, **KNUST**, and **University of Ghana**).
+`;
+        } 
+        // Sub-route specifically to Observatory if keywords match
+        else if (query.includes('observatory') || query.includes('synergy')) {
+          replyText = `## 🌌 National AI Observatory & Synergy Engine
+The **National AI Observatory** acts as a coordination hub for research and cross-agency collaborations:
+
+### ⚙️ Main Capabilities
+1. **Academic Collaboration Tracking**: Indexes publications and collaborations with top-tier Ghanaian research institutes (including KNUST, University of Ghana, and Ashesi University) to link academic innovations with public infrastructure.
+2. **Synergy Recommendation Engine**: Analyzes registered project datasets and highlights collaborations. For example, if two agencies are training computer vision models (e.g., satellite farm analysis under COCOBOD and satellite illegal mining checks under EPA), the engine flags them and recommends sharing pre-trained weights and pipeline specs to save budget.
+3. **Emerging Tech Monitoring**: Logs active implementations of GenAI, computer vision, and expert networks to measure sector concentrations and avoid duplication.
+`;
+        }
+        // General AI Initiatives overview
+        else {
+          replyText = `## 🇬🇭 Ghana National AI Strategy (2025–2035) & Key Initiatives
+The **Ghana National AI Strategy (2025–2035)** sets out a ten-year roadmap to build a responsible, human-centred AI ecosystem in Ghana.
+
+### 🏛️ Core National Initiatives
+1. **Responsible AI Authority**: An independent authority designed to monitor ethics, data collection, and governance benchmarks across public and private AI projects, informed by Singapore's National AI Office precedent.
+2. **National AI Fund**: Capitalized at **GH₵5 billion** for 2025–2030 (scaling to **GH₵15 billion** for 2030–2035), drawn from royalties on mining and oil, to fund start-ups, scale innovations, and build local computational capacity.
+3. **AI Computing Centre**: A **$270 million** high-performance hardware hub (including $250 million dedicated capital) providing GPU capacity for academic research and public-sector model training.
+4. **One Million Coders Programme (OMCP)**: Equipped learning hubs across all 16 regions aiming to train one million citizens in AI, software coding, and cybersecurity starting in April 2026.
+5. **Emerging Technologies Bill**: Draft legislation setting legal boundaries, data protection guidelines, and accountability mechanisms for advanced systems (AI, Blockchain, Robotics).
+`;
+        }
+      }
+      // 7. Aggregated Registry Stats/KPIs
       else if (query.includes('stat') || query.includes('summary') || query.includes('total') || query.includes('aggregate') || query.includes('report') || query.includes('overview') || query.includes('kpi') || query.includes('how many') || query.includes('budget') || query.includes('funding') || query.includes('cost') || query.includes('spent') || query.includes('delayed project') || query.includes('delay')) {
         const totalProjects = projects.length;
         const active = projects.filter(p => p.status === 'Active').length;
@@ -403,18 +581,7 @@ ${delayedStr}
 - **High Risk Grade** (NGS < 50%): **${complianceGrades['High Risk']}** projects
 `;
       }
-      else if (query.includes('strategy') || query.includes('national ai strategy') || query.includes('roadmap') || query.includes('mahama') || query.includes('authority') || query.includes('fund') || query.includes('computing centre') || query.includes('coders') || query.includes('omcp') || query.includes('bill')) {
-        replyText = `## 🇬🇭 Ghana National AI Strategy (2025–2035) & Key Initiatives
-The **Ghana National AI Strategy (2025–2035)** sets out a ten-year roadmap to build a responsible, human-centred AI ecosystem in Ghana.
-
-### 🏛️ Core National Initiatives
-1. **Responsible AI Authority**: An independent authority designed to monitor ethics, data collection, and governance benchmarks across public and private AI projects, informed by Singapore's National AI Office precedent.
-2. **National AI Fund**: Capitalized at **GH₵5 billion** for 2025–2030 (scaling to **GH₵15 billion** for 2030–2035), drawn from royalties on mining and oil, to fund start-ups, scale innovations, and build local computational capacity.
-3. **AI Computing Centre**: A **$270 million** high-performance hardware hub (including $250 million dedicated capital) providing GPU capacity for academic research and public-sector model training.
-4. **One Million Coders Programme (OMCP)**: Equipped learning hubs across all 16 regions aiming to train one million citizens in AI, software coding, and cybersecurity starting in April 2026.
-5. **Emerging Technologies Bill**: Draft legislation setting legal boundaries, data protection guidelines, and accountability mechanisms for advanced systems (AI, Blockchain, Robotics).
-`;
-      }
+      // 8. Regulators Table
       else if (query.includes('table') || query.includes('regulator') || query.includes('regulon') || query.includes('partnership')) {
         replyText = `## 📊 Ghana AI Projects & Key Regulators
 Here is a summary of registered projects and their oversight bodies under the **Responsible AI Authority**:
@@ -434,160 +601,7 @@ Here is a summary of registered projects and their oversight bodies under the **
 > **Regulatory Note:** Key oversight bodies include the **National Communications Authority (NCA)**, the **Data Protection Commission (DPC)**, and the forthcoming **Responsible AI Authority**. The **Emerging Technologies Bill** will serve as the primary legal framework for data use and accountability.
 `;
       }
-      else if (query.includes('act 843') || query.includes('privacy') || query.includes('data protection') || query.includes('data commission')) {
-        replyText = `## 🛡️ Data Protection Act, 2012 (Act 843) Requirements
-The **Ghana Data Protection Act, 2012 (Act 843)** establishes the legal limits for collecting, hosting, and processing citizen records. All AI systems registered in GNAPRMS must meet the following:
-
-### 🔑 Critical System Requirements
-1. **Appoint a Certified Data Protection Officer (DPO)**: MDA project managers must designate a registered DPO responsible for logging reviews.
-2. **Enforce Data Minimization**: Systems must collect only technical and essential contact parameters; no unnecessary citizen personally identifiable information (PII) may be collected.
-3. **Sovereign Hosting Restriction**: In compliance with Act 843, all production databases and object stores hosting citizen records must be physically hosted on servers located inside Ghana's national borders to prevent unauthorized overseas processing.
-4. **Consent Logs**: Digital consent workflows and signature audits must be recorded inside the document registry.
-5. **PII Anonymization & Hashing**: Citizen records must be anonymized before ingestion, utilizing robust hashing protocols (such as SHA-256) and transparent database volume encryption (AES-256).
-`;
-      }
-      else if (query.includes('act 1038') || query.includes('cybersecurity') || query.includes('cyber') || query.includes('security') || query.includes('cert') || query.includes('cii')) {
-        replyText = `## 🔒 Cybersecurity Act, 2020 (Act 1038) Requirements
-The **Cybersecurity Act, 2020 (Act 1038)** regulates secure infrastructure and cyber-defense readiness in Ghana. Under this Act, GNAPRMS registers AI projects and enforces the following security standards:
-
-### 🔑 Key Compliance Controls
-1. **Critical National Information Infrastructure (CII)**: Essential national AI installations (like Akosombo Dam Smart Gates or GNAPRMS itself) are classified as CII. This requires strict network isolation and physical air-gaps.
-2. **Immutable Audit Trail**: In accordance with Act 1038, all database edits trigger database-level triggers that append immutable logs to MongoDB. These capture the timestamp, operator, IP address, and schema diff, and cannot be deleted or modified, even by the Super Administrator.
-3. **National CERT-GH Integration**: The system mandates direct alert linkages between local operational hubs and the National Computer Emergency Response Team (CERT-GH) during critical system threats.
-4. **Independent Auditing**: Semi-annual independent technical audits, pen testing, and vulnerability disclosures are mandatory for projects targeting operational stages.
-`;
-      }
-      else if (query.includes('ethics') || query.includes('governance') || query.includes('pillar') || query.includes('fairness') || query.includes('transparency') || query.includes('accountability') || query.includes('explainability') || query.includes('scorecard') || query.includes('ngs') || query.includes('weight') || query.includes('seis') || query.includes('impact') || query.includes('roi')) {
-        replyText = `## ⚖️ National AI Ethics Framework, NGS Scorecard & SEIS
-To evaluate AI safety and socio-economic value, GNAPRMS applies the **National AI Governance Score (NGS)** scorecard and the **Socio-Economic Impact Score (SEIS)**:
-
-### 📊 NGS Scoring Formula & Weights
-The final NGS grade is computed as a weighted average:
-$$\text{NGS} = 0.20(Fairness) + 0.25(Transparency) + 0.20(Privacy) + 0.35(Security)$$
-
-| Pillar | Weight | Description |
-|---|---|---|
-| **Fairness & Tribal Equity (F)** | **20%** | Zero discrimination by region, tribe, language, or socioeconomic class. |
-| **Transparency & Explainability (T&E)** | **25%** | Documented model cards, dataset lineages, and non-technical explanations of decisions. |
-| **Privacy (P)** | **20%** | Strict Act 843 adherence, anonymization, and encryption. |
-| **Security (S)** | **35%** | Act 1038 adherence, pen testing, and threat prevention. |
-
-### 📈 Compliance Grades & Risk Bands
-- **Excellent** (NGS 90-100%): Safe for national production deployment.
-- **Good** (NGS 75-89%): Minor improvements required in explainability.
-- **Moderate** (NGS 50-74%): Notable gaps detected. Requires mandatory review.
-- **High Risk** (NGS < 50%): Suspended licenses. Immediate technical mitigations required.
-
----
-
-### 📊 Socio-Economic Impact Scorecard (SEIS)
-Calculated for projects in operational or completed stages across three pillars:
-1. **Economic Impact (35% weight)**:
-   - **Cost Savings Indicator (CSI)**: Percentage decrease in operating expenses.
-   - **Efficiency Gains**: Reduction in average processing time.
-   - **Return on Investment (ROI)**:
-     $$\\text{ROI} = \\frac{\\text{Net Financial Value Generated} - \\text{Total Disbursed Budget}}{\\text{Total Disbursed Budget}} \\times 100$$
-2. **Social Impact (35% weight)**:
-   - **Citizen Accessibility**: Supports local languages (Twi, Ga, Ewe) or offers offline caches.
-   - **Job Upskilling**: Count of local IT specialists and operators trained.
-   - **Regional Inclusion**: Deployment to rural assemblies (MMDAs).
-3. **Innovation & Intellectual Property (30% weight)**:
-   - **Local Code Ownership**: Percentage of algorithms trained or customized in Ghana vs. licensed from abroad.
-   - **Academic Integration**: Collaborations, internships, and research papers with **Ashesi University**, **KNUST**, and **University of Ghana**.
-`;
-      }
-      else if (query.includes('architecture') || query.includes('microservice') || query.includes('nest') || query.includes('asp.net') || query.includes('gateway') || query.includes('kong') || query.includes('rabbitmq') || query.includes('database') || query.includes('postgres') || query.includes('sql') || query.includes('mongo') || query.includes('redis') || query.includes('elasticsearch') || query.includes('s3') || query.includes('minio') || query.includes('hybrid') || query.includes('erd') || query.includes('index') || query.includes('table') || query.includes('collection') || query.includes('schema')) {
-        replyText = `## ⚙️ GNAPRMS Enterprise System Architecture & Databases
-The platform is designed with a state-of-the-art **Microservices Topology** and a **Hybrid Database Strategy**:
-
-### 🌐 Microservice Topology
-1. **Kong API Gateway**: Single entry point handling rate limiting, SSL termination (TLS 1.3), and path routing.
-2. **Auth Service (NestJS)**: Manages authentication, SSO OIDC integration, and session blacklists.
-3. **Registry Service (NestJS)**: Transactional REST/GraphQL APIs for project lifecycle registries.
-4. **Governance Service (ASP.NET Core)**: Implements C# engines for calculating compliance scorecards.
-5. **AI Analytics Service (Python/FastAPI)**: Conducts Scikit-learn predictive modeling for project success, budget overrun margins, and delay estimates.
-6. **RabbitMQ Event Bus**: Facilitates asynchronous, event-driven integrations (e.g. triggering notifications, background OCR indexing).
-
-### 🗄️ Hybrid Database Stack & Table Schemas
-- **PostgreSQL (Transactional Store)**: Handles relational integrity across:
-  - \`MDAs\`: uuid primary key, ministry name, department code, sector, headquarters.
-  - \`USERS\`: uuid primary key, name, email, password_hash, role, mda_id foreign key, mfa.
-  - \`PROJECTS\`: uuid primary key, code, name, category, stage, status, GIS lat/long coordinates.
-  - \`MILESTONES\`: uuid primary key, project_id, title, progress_percent, status.
-  - \`BUDGETS\`: uuid primary key, project_id, total_allocated, disbursed, utilized, remaining.
-  - \`COMPLIANCE_ASSESSMENTS\`: fairness, transparency, accountability, privacy, security scores.
-  - \`RISKS\`: project_id, category, severity, description, status.
-  - \`AUDIT_LOGS\`: user_id, action, details, timestamp.
-- **MongoDB (Document Store)**: Handles fast-changing unstructured records:
-  - \`documents_metadata\` collection: holds S3 paths, file sizes, OCR-extracted texts, digital signature histories.
-  - \`readiness_evaluations\` collection: holds readiness maturity sliders history and recommendations.
-- **Redis (Token Cache)**: Stores JWT session keys and revoked token blocklists.
-- **Elasticsearch**: Indexes OCR text extracted via Tesseract from project contract PDFs.
-- **MinIO**: Sovereign S3 object storage vault.
-
-### ⚡ Query Optimization & Indexing Strategies
-- **PostgreSQL**:
-  1. Partial index on status: \`CREATE INDEX idx_active_projects ON projects (status) WHERE status = 'Active';\` (speeds up map load).
-  2. Compound index: \`CREATE INDEX idx_project_compliance ON compliance_assessments (project_id, grade);\`.
-  3. Budget join index: \`CREATE INDEX idx_project_budget ON budgets (project_id) INCLUDE (total_allocated, disbursed, utilized);\`.
-- **MongoDB**:
-  1. Full-text search index: \`db.documents_metadata.createIndex({ ocr_text: "text" });\`.
-  2. Compound index: \`db.readiness_evaluations.createIndex({ mda_id: 1, submittedAt: -1 });\`.
-`;
-      }
-      else if (query.includes('devops') || query.includes('docker') || query.includes('kubernetes') || query.includes('k8s') || query.includes('ci/cd') || query.includes('prometheus') || query.includes('hpa') || query.includes('scaling') || query.includes('pgbouncer') || query.includes('canary') || query.includes('port') || query.includes('compose') || query.includes('metrics')) {
-        replyText = `## 🚀 DevOps, Deployment & Scalability Plan
-GNAPRMS is built for national-scale production workloads, operating on sovereign cloud infrastructure:
-
-### 🐳 Docker Compose Services Stack (\`docker-compose.yml\`)
-- **postgres**: image \`postgres:15-alpine\` on Port \`5432\` (database: \`gnaprms_registry\`).
-- **mongodb**: image \`mongo:6.0\` on Port \`27017\`.
-- **minio**: S3 storage on Port \`9000\` (API) and Port \`9001\` (console admin).
-- **redis**: image \`redis:7-alpine\` on Port \`6379\`.
-- **kong**: gateway image \`kong:3.3\` on Ports \`8000\` (proxy) and \`8443\` (SSL).
-
-### ⚙️ Kubernetes (K8s) Orchestration
-- **Cluster Topology**: 3 master nodes and minimum 4 worker nodes spanning separate availability zones.
-- **Namespaces**:
-  - \`gnaprms-core\`: Registry, Auth, and Frontend UI.
-  - \`gnaprms-data\`: PostgreSQL StatefulSet, MongoDB cluster, Redis.
-  - \`gnaprms-sec\`: Kong Gateway, Vault secrets manager.
-- **Auto-Scaling (HPA)**: Pods scale dynamically when:
-  \`Metric: CPU Utilization > 75% OR Memory Utilization > 80%\`
-- **Availability**: \`PodDisruptionBudget\` guarantees a minimum of 2 active replicas per service (99.99% uptime).
-
-### 🛠️ CI/CD Pipeline & Deploy Strategy
-- **SAST Scanning**: Pre-merge code runs through static scanners (e.g. SonarQube) to block SQL injections or hardcoded keys.
-- **Snyk Scanning**: Scans container images for dependency vulnerability hazards.
-- **Canary Release Strategy**: gateway directs **5%** of requests to new releases, scaling up to 100% over a 4-hour window if errors remain below **0.01%**.
-
-### 📊 System Observability & Alerting
-- **Prometheus**: Scrapes numerical performance indicators from endpoints (\`/metrics\`).
-- **Grafana**: Visualizes CPU/RAM limits, latency, DB connections, and queue lengths.
-- **FluentBit & Elasticsearch**: Daemon-sets parse stdout logs from pods and index them in Elasticsearch for Kibana dashboard searches.
-- **Alerting Rules**: Slack and SMS alerts notify stand-by DevOps staff when memory exceeds 95% or DB replicas fail.
-`;
-      }
-      else if (query.includes('role') || query.includes('permission') || query.includes('auth') || query.includes('rbac') || query.includes('abac') || query.includes('access') || query.includes('user') || query.includes('switcher')) {
-        replyText = `## 🔑 Access Control: RBAC & ABAC Architecture
-The registry protects data integrity and ministerial boundaries through a hybrid authorization model:
-
-### 👤 Role-Based Access Control (RBAC)
-- **Super Administrator**: Configure system, manage staff accounts, override compliance status, and inspect system audit logs.
-- **National AI Authority**: Global read access to review national AI pipelines, analyze budgets, and evaluate M&E trends.
-- **Government Administrator**: Sector-wide oversight (e.g., MoCD, MoH). Pulls agency reports and approves registry sub-entries.
-- **Institution Administrator**: Local agency management. Registers new AI projects and manages local milestones.
-- **Project Manager**: Manages specific assigned projects, adjusts milestone progress, logs risks, and uploads agreements.
-- **M&E Officer**: Regional inspector. Updates compliance scoring, logs GIS verification points, and uploads site evidence.
-- **Auditor**: Global read-only auditor for projects, budgets, and compliance registers.
-- **Public User**: Read-only access to GIS maps, public dashboard metrics, and approved open-data exports.
-
-### 🛡️ Attribute-Based Access Control (ABAC) Rules
-- **Ministerial Isolation**: Users of 'MoH' can only read or edit projects where \`project.mda_owner == 'MoH'\`. Accessing other ministries (e.g. 'MoFA') is blocked.
-- **Regional Isolation**: M&E officers can only log inspections if their assigned region matches the project region.
-- **Classification Separation**: Draft, conceptual, or security-sensitive projects are hidden from public views unless \`is_public_approved == true\`.
-`;
-      }
+      // 9. Guides & Workflows
       else if (query.includes('how to') || query.includes('how do i') || query.includes('guide') || query.includes('workflow') || query.includes('register') || query.includes('audit') || query.includes('mitigate') || query.includes('upload') || query.includes('sign') || query.includes('ocr')) {
         replyText = `## 📖 GNAPRMS Step-by-Step Operator Guide
 Here is how to perform core actions inside the Single Page Application:
@@ -622,29 +636,79 @@ Here is how to perform core actions inside the Single Page Application:
 4. Click **"Sign Document"** to append your digital signature and role parameters to the PDF's version tree.
 `;
       }
-      else if (query.includes('observatory') || query.includes('synergy') || query.includes('recommendation') || query.includes('partnership') || query.includes('university') || query.includes('ashesi') || query.includes('knust')) {
-        replyText = `## 🌌 National AI Observatory & Synergy Engine
-The **National AI Observatory** acts as a coordination hub for research and cross-agency collaborations:
+      // 10. Fallback Project Match (if no general topic is matched)
+      else if (matchedProject) {
+        const p = matchedProject;
+        const budgetDisbursed = (p.budget.disbursed / 1000000).toFixed(2);
+        const budgetRemaining = (p.budget.remaining / 1000000).toFixed(2);
+        const utilRate = ((p.budget.utilized / (p.budget.disbursed || 1)) * 100).toFixed(1);
 
-### ⚙️ Main Capabilities
-1. **Academic Collaboration Tracking**: Indexes publications and collaborations with top-tier Ghanaian research institutes (including KNUST, University of Ghana, and Ashesi University) to link academic innovations with public infrastructure.
-2. **Synergy Recommendation Engine**: Analyzes registered project datasets and highlights collaborations. For example, if two agencies are training computer vision models (e.g., satellite farm analysis under COCOBOD and satellite illegal mining checks under EPA), the engine flags them and recommends sharing pre-trained weights and pipeline specs to save budget.
-3. **Emerging Tech Monitoring**: Logs active implementations of GenAI, computer vision, and expert networks to measure sector concentrations and avoid duplication.
+        const milestonesStr = p.milestones.length > 0
+          ? p.milestones.map(m => `- **${m.title}**: ${m.progressPercent}% progress (${m.status}) - Due: \`${m.dueDate}\``).join('\n')
+          : '*No milestones logged for this project.*';
+
+        const risksStr = p.risks.length > 0
+          ? p.risks.map(r => `- [${r.severity}] **${r.category}**: ${r.description} (Status: \`${r.status}\`) \n  *Mitigation*: ${r.mitigationPlan}`).join('\n')
+          : '*No active risks logged for this project.*';
+
+        const docsStr = p.documents.length > 0
+          ? p.documents.map(d => `- **${d.fileName}** (v${d.version}, uploaded \`${d.uploadedAt}\`) - Signed: ${d.signedBy.join(', ') || 'Unsigned'}`).join('\n')
+          : '*No documents uploaded yet.*';
+
+        replyText = `## Project Details: ${p.name}
+### Code: \`${p.projectCode}\` | Status: \`${p.status}\` | Stage: \`${p.stage}\`
+
+**Description**: ${p.description}
+
+### 📋 Registry Metadata
+| Attribute | Details |
+|---|---|
+| **MDA Owner** | ${p.mda} (${p.mdaCode}) |
+| **Sector / Category** | ${p.sector} / ${p.category} |
+| **GIS Location** | ${p.region} Region, ${p.district} District |
+| **Coordinates** | \`Lat: ${p.latitude}, Long: ${p.longitude}\` |
+| **Timeline** | ${p.startDate} to ${p.expectedCompletionDate} |
+| **NARI Score** | **${p.readinessScore}%** |
+
+### 💰 Financing Details
+- **Total Allocated**: ${formatNumberToWords(p.budget.totalAllocated)} GHS (GHS ${p.budget.totalAllocated.toLocaleString('en-US')})
+- **Disbursed**: GHS ${budgetDisbursed}M
+- **Utilized**: ${formatNumberToWords(p.budget.utilized)} GHS (GHS ${p.budget.utilized.toLocaleString('en-US')}) (Utilization Rate: **${utilRate}%**)
+- **Remaining**: GHS ${budgetRemaining}M
+- **Funding Source**: ${p.budget.primaryFundingSource} (${p.budget.currency})
+
+### ⚖️ Ethical Scorecard (NGS Breakdown)
+| Governance Pillar | Score | Weight | Weighted Score |
+|---|---|---|---|
+| **Fairness & Tribal Equity** | ${p.compliance.fairness}% | 20% | ${(p.compliance.fairness * 0.2).toFixed(1)}% |
+| **Transparency & Explainability** | ${p.compliance.transparency}% | 25% | ${(p.compliance.transparency * 0.25).toFixed(1)}% |
+| **Privacy (Act 843)** | ${p.compliance.privacy}% | 20% | ${(p.compliance.privacy * 0.2).toFixed(1)}% |
+| **Security (Act 1038)** | ${p.compliance.security}% | 35% | ${(p.compliance.security * 0.35).toFixed(1)}% |
+| **OVERALL GRADE** | **${p.compliance.overallGrade}** | **100%** | **${((p.compliance.fairness * 0.2) + (p.compliance.transparency * 0.25) + (p.compliance.privacy * 0.2) + (p.compliance.security * 0.35)).toFixed(0)}%** |
+
+### 🚀 Implementation Milestones
+${milestonesStr}
+
+### ⚠️ Active Threats & Mitigation Plan
+${risksStr}
+
+### 🗄️ Uploaded Documents & Electronic Signs
+${docsStr}
 `;
       }
+      // 11. Default instructions fallback
       else {
         replyText = `## 🇬🇭 GNAPRMS AI Governance & Policy Assistant
 Welcome! I am the National AI Governance Assistant. I can help you answer questions about the GNAPRMS platform, its registered projects, legislative requirements, technical architecture, and user workflows.
 
 ### ❓ What you can ask me:
-1. **Registered Projects**: Ask about a project directly, e.g. "tell me about COCOBOD pest predictor" or "explain the Akosombo Hydrology system status".
-2. **System Statistics**: Ask "what is the total budget allocated?" or "show a summary of active projects".
-3. **Legislation**: Inquire about data privacy regulations: "what are the rules under Act 843?" or "how does Act 1038 apply to critical AI systems?".
-4. **Ethics Pillars**: Ask "what are the six ethical pillars?" or "how is the National Governance Score (NGS) calculated?".
-5. **System Architecture**: Ask "describe the microservices architecture" or "what databases are used in the backend?".
-6. **Access Control**: Ask "describe user roles and RBAC/ABAC rules".
-7. **Operator Guides**: Ask "how do I audit compliance?" or "how do I register a new project?".
-8. **Observatory**: Ask "what is the National AI Observatory?" or "how does the synergy engine work?".
+1. **The System**: Ask "what is this system?" or "what are the key features of the platform?"
+2. **AI & Strategy**: Ask "explain the National AI Strategy" or "what are the AI initiatives in Ghana?"
+3. **IT & Architecture**: Ask "describe the microservices system architecture" or "what databases are used?"
+4. **Security & Roles**: Ask "how is data secured?" or "what are the user roles and RBAC/ABAC rules?"
+5. **Legislative Acts**: Ask "what is the Data Protection Act (Act 843)?" or "how does Cybersecurity Act (Act 1038) apply?"
+6. **Registered Projects**: Ask about a specific project, e.g. "tell me about the LEAP registry" or "explain the Akosombo Hydrology system status".
+7. **System Statistics**: Ask "what is the total budget allocated?" or "show a summary of active projects".
 `;
       }
 
