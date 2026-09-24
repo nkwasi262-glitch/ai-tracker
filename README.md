@@ -1,98 +1,89 @@
-# Ghana National AI Projects Registry & Monitoring System (GNAPRMS)
+# National AI Project Tracking and Clearance System (NAPTCS)
 
-Welcome to the **Ghana National AI Projects Registry & Monitoring System (GNAPRMS)**. This platform acts as the sovereign single source of truth for Artificial Intelligence initiatives being developed or deployed across Ghana. It supports national AI governance, transparency, monitoring, ethical compliance, regional GIS tracking, budget optimization, and predictive risk management.
-
----
-
-## 🚀 Interactive Portal Features
-
-GNAPRMS is implemented as a premium, highly interactive **React, TypeScript, and Vite** Single Page Application styled with a custom vanilla CSS design system (slate, emerald, and gold colorways, smooth micro-animations, glowing forms, and glassmorphic overlays).
-
-1. **M&E Dashboard**: National KPI counters tracking total projects, budget caps, compliance grades, and readiness indices with dynamic Recharts plots (Budget utilization bars, sector radars, ethical trend lines) and active alerts.
-2. **Project Registry**: List browser on the left (drill-down to milestones and details) and a formal project submission form on the right with live validation rules.
-3. **GIS Spatial Map & Sovereign Spatial API Engine**: Interactive open-data map powered by **Leaflet.js** and PostGIS spatial intelligence. Features:
-   - **Multi-Basemap Switcher**: Toggle between CartoDB Dark Matter (sovereign stealth), ESRI Satellite World Imagery (earth observation & agriculture), and Voyager Streets (topographic infrastructure).
-   - **Interactive GIS Spatial API Console**: Real-time REST API testbench exposing OGC & GeoJSON (RFC 7946) endpoints (`/api/v1/gis/geojson/projects`, `/api/v1/gis/spatial-query`, `/api/v1/gis/regions/density`, `/api/v1/gis/telemetry/live`, `/api/v1/gis/compliance/sovereign-boundary`), with instant cURL generation, latency counters, and formatted JSON inspector.
-   - **Live IoT Edge Telemetry Mesh**: Real-time stream tracking field IoT sensors (Akosombo Dam hydrological radar, Cocoa Board soil arrays, Kumasi traffic vision AI, Bolgatanga drone vertiports) with animated radar rings and battery health telemetry.
-   - **Proximity Radius Tool & Haversine Distance**: Dynamic radius slider (20km - 250km) and hub selector filtering project nodes in real time.
-   - **All 16 Ghanaian Administrative Regions**: Complete density heatmap rings, budget allocations, and one-click camera focus across all 16 regions.
-   - **Act 843 Sovereign Geo-Fencing**: Automated validation confirming all project node coordinates strictly reside within sovereign land and maritime borders of the Republic of Ghana.
-   - **Multi-Format GIS Data Export**: One-click downloads for GeoJSON (`.geojson`), Spatial CSV (`.csv`), and Google Earth KML (`.kml`).
-4. **Governance & Ethics**: Multi-dimensional ethical scorecard assessing algorithms against Fairness, Transparency, Accountability, Privacy, and Security, yielding dynamic National Governance Scores (NGS) and compliance grades.
-5. **AI Readiness maturity wizard**: Wizard sliders measuring institutional skills, infrastructure, data, funding, and policies to classify departments into 4 maturity levels alongside dynamic action guidelines.
-6. **Risk Management Matrix**: Classic 5x5 threat matrix mapping likelihood vs impact. Interactive grids allow operators to click on critical threat pins, read mitigations, and cross them off (moving from "Open" to "Mitigated").
-7. **Document Management & OCR**: Sovereign object storage (MinIO simulation) tracking document revisions, digital signatures, and a **Full-Text OCR Search Engine** indexing and highlighting search terms inside uploaded PDFs.
-8. **AI Chat Assistant**: Conversational agent preloaded with the **Ghana Data Protection Act 2012 (Act 843)**, **Cybersecurity Act 2020 (Act 1038)**, and the active registry data to answer natural language queries.
-9. **AI Observatory & Recommendation Engine**: Synthesizes emerging technologies, tracks collaborative university papers (KNUST, UG, Ashesi), and computes agency synergies to advice cross-agency partnerships.
-10. **Dynamic Role Switcher**: Quick selector in the header permitting staging testers to switch identities (Super Admin, Ministry Auditor, PM, Public User) and watch the interface restrict options, tabs, and write permissions in real-time.
+A national platform to register, assess, clear, and monitor Artificial Intelligence projects across Ghana — covering both **Government Entities (MDAs, MMDAs, SOEs)** and the **Private Sector (Commercial Enterprises, Startups, and Foreign Vendors)**.
 
 ---
 
-## 📂 Repository Directory Layout
+## 🏛️ Purpose & Scope (NAPTCS Scope of Work)
 
-The repository is structured into two primary divisions:
+The **National AI Project Tracking and Clearance System (NAPTCS)** gives the regulator (NITA / ITCO / Clearance Authority) a single source of truth and gives AI project owners a predictable, transparent path to statutory approval pursuant to Ghana's **Data Protection Act, 2012 (Act 843)**, the **Cybersecurity Act, 2020 (Act 1038)**, the **EU AI Act**, **NIST AI RMF**, and **ISO/IEC 42001**.
 
-```text
-/
-├── architecture/                     # Enterprise Architecture & Compliance Suites
-│   ├── system_architecture.md        # Microservices layout, Kong API gateway, PostGIS GIS service
-│   ├── database_erd.md               # PostgreSQL + PostGIS & MongoDB Dual-DB schemas & Mermaid ERD
-│   ├── security_architecture.md      # OAuth2/SSO, RBAC/ABAC models, Act 843 & Act 1038 guidelines
-│   ├── devops_architecture.md        # Docker Compose, K8s orchestration, CI/CD, Prometheus telemetry
-│   ├── ai_governance_framework.md    # Ethical scoring calculations, pillar matrices
-│   ├── me_framework.md               # National KPIs, SEIS scorecard formulas, verification paths
-│   ├── user_administrator_manual.md  # Detailed operator handbook
-│   └── national_ai_regulatory_overview_2026.md # 2026 IT Regulator Overview of AI Projects
-│
-├── src/                              # React + TypeScript Frontend Prototype
-│   ├── api/                          # Sovereign API & Integration Engines
-│   │   └── gisSpatialApi.ts          # PostGIS, GeoJSON RFC 7946, Telemetry & Export Engine
-│   ├── components/                   # Interactive portal view sub-modules
-│   │   ├── Layout.tsx                # Sidebar shell & role-based tab filters
-│   │   ├── RoleSwitcher.tsx          # Dynamic identity context swapper
-│   │   ├── Dashboard.tsx             # M&E statistics & Recharts plotting
-│   │   ├── ProjectRegistry.tsx       # Search browsers and validation entry forms
-│   │   ├── GISGeospatial.tsx         # Multi-layer Leaflet map & interactive GIS API console
-│   │   ├── GovernanceCompliance.tsx  # Ethical checklist scorecards
-│   │   ├── AIReadiness.tsx           # Multi-slider maturity calculators
-│   │   ├── RiskManagement.tsx        # 5x5 Likelihood vs Impact Matrix
-│   │   ├── DocumentManager.tsx       # S3 vault, digital signatures & OCR search
-│   │   ├── AIChatAssistant.tsx       # Natural Language conversational chatbot
-│   │   └── NationalObservatory.tsx   # Synergy recommendation engine & trends
-│   ├── data/
-│   │   └── sampleProjects.ts         # Preloaded cocoa, Akosombo, hydro, drone, transit & 16 regions
-│   ├── App.tsx                       # Master central orchestrator and state coordinator
-│   ├── main.tsx                      # Client DOM mount node
-│   └── index.css                     # Complete responsive CSS design system with GIS styling
-│
-├── package.json                      # Workspace dependencies
-├── vite.config.ts                    # Vite compiler server options
-├── tsconfig.json                     # TypeScript compilation specifications
-├── index.html                        # Main HTML entry carrying Outfit/Inter fonts & Leaflet links
-└── README.md                         # Product index guide
+### Core Objectives
+- **Complete National Inventory**: Catalog every AI system in Ghana, whether government-led, private sector, or an international partnership.
+- **Organization Clearance Gatekeeper**: **Strict Requirement** — An organization (MDA, MMDA, SOE, or private firm) must first submit statutory credentials (GRA TIN, DPC Act 843 registration, designated Data Protection Officer, sovereign hosting guarantees) and be accredited before its AI projects or geospatial telemetry appear on the system.
+- **Risk Pre-Classification & Evidence Packaging**: Classify systems into 4 tiers (*Minimal*, *Limited*, *High*, *Prohibited*). High-risk systems must submit executed DPIAs, VAPT cybersecurity pen-test audits, model data lineage cards, and bias audits.
+- **Automated & Committee Clearance Scoring**: Clear systems based on weighted thresholds (*Cleared ≥ 85%*, *Conditional 60–84%*, *Not Cleared < 60%*) with mandatory gate overrides (e.g. no DPIA on a high-risk project causes an automatic block).
+- **Public Verification & Transparency Portal**: Allows citizens, institutions, and international partners to authenticate any clearance certificate via unique identifier or QR link, with sensitive security data redacted under Act 843.
+
+---
+
+## 🔄 The 8-Stage Clearance Lifecycle
+
+NAPTCS enforces an immutable 8-stage lifecycle for all artificial intelligence systems:
+
+```mermaid
+graph TD
+    A["1. Organization Accreditation<br/>(TIN, DPC Act 843, DPO)"] --> B["2. System Registration<br/>(Models, Vendors, Datasets)"]
+    B --> C["3. Risk Pre-Classification<br/>(Minimal, Limited, High, Prohibited)"]
+    C --> D["4. Assessment Evidence Package<br/>(DPIA, VAPT, SLA, Model Docs)"]
+    D --> E["5. Technical Scoring & Review<br/>(TCC & Automated Criteria)"]
+    E --> F["6. Clearance Decision<br/>(Cleared ≥85%, Conditional 60-84%, Not Cleared)"]
+    F --> G["7. Certification & Public Registry<br/>(Unique ID, Scope Limits, QR Seal)"]
+    G --> H["8. Post-Market Monitoring<br/>(Attestations, Incidents, Re-Clearance)"]
 ```
 
 ---
 
-## ⚡ Quick Start: Running Locally
+## 🚀 Interactive Modules
 
-To launch the interactive GNAPRMS prototype dashboard in your local web browser, execute the following commands in your shell:
+The NAPTCS Single Page Application is built with **React, TypeScript, and Vite**, featuring a modern sovereign UI with rich micro-animations, glassmorphism, and responsive workflows:
 
-### 1. Retrieve dependencies
+1. **NAPTCS Analytics & M&E Dashboard**: Dual-sector KPI counters, clearance funnel statistics, risk tier breakdown, budget absorption by entity, and live regulatory notices.
+2. **Organization Clearance (The Gatekeeper Engine)**: Review accreditation requests from MDAs, SOEs, and private technology firms. One-click vetting unlocks or quarantines an organization's projects across the entire national portal.
+3. **AI Projects Registry**: Dual-track registry browser (Government vs Private Sector) with risk pre-classification wizards, mandatory evidence checklist gates, and Regulator clearance adjudication tools.
+4. **Public Verification Portal (SOW Section 5.7)**: Real-time certificate lookup tool for citizens and partners to verify clearance certificates (e.g., `NAPTCS-CLR-2026-001`), display permitted operational scope, check conditional deadlines, and browse the public register of cleared AI systems.
+5. **GIS Spatial Monitoring & Telemetry Map**: Leaflet.js PostGIS geospatial engine tracking AI systems across all 16 regions of Ghana, featuring:
+   - Sector Track filtering (Government vs Private Sector).
+   - Gatekeeper Clearance filtering (Cleared & Public Only vs Show Quarantined).
+   - Live IoT Edge Telemetry Mesh (Akosombo Dam, Cocoa Board, Kumasi traffic, drone vertiports).
+   - Interactive GIS Spatial API Console (cURL generation, GeoJSON RFC 7946, PostGIS queries).
+   - Multi-format spatial export (GeoJSON, CSV, KML).
+6. **Governance & Ethics (Act 843)**: Multi-dimensional scorecard calculating National Governance Scores across Fairness, Transparency, Accountability, Privacy, and Security.
+7. **AI Readiness Maturity Wizard**: 5-pillar maturity assessment evaluating institutional capacity, computing infrastructure, sovereign data pipelines, and policy readiness.
+8. **Risk Matrix & Tiers**: 5x5 Likelihood vs Impact threat matrix mapping critical vulnerabilities to operational mitigations.
+9. **Document Vault & Full-Text OCR**: Sovereign object storage simulation with document versioning, digital signatures, and OCR keyword indexing.
+10. **Regulator AI Assistant**: Natural language conversational assistant grounded in Ghana Act 843, Act 1038, and national AI policies.
+
+---
+
+## 👥 Stakeholders & Roles
+
+The system supports role-based access control (RBAC) scoped by institution:
+- **Regulator / Clearance Authority**: Final approval, policy configuration, certificate issuance, and sovereign oversight.
+- **Technical Review Committee (TCC)**: Technical assessment, model audit, and conformity decisions.
+- **Government Applicant (MDA/MMDA/SOE)**: Register and manage public sector AI initiatives.
+- **Private Sector Applicant**: Register private technology firms, commercial AI products, and COTS/SaaS systems.
+- **Auditor**: Read-only oversight with complete historical audit trail.
+- **Public User**: Access to public verification portal, cleared project register, GIS spatial map, and AI chat assistant.
+
+---
+
+## ⚡ Running Locally
+
 ```bash
+# 1. Install dependencies
 npm install
-```
 
-### 2. Launch local compiler and dev server
-```bash
+# 2. Launch development server
 npm run dev
+
+# 3. Build for production (TypeScript + Vite bundle)
+cmd /c npm run build
 ```
-*The local development server launches instantly on [http://localhost:3000](http://localhost:3000).*
 
 ---
 
-## 📜 Legal & Legislative Alignment
-
-The platform is designed in strict compliance with crucial Ghanaian sovereign regulations:
-* **Data Protection Act, 2012 (Act 843)**: Mandates sovereign hosting limits inside Ghana's borders, appointed Data Protection Officers (DPO), and automated PII anonymization pipelines.
-* **Cybersecurity Act, 2020 (Act 1038)**: Defines registry databases as Critical Information Infrastructure (CII), enforcing immutable, append-only security transaction audit trails (MongoDB models) and direct National CERT integration alerts.
+## 📜 Legislative Framework
+- **Ghana Data Protection Act, 2012 (Act 843)**: Mandatory registration of data controllers, DPIAs for high-risk processing, and sovereign data residency.
+- **Cybersecurity Act, 2020 (Act 1038)**: Protection of Critical Information Infrastructure (CII) and mandatory incident reporting.
+- **International Benchmarks**: Aligned with the **EU AI Act** (risk-based approach), **NIST AI Risk Management Framework (RMF)**, and **ISO/IEC 42001** (AI Management Systems).

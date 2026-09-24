@@ -1,51 +1,50 @@
 import React, { useState } from 'react';
-import { Plus, Search, Calendar, Landmark, MapPin, DollarSign, AlertCircle, Activity } from 'lucide-react';
-import { AIProject, formatNumberToWords } from '../data/sampleProjects';
+import { 
+  Plus, 
+  Search, 
+  MapPin, 
+  DollarSign, 
+  AlertCircle, 
+  ShieldCheck, 
+  AlertTriangle, 
+  CheckCircle2, 
+  Award, 
+  Lock
+} from 'lucide-react';
+import { 
+  AIProject, 
+  Organization, 
+  RiskTier, 
+  ProjectClearanceStatus, 
+  ghanaRegions, 
+  sampleOrganizations
+} from '../data/sampleProjects';
 import { UserRole } from './RoleSwitcher';
-const standardMDAs = [
-  { name: 'Ministry of Communications and Digitalisation', code: 'MOCD' },
-  { name: 'National Information Technology Agency', code: 'NITA' },
-  { name: 'Data Protection Commission', code: 'DPC' },
-  { name: 'Ministry of Food and Agriculture', code: 'MOFA' },
-  { name: 'Ministry of Health', code: 'MOH' },
-  { name: 'Ministry of Education', code: 'MOE' },
-  { name: 'National Health Insurance Authority', code: 'NHIA' },
-  { name: 'Ministry of Gender, Children and Social Protection', code: 'MOGCSP' },
-  { name: 'Judicial Service of Ghana', code: 'JSG' },
-  { name: 'Ministry of Finance', code: 'MOF' },
-  { name: 'Ministry of Transport', code: 'MOT' },
-  { name: 'Ministry of Interior', code: 'MINTER' },
-];
-
-const standardRegions = [
-  { name: 'Greater Accra', center: [5.6037, -0.1870] },
-  { name: 'Ashanti', center: [6.6922, -1.6163] },
-  { name: 'Northern', center: [9.4075, -0.8533] },
-  { name: 'Western North', center: [6.2041, -1.7583] },
-  { name: 'Western', center: [5.5560, -2.2229] },
-  { name: 'Eastern', center: [6.2958, 0.0594] },
-  { name: 'Central', center: [6.2201, -2.1245] },
-  { name: 'Volta', center: [6.5781, 0.4504] }
-];
-
 
 interface ProjectRegistryProps {
   projects: AIProject[];
+  organizations?: Organization[];
   onAddProject: (newProject: AIProject) => void;
   onDeleteProject: (projectId: string) => void;
   onClearAllProjects: () => void;
+  onUpdateProjectClearance?: (projectId: string, clearanceStatus: ProjectClearanceStatus, score: number, remarks: string) => void;
   currentRole: UserRole;
 }
 
 export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({ 
   projects, 
+  organizations = sampleOrganizations,
   onAddProject, 
   onDeleteProject,
   onClearAllProjects,
+  onUpdateProjectClearance,
   currentRole 
 }) => {
   // Lists filters
   const [searchTerm, setSearchTerm] = useState('');
+  const [sectorTypeFilter, setSectorTypeFilter] = useState<'All' | 'Government' | 'Private Sector'>('All');
+  const [riskTierFilter, setRiskTierFilter] = useState<'All' | RiskTier>('All');
+  const [clearanceStatusFilter, setClearanceStatusFilter] = useState<'All' | ProjectClearanceStatus>('All');
   const [stageFilter, setStageFilter] = useState('All');
   const [selectedProject, setSelectedProject] = useState<AIProject | null>(projects[0] || null);
 
@@ -56,79 +55,116 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
     }
   }, [projects, selectedProject]);
 
-  // Form states
+  // Form states for registering new AI Project
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState<any>('Machine Learning');
-  const [sector, setSector] = useState<any>('Agriculture');
-  const [mda, setMda] = useState('Ministry of Communications and Digitalisation');
-  const [mdaCode, setMdaCode] = useState('MOCD');
-  const [region, setRegion] = useState('Greater Accra');
-  const [district, setDistrict] = useState('');
+  const [category, setCategory] = useState<AIProject['category']>('Machine Learning');
+  const [sector, setSector] = useState<AIProject['sector']>('Agriculture');
+  
+  // Organization selector state
+  const [selectedOrgId, setSelectedOrgId] = useState<string>(organizations[0]?.id || 'org-1');
+  
+  const selectedOrg = organizations.find(o => o.id === selectedOrgId) || organizations[0];
+  const isSelectedOrgCleared = selectedOrg?.clearanceStatus === 'Cleared';
+
+  // Region and GIS states
+  const [regionSelect, setRegionSelect] = useState('Greater Accra');
+  const [district, setDistrict] = useState('Accra Metropolitan');
   const [lat, setLat] = useState('5.6037');
   const [lng, setLng] = useState('-0.1870');
-  const [budget, setBudget] = useState('');
-  const [funding, setFunding] = useState<any>('Government');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [budget, setBudget] = useState('1800000');
+  const [funding, setFunding] = useState<'Government' | 'Development Partners' | 'Donors' | 'Private Sector' | 'Research Grants'>('Government');
+  const [startDate, setStartDate] = useState('2026-03-01');
+  const [endDate, setEndDate] = useState('2027-12-31');
 
-  // Prefill and dropdown selection states
-  const [mdaSelect, setMdaSelect] = useState('Ministry of Communications and Digitalisation');
-  const [isCustomMda, setIsCustomMda] = useState(false);
-  const [regionSelect, setRegionSelect] = useState('Greater Accra');
-  const [dpcStatus, setDpcStatus] = useState<'Registered' | 'Pending' | 'Exempt'>('Registered');
+  // Risk Pre-Classification states (SOW Section 4)
+  const [hasBiometricOrHighImpact, setHasBiometricOrHighImpact] = useState(false);
+  const [hasCriticalInfrastructure, setHasCriticalInfrastructure] = useState(false);
+  const [hasChatbotOrContentGen, setHasChatbotOrContentGen] = useState(false);
+  const [hasProhibitedPractices, setHasProhibitedPractices] = useState(false);
+
+  // Evidence Checklist states (SOW Section 5.2)
+  const [dpiaUploaded, setDpiaUploaded] = useState(true);
+  const [vaptReportUploaded, setVaptReportUploaded] = useState(true);
+  const [modelDocUploaded, setModelDocUploaded] = useState(true);
+  const [slaUploaded, setSlaUploaded] = useState(true);
+  const [biasAuditUploaded, setBiasAuditUploaded] = useState(false);
+
+  // Governance Declarations
   const [isSovereignHosting, setIsSovereignHosting] = useState(true);
+
+  // Form feedback state
+  const [formError, setFormError] = useState('');
+  const [formSuccess, setFormSuccess] = useState(false);
+
+  // Regulator Decision Form state
+  const [adjudicationStatus, setAdjudicationStatus] = useState<ProjectClearanceStatus>('Cleared');
+  const [adjudicationScore, setAdjudicationScore] = useState<number>(88);
+  const [adjudicationRemarks, setAdjudicationRemarks] = useState<string>('Meets all technical, privacy, and cybersecurity threshold criteria under Ghana Act 843.');
+  const [adjudicationSuccess, setAdjudicationSuccess] = useState(false);
+
+  // Privileges
+  const canRegister = [
+    'Super Administrator', 
+    'Regulator / Clearance Authority', 
+    'Government Applicant (MDA/SOE)', 
+    'Private Sector Applicant', 
+    'Institution Administrator', 
+    'Project Manager'
+  ].includes(currentRole);
+
+  const canClearProjects = [
+    'Super Administrator', 
+    'Regulator / Clearance Authority', 
+    'Technical Review Committee (TCC)', 
+    'Institution Administrator'
+  ].includes(currentRole);
+
+  // Derived automatic risk tier based on use case answers
+  const computedRiskTier: RiskTier = React.useMemo(() => {
+    if (hasProhibitedPractices) return 'Prohibited';
+    if (hasBiometricOrHighImpact || hasCriticalInfrastructure) return 'High Risk';
+    if (hasChatbotOrContentGen) return 'Limited Risk';
+    return 'Minimal Risk';
+  }, [hasProhibitedPractices, hasBiometricOrHighImpact, hasCriticalInfrastructure, hasChatbotOrContentGen]);
 
   const handleRegionSelectChange = (newRegion: string) => {
     setRegionSelect(newRegion);
-    setRegion(newRegion);
-    const regInfo = standardRegions.find(r => r.name === newRegion);
+    const regInfo = ghanaRegions.find(r => r.name === newRegion);
     if (regInfo) {
       setLat(regInfo.center[0].toFixed(4));
       setLng(regInfo.center[1].toFixed(4));
     }
   };
 
-  const handleMdaSelectChange = (val: string) => {
-    setMdaSelect(val);
-    if (val === 'Other') {
-      setIsCustomMda(true);
-      setMda('');
-      setMdaCode('');
-    } else {
-      setIsCustomMda(false);
-      const chosen = standardMDAs.find(m => m.name === val);
-      if (chosen) {
-        setMda(chosen.name);
-        setMdaCode(chosen.code);
-      }
-    }
-  };
-
-  // Form error state
-  const [formError, setFormError] = useState('');
-  const [formSuccess, setFormSuccess] = useState(false);
-
-  // Determines write privileges
-  const canWrite = ['Super Administrator', 'Institution Administrator', 'Project Manager'].includes(currentRole);
-
-  // Filters projects based on criteria
+  // Filter projects based on multiple NAPTCS criteria
   const filteredProjects = projects.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          p.mda.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          p.projectCode.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = 
+      p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      p.mda.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.projectCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (p.clearanceCertificateId && p.clearanceCertificateId.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const matchesSectorType = 
+      sectorTypeFilter === 'All' ? true :
+      sectorTypeFilter === 'Government' ? p.entitySectorType.includes('Government') :
+      p.entitySectorType.includes('Private');
+
+    const matchesRiskTier = riskTierFilter === 'All' || p.riskTier === riskTierFilter;
+    const matchesClearanceStatus = clearanceStatusFilter === 'All' || p.clearanceStatus === clearanceStatusFilter;
     const matchesStage = stageFilter === 'All' || p.stage === stageFilter;
-    return matchesSearch && matchesStage;
+
+    return matchesSearch && matchesSectorType && matchesRiskTier && matchesClearanceStatus && matchesStage;
   });
 
-  // Handles form submission
+  // Handle new project submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
     setFormSuccess(false);
 
-    // Basic Validation checks
-    if (!name || !description || !mda || !mdaCode || !budget || !startDate || !endDate) {
+    // Validation
+    if (!name || !description || !selectedOrg || !budget || !startDate || !endDate) {
       setFormError('Please complete all mandatory registry parameters.');
       return;
     }
@@ -141,8 +177,28 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
       return;
     }
 
+    // Mandatory gate rule (Section 5.2): High-risk without DPIA is an automatic block
+    if (computedRiskTier === 'High Risk' && !dpiaUploaded) {
+      setFormError('Statutory Gate Failure: High-Risk systems cannot be submitted without an executed Data Protection Impact Assessment (DPIA) under Act 843.');
+      return;
+    }
+
     const nextIdVal = projects.length + 1;
     const projectCodeGenerated = `GN-AI-2026-00${nextIdVal}`;
+
+    // Initial score estimation
+    let estimatedScore = 65;
+    if (dpiaUploaded) estimatedScore += 10;
+    if (vaptReportUploaded) estimatedScore += 10;
+    if (modelDocUploaded) estimatedScore += 8;
+    if (isSovereignHosting) estimatedScore += 7;
+
+    // Clearance status: If org is not cleared, project is Quarantined / Pending
+    const initialClearanceStatus: ProjectClearanceStatus = !isSelectedOrgCleared 
+      ? 'Pending Review' 
+      : computedRiskTier === 'Prohibited' 
+        ? 'Not Cleared' 
+        : 'Pending Review';
 
     const newProjectItem: AIProject = {
       id: `proj-${nextIdVal}`,
@@ -158,40 +214,58 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
       expectedCompletionDate: endDate,
       latitude: parseFloat(lat),
       longitude: parseFloat(lng),
-      mda,
-      mdaCode: mdaCode.toUpperCase(),
-      region: region || 'Greater Accra',
+      mda: selectedOrg.name,
+      mdaCode: selectedOrg.acronym,
+      organizationId: selectedOrg.id,
+      organizationName: selectedOrg.name,
+      entitySectorType: selectedOrg.entityType,
+      riskTier: computedRiskTier,
+      clearanceStatus: initialClearanceStatus,
+      clearanceScore: estimatedScore,
+      isOrganizationCleared: isSelectedOrgCleared,
+      isPublished: isSelectedOrgCleared && ((initialClearanceStatus as ProjectClearanceStatus) === 'Cleared' || (initialClearanceStatus as ProjectClearanceStatus) === 'Conditional'),
+      clearanceEvidence: {
+        dpiaUploaded,
+        vaptReportUploaded,
+        modelDocumentationUploaded: modelDocUploaded,
+        slaUploaded,
+        biasAuditUploaded,
+        procurementRecordsUploaded: true
+      },
+      region: regionSelect || 'Greater Accra',
       district: district || 'Accra Metropolitan',
       budget: {
         totalAllocated: parseFloat(budget),
-        disbursed: parseFloat(budget) * 0.1, // Initial 10% mobilization disbursal simulation
+        disbursed: parseFloat(budget) * 0.1,
         utilized: 0,
         remaining: parseFloat(budget),
         primaryFundingSource: funding,
         currency: 'GHS'
       },
       compliance: {
-        fairness: dpcStatus === 'Registered' ? 80 : 40,
+        fairness: 75,
         transparency: 70,
         accountability: 75,
-        privacy: dpcStatus === 'Registered' ? 85 : 40,
+        privacy: dpiaUploaded ? 85 : 40,
         security: isSovereignHosting ? 80 : 50,
-        overallGrade: dpcStatus === 'Registered' && isSovereignHosting ? 'Good' : 'Moderate'
+        overallGrade: dpiaUploaded && isSovereignHosting ? 'Good' : 'Moderate'
       },
-      readinessScore: 60,
+      readinessScore: 65,
       milestones: [
-        { id: `m${nextIdVal}-1`, title: 'Initial technical proposal drafting', dueDate: startDate, progressPercent: 100, status: 'Completed' },
-        { id: `m${nextIdVal}-2`, title: 'Ethics & DPC regulatory alignment routing', dueDate: endDate, progressPercent: 10, status: 'Pending' }
+        { id: `m${nextIdVal}-1`, title: 'National AI Registry submission & schema intake', dueDate: startDate, progressPercent: 100, status: 'Completed' },
+        { id: `m${nextIdVal}-2`, title: 'TCC Technical Assessment & Act 843 Conformity review', dueDate: endDate, progressPercent: 20, status: 'Pending' }
       ],
       risks: [
         {
           id: `r${nextIdVal}-1`,
-          category: 'Compliance & Audit Risk',
-          severity: dpcStatus !== 'Registered' ? 'High' : 'Low',
-          likelihood: dpcStatus !== 'Registered' ? 4 : 1,
-          impact: dpcStatus !== 'Registered' ? 4 : 2,
-          description: dpcStatus !== 'Registered' ? 'Mandatory DPC certificate registration pending under Ghana DPA Act 1038.' : 'Compliance monitoring setup with DPC.',
-          mitigationPlan: 'Coordinate compliance checklist review steps with national audit officers.',
+          category: 'Statutory Clearance Risk',
+          severity: computedRiskTier === 'High Risk' ? 'High' : 'Medium',
+          likelihood: 2,
+          impact: 3,
+          description: !isSelectedOrgCleared 
+            ? 'Parent organization clearance pending under NAPTCS mandate.' 
+            : 'Pre-clearance technical vetting under review by TCC.',
+          mitigationPlan: 'Coordinate compliance verification steps with national clearance officers.',
           status: 'Open'
         }
       ],
@@ -202,58 +276,133 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
     setFormSuccess(true);
     setSelectedProject(newProjectItem);
 
-    // Resets form states
+    // Reset Form
     setName('');
     setDescription('');
-    setMdaSelect('Ministry of Communications and Digitalisation');
-    setMda('Ministry of Communications and Digitalisation');
-    setMdaCode('MOCD');
-    setIsCustomMda(false);
-    setRegionSelect('Greater Accra');
-    setRegion('Greater Accra');
-    setDistrict('');
-    setLat('5.6037');
-    setLng('-0.1870');
-    setBudget('');
-    setStartDate('');
-    setEndDate('');
-    setDpcStatus('Registered');
-    setIsSovereignHosting(true);
+    setBudget('2000000');
   };
 
-  const getStageBadge = (stage: string) => {
-    switch (stage) {
-      case 'Operational':
-      case 'Deployment':
-        return <span className="badge badge-success">{stage}</span>;
-      case 'Pilot':
-      case 'Development':
-        return <span className="badge badge-info">{stage}</span>;
-      case 'Concept':
-      case 'Planning':
-        return <span className="badge badge-warning">{stage}</span>;
+  // Handle regulator clearance update
+  const handleRegulatorDecision = () => {
+    if (!selectedProject || !onUpdateProjectClearance) return;
+    onUpdateProjectClearance(
+      selectedProject.id, 
+      adjudicationStatus, 
+      adjudicationScore, 
+      adjudicationRemarks
+    );
+    setAdjudicationSuccess(true);
+    setTimeout(() => setAdjudicationSuccess(false), 4000);
+  };
+
+  const getRiskTierBadge = (tier: RiskTier) => {
+    switch (tier) {
+      case 'Minimal Risk':
+        return <span className="badge badge-success" style={{ fontSize: '0.66rem' }}>🟢 Minimal Risk</span>;
+      case 'Limited Risk':
+        return <span className="badge badge-info" style={{ fontSize: '0.66rem' }}>🔵 Limited Risk</span>;
+      case 'High Risk':
+        return <span className="badge badge-warning" style={{ fontSize: '0.66rem' }}>🟠 High Risk</span>;
+      case 'Prohibited':
+        return <span className="badge badge-danger" style={{ fontSize: '0.66rem' }}>🔴 Prohibited</span>;
+    }
+  };
+
+  const getClearanceStatusBadge = (status: ProjectClearanceStatus) => {
+    switch (status) {
+      case 'Cleared':
+        return <span className="badge badge-success" style={{ fontSize: '0.68rem', fontWeight: 700 }}>✅ Cleared</span>;
+      case 'Conditional':
+        return <span className="badge badge-warning" style={{ fontSize: '0.68rem', fontWeight: 700 }}>⚠️ Conditional</span>;
+      case 'Pending Review':
+        return <span className="badge badge-info" style={{ fontSize: '0.68rem', fontWeight: 700 }}>⏳ Under Review</span>;
+      case 'Not Cleared':
+        return <span className="badge badge-danger" style={{ fontSize: '0.68rem', fontWeight: 700 }}>⛔ Not Cleared</span>;
       default:
-        return <span className="badge badge-danger">{stage}</span>;
+        return <span className="badge" style={{ fontSize: '0.68rem' }}>Draft</span>;
     }
   };
 
   return (
     <div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '24px', alignItems: 'start' }}>
+      {/* Top Banner: Dual-Sector Clearance Mandate */}
+      <div style={{
+        background: 'linear-gradient(90deg, rgba(16,185,129,0.12) 0%, rgba(59,130,246,0.08) 100%)',
+        border: '1px solid rgba(16,185,129,0.25)',
+        borderRadius: '10px',
+        padding: '14px 20px',
+        marginBottom: '22px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '12px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            borderRadius: '8px',
+            background: 'rgba(16,185,129,0.2)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--ghana-emerald)'
+          }}>
+            <ShieldCheck className="w-5 h-5" />
+          </div>
+          <div>
+            <div style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+              NAPTCS National AI Registry & Clearance Gatekeeper
+            </div>
+            <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
+              Unified statutory gateway for Government MDAs, SOEs, and Private Tech Enterprises. Only cleared organizations and systems are published to the public registry.
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <span style={{
+            padding: '4px 10px',
+            borderRadius: '9999px',
+            background: 'rgba(59,130,246,0.15)',
+            border: '1px solid rgba(59,130,246,0.3)',
+            color: '#60a5fa',
+            fontSize: '0.72rem',
+            fontWeight: 700
+          }}>
+            🏛️ Government Track
+          </span>
+          <span style={{
+            padding: '4px 10px',
+            borderRadius: '9999px',
+            background: 'rgba(168,85,247,0.15)',
+            border: '1px solid rgba(168,85,247,0.3)',
+            color: '#c084fc',
+            fontSize: '0.72rem',
+            fontWeight: 700
+          }}>
+            🏢 Private Sector Track
+          </span>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 1fr', gap: '24px', alignItems: 'start' }}>
         
         {/* LEFT COLUMN: Project Registry Browser */}
-        <div className="glass-card" style={{ minHeight: '680px', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <div className="glass-card" style={{ minHeight: '720px', display: 'flex', flexDirection: 'column' }}>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <div>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '6px' }}>AI Registry Browser</h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                Explore and inspect artificial intelligence initiatives in Ghana.
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '4px' }}>National AI Registry Browser</h3>
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                Track and inspect AI deployments across public and private sectors in Ghana.
               </p>
             </div>
-            {canWrite && projects.length > 0 && (
+            {['Super Administrator', 'Regulator / Clearance Authority'].includes(currentRole) && projects.length > 0 && (
               <button
                 onClick={() => {
-                  if (confirm('Are you sure you want to clear all projects in the registry? This will wipe the database.')) {
+                  if (confirm('Are you sure you want to reset the national registry? This action will purge all registered systems.')) {
                     onClearAllProjects();
                   }
                 }}
@@ -263,101 +412,236 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                   border: '1px solid rgba(244,63,94,0.2)',
                   borderRadius: '6px',
                   color: '#fb7185',
-                  fontSize: '0.74rem',
+                  fontSize: '0.72rem',
                   fontWeight: 700,
-                  cursor: 'pointer',
-                  transition: 'all 0.12s ease'
+                  cursor: 'pointer'
                 }}
               >
-                Clear All
+                Reset Database
               </button>
             )}
           </div>
 
-          {/* Search and filter bar */}
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-            <div style={{ position: 'relative', flex: 1 }}>
-              <input
-                type="text"
-                placeholder="Search code, name, or MDA..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="form-input"
-                style={{ paddingLeft: '38px', height: '40px' }}
-              />
-              <Search style={{ position: 'absolute', left: '12px', top: '11px', width: '18px', height: '18px', color: 'var(--text-muted)' }} />
+          {/* Search Bar */}
+          <div style={{ position: 'relative', marginBottom: '12px' }}>
+            <input
+              type="text"
+              placeholder="Search by project name, code, MDA, vendor, or Certificate ID..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="form-input"
+              style={{ paddingLeft: '38px', height: '40px' }}
+            />
+            <Search style={{ position: 'absolute', left: '12px', top: '11px', width: '18px', height: '18px', color: 'var(--text-muted)' }} />
+          </div>
+
+          {/* Multi-facet Filters */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '16px' }}>
+            <div>
+              <label style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
+                Sector Track:
+              </label>
+              <select
+                value={sectorTypeFilter}
+                onChange={(e) => setSectorTypeFilter(e.target.value as any)}
+                className="form-select"
+                style={{ fontSize: '0.74rem', height: '34px', padding: '0 6px' }}
+              >
+                <option value="All">All Sectors</option>
+                <option value="Government">🏛️ Government</option>
+                <option value="Private Sector">🏢 Private</option>
+              </select>
             </div>
-            <select
-              value={stageFilter}
-              onChange={(e) => setStageFilter(e.target.value)}
-              className="form-select"
-              style={{ width: '140px', height: '40px', padding: '0 12px' }}
-            >
-              <option value="All">All Stages</option>
-              <option value="Concept">Concept</option>
-              <option value="Planning">Planning</option>
-              <option value="Development">Development</option>
-              <option value="Pilot">Pilot</option>
-              <option value="Deployment">Deployment</option>
-              <option value="Operational">Operational</option>
-            </select>
+
+            <div>
+              <label style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
+                Clearance:
+              </label>
+              <select
+                value={clearanceStatusFilter}
+                onChange={(e) => setClearanceStatusFilter(e.target.value as any)}
+                className="form-select"
+                style={{ fontSize: '0.74rem', height: '34px', padding: '0 6px' }}
+              >
+                <option value="All">All Status</option>
+                <option value="Cleared">Cleared (≥85%)</option>
+                <option value="Conditional">Conditional</option>
+                <option value="Pending Review">Under Review</option>
+                <option value="Not Cleared">Not Cleared</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
+                Risk Tier:
+              </label>
+              <select
+                value={riskTierFilter}
+                onChange={(e) => setRiskTierFilter(e.target.value as any)}
+                className="form-select"
+                style={{ fontSize: '0.74rem', height: '34px', padding: '0 6px' }}
+              >
+                <option value="All">All Risk</option>
+                <option value="Minimal Risk">Minimal</option>
+                <option value="Limited Risk">Limited</option>
+                <option value="High Risk">High Risk</option>
+                <option value="Prohibited">Prohibited</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
+                Stage:
+              </label>
+              <select
+                value={stageFilter}
+                onChange={(e) => setStageFilter(e.target.value)}
+                className="form-select"
+                style={{ fontSize: '0.74rem', height: '34px', padding: '0 6px' }}
+              >
+                <option value="All">All Stages</option>
+                <option value="Concept">Concept</option>
+                <option value="Planning">Planning</option>
+                <option value="Development">Development</option>
+                <option value="Pilot">Pilot</option>
+                <option value="Deployment">Deployment</option>
+                <option value="Operational">Operational</option>
+              </select>
+            </div>
           </div>
 
           {/* Projects browser List */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '320px', overflowY: 'auto', paddingRight: '4px', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px', marginBottom: '16px' }}>
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '8px', 
+            maxHeight: '340px', 
+            overflowY: 'auto', 
+            paddingRight: '4px', 
+            borderBottom: '1px solid var(--border-color)', 
+            paddingBottom: '16px', 
+            marginBottom: '16px' 
+          }}>
             {filteredProjects.length === 0 ? (
-              <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                No registered projects matching query.
+              <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                No projects matched your criteria.
               </div>
             ) : (
-              filteredProjects.map(p => (
-                <div
-                  key={p.id}
-                  onClick={() => setSelectedProject(p)}
-                  style={{
-                    padding: '12px 16px',
-                    borderRadius: '8px',
-                    background: selectedProject?.id === p.id ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.015)',
-                    border: '1px solid',
-                    borderColor: selectedProject?.id === p.id ? 'rgba(16,185,129,0.3)' : 'var(--border-color)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    transition: 'all 0.2s ease'
-                  }}
-                  className="project-row"
-                >
-                  <div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--ghana-emerald)', fontWeight: 700, letterSpacing: '0.05em' }}>
-                      {p.projectCode}
+              filteredProjects.map(p => {
+                const isSelected = selectedProject?.id === p.id;
+                const isPrivate = p.entitySectorType.includes('Private');
+
+                return (
+                  <div
+                    key={p.id}
+                    onClick={() => setSelectedProject(p)}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: '8px',
+                      background: isSelected ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.015)',
+                      border: '1px solid',
+                      borderColor: isSelected ? 'rgba(16,185,129,0.4)' : 'var(--border-color)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      transition: 'all 0.2s ease'
+                    }}
+                    className="project-row"
+                  >
+                    <div style={{ flex: 1, marginRight: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--ghana-emerald)', fontWeight: 700, letterSpacing: '0.04em' }}>
+                          {p.projectCode}
+                        </span>
+                        
+                        <span style={{
+                          fontSize: '0.64rem',
+                          padding: '1px 6px',
+                          borderRadius: '4px',
+                          background: isPrivate ? 'rgba(168,85,247,0.15)' : 'rgba(59,130,246,0.15)',
+                          color: isPrivate ? '#c084fc' : '#60a5fa',
+                          fontWeight: 700
+                        }}>
+                          {isPrivate ? '🏢 Private' : '🏛️ Gov'}
+                        </span>
+
+                        {!p.isOrganizationCleared && (
+                          <span style={{
+                            fontSize: '0.62rem',
+                            padding: '1px 6px',
+                            borderRadius: '4px',
+                            background: 'rgba(244,63,94,0.15)',
+                            color: '#fb7185',
+                            fontWeight: 700,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px'
+                          }}>
+                            <Lock className="w-2.5 h-2.5" /> Org Quarantined
+                          </span>
+                        )}
+                      </div>
+
+                      <div style={{ fontSize: '0.86rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {p.name.length > 34 ? p.name.substring(0, 34) + '...' : p.name}
+                      </div>
+
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        {p.organizationName} • {p.sector}
+                      </div>
                     </div>
-                    <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)', marginTop: '2px' }}>
-                      {p.name.length > 32 ? p.name.substring(0, 32) + '...' : p.name}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      {p.mdaCode} • {p.sector}
+
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                      {getClearanceStatusBadge(p.clearanceStatus)}
+                      {getRiskTierBadge(p.riskTier)}
                     </div>
                   </div>
-                  <div>
-                    {getStageBadge(p.stage)}
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
 
           {/* Details drawer for Selected project */}
           {selectedProject && (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', animation: 'fadeIn 0.3s ease' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
-                <div>
-                  <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>{selectedProject.name}</h4>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{selectedProject.mda}</span>
+              
+              {/* Gatekeeper Quarantine Notice */}
+              {!selectedProject.isOrganizationCleared && (
+                <div style={{
+                  padding: '10px 14px',
+                  background: 'rgba(244,63,94,0.12)',
+                  border: '1px solid rgba(244,63,94,0.3)',
+                  borderRadius: '8px',
+                  marginBottom: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px'
+                }}>
+                  <AlertTriangle className="w-5 h-5 text-rose-400 flex-shrink-0" />
+                  <div style={{ fontSize: '0.76rem', color: '#fecdd3', lineHeight: 1.4 }}>
+                    <strong>STATUTORY QUARANTINE:</strong> The parent entity <strong>{selectedProject.organizationName}</strong> is not yet cleared under NAPTCS accreditation. Information regarding this system is withheld from the public domain and cannot be deployed in production.
+                  </div>
                 </div>
+              )}
+
+              {/* Title & Actions */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '10px' }}>
+                <div>
+                  <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    {selectedProject.name}
+                  </h4>
+                  <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                    <span>{selectedProject.organizationName}</span>
+                    <span>•</span>
+                    <span style={{ color: selectedProject.entitySectorType.includes('Private') ? '#c084fc' : '#60a5fa', fontWeight: 600 }}>
+                      {selectedProject.entitySectorType}
+                    </span>
+                  </div>
+                </div>
+
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <span className="badge badge-info" style={{ fontSize: '0.65rem' }}>{selectedProject.category}</span>
-                  {canWrite && (
+                  {['Super Administrator', 'Regulator / Clearance Authority'].includes(currentRole) && (
                     <button
                       onClick={() => {
                         if (confirm(`Are you sure you want to delete ${selectedProject.name}?`)) {
@@ -372,8 +656,7 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                         color: '#fb7185',
                         fontSize: '0.65rem',
                         fontWeight: 700,
-                        cursor: 'pointer',
-                        transition: 'all 0.12s ease'
+                        cursor: 'pointer'
                       }}
                     >
                       Delete
@@ -382,129 +665,283 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                 </div>
               </div>
 
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: 1.45 }}>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '14px', lineHeight: 1.45 }}>
                 {selectedProject.description}
               </p>
 
+              {/* Clearance & Certificate Card */}
+              <div style={{
+                background: 'rgba(255,255,255,0.02)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '8px',
+                padding: '12px 14px',
+                marginBottom: '14px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Award className="w-4 h-4 text-emerald-400" />
+                    <span style={{ fontSize: '0.76rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-primary)' }}>
+                      Clearance Credentials & Scoring
+                    </span>
+                  </div>
+                  <div>
+                    {getClearanceStatusBadge(selectedProject.clearanceStatus)}
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.78rem' }}>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>Certificate ID:</span>
+                    <div style={{ fontWeight: 700, color: 'var(--ghana-emerald)' }}>
+                      {selectedProject.clearanceCertificateId || 'NOT ISSUED (Pending Review)'}
+                    </div>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>Clearance Score:</span>
+                    <div style={{ fontWeight: 700, color: selectedProject.clearanceScore >= 85 ? '#10b981' : selectedProject.clearanceScore >= 60 ? '#fbbf24' : '#ef4444' }}>
+                      {selectedProject.clearanceScore}% ({selectedProject.clearanceScore >= 85 ? 'Cleared' : selectedProject.clearanceScore >= 60 ? 'Conditional' : 'Not Cleared'})
+                    </div>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>Risk Tier Classification:</span>
+                    <div>{getRiskTierBadge(selectedProject.riskTier)}</div>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>Public Register Visibility:</span>
+                    <div style={{ fontWeight: 600, color: selectedProject.isPublished ? '#10b981' : '#fb7185' }}>
+                      {selectedProject.isPublished ? '🌐 Public & Searchable' : '🔒 Quarantined / Hidden'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Evidence Checklist */}
+                <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '6px', textTransform: 'uppercase' }}>
+                    Required Evidence Vault
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '0.72rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {selectedProject.clearanceEvidence?.dpiaUploaded ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <AlertCircle className="w-3.5 h-3.5 text-rose-400" />}
+                      <span>Act 843 DPIA Assessment</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {selectedProject.clearanceEvidence?.vaptReportUploaded ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <AlertCircle className="w-3.5 h-3.5 text-rose-400" />}
+                      <span>VAPT Cybersecurity Audit</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {selectedProject.clearanceEvidence?.modelDocumentationUploaded ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <AlertCircle className="w-3.5 h-3.5 text-amber-400" />}
+                      <span>Model Specs & Data Lineage</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {selectedProject.clearanceEvidence?.biasAuditUploaded ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <AlertCircle className="w-3.5 h-3.5 text-slate-500" />}
+                      <span>Demographic Bias Testing</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Scope limits / conditions */}
+                {selectedProject.clearanceDecision?.scopeLimits && (
+                  <div style={{ marginTop: '8px', fontSize: '0.72rem', color: 'var(--text-secondary)', background: 'rgba(0,0,0,0.2)', padding: '6px 10px', borderRadius: '4px' }}>
+                    <strong>Permitted Scope:</strong> {selectedProject.clearanceDecision.scopeLimits}
+                  </div>
+                )}
+              </div>
+
               {/* Specs parameters grids */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', margin: '0 0 16px 0', fontSize: '0.82rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.01)', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', margin: '0 0 14px 0', fontSize: '0.8rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.01)', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
                   <MapPin className="w-4 h-4 text-emerald-400" />
                   <div>
-                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>GIS Coordinates</div>
+                    <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>GIS Coordinates</div>
                     <span style={{ fontWeight: 600 }}>{selectedProject.latitude.toFixed(4)}, {selectedProject.longitude.toFixed(4)}</span>
                   </div>
                 </div>
-                <div style={{ 
-                  gridColumn: '1 / span 2',
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  gap: '8px', 
-                  background: 'rgba(255,255,255,0.01)', 
-                  padding: '12px 14px', 
-                  borderRadius: '8px', 
-                  border: '1px solid var(--border-color)' 
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <DollarSign className="w-4.5 h-4.5 text-amber-400" />
-                    <div>
-                      <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.03em' }}>Allocated Budget</div>
-                      <span style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--text-primary)', wordBreak: 'break-word', display: 'block', marginTop: '2px' }}>
-                        {formatNumberToWords(selectedProject.budget.totalAllocated)} GHS (GHS {selectedProject.budget.totalAllocated.toLocaleString('en-US')})
-                      </span>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '8px' }}>
-                    <Activity className="w-4.5 h-4.5 text-emerald-400" />
-                    <div>
-                      <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.03em' }}>Utilized Funds</div>
-                      <span style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--ghana-emerald)', wordBreak: 'break-word', display: 'block', marginTop: '2px' }}>
-                        {formatNumberToWords(selectedProject.budget.utilized)} GHS (GHS {selectedProject.budget.utilized.toLocaleString('en-US')})
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.01)', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-                  <Calendar className="w-4 h-4 text-blue-400" />
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.01)', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                  <DollarSign className="w-4 h-4 text-amber-400" />
                   <div>
-                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Expected Date</div>
-                    <span style={{ fontWeight: 600 }}>{selectedProject.expectedCompletionDate}</span>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.01)', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-                  <Landmark className="w-4 h-4 text-purple-400" />
-                  <div>
-                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Region / District</div>
-                    <span style={{ fontWeight: 600 }}>{selectedProject.region}</span>
+                    <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>Allocated Budget</div>
+                    <span style={{ fontWeight: 600 }}>GHS {selectedProject.budget.totalAllocated.toLocaleString('en-US')}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Milestones status */}
-              <div>
-                <div style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-                  Project milestones ({selectedProject.milestones.length})
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {selectedProject.milestones.map((m) => (
-                    <div key={m.id} style={{ display: 'flex', justifyItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', borderRadius: '6px', fontSize: '0.78rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: m.status === 'Completed' ? 'var(--ghana-emerald)' : m.status === 'Delayed' ? 'var(--ghana-red)' : 'var(--ghana-gold)' }} />
-                        <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{m.title}</span>
-                      </div>
-                      <div style={{ color: 'var(--text-secondary)' }}>
-                        {m.progressPercent}% • {m.dueDate}
-                      </div>
+              {/* Regulator Clearance Action Panel */}
+              {canClearProjects && onUpdateProjectClearance && (
+                <div style={{
+                  padding: '12px 14px',
+                  background: 'rgba(16,185,129,0.04)',
+                  border: '1px solid rgba(16,185,129,0.2)',
+                  borderRadius: '8px',
+                  marginTop: 'auto'
+                }}>
+                  <div style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--ghana-emerald)', textTransform: 'uppercase', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <ShieldCheck className="w-4 h-4" /> Regulator Clearance Adjudication
+                  </div>
+
+                  {adjudicationSuccess && (
+                    <div style={{ padding: '6px 10px', background: 'rgba(16,185,129,0.15)', border: '1px solid #10b981', borderRadius: '6px', color: '#34d399', fontSize: '0.74rem', marginBottom: '8px' }}>
+                      Clearance status updated and certificate synchronized!
                     </div>
-                  ))}
+                  )}
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Determination</label>
+                      <select
+                        value={adjudicationStatus}
+                        onChange={(e) => setAdjudicationStatus(e.target.value as any)}
+                        className="form-select"
+                        style={{ fontSize: '0.75rem', height: '32px' }}
+                      >
+                        <option value="Cleared">Cleared (≥85%)</option>
+                        <option value="Conditional">Conditional (60-84%)</option>
+                        <option value="Not Cleared">Not Cleared (&lt;60%)</option>
+                        <option value="Pending Review">Pending Review</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Evaluated Score (%)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={adjudicationScore}
+                        onChange={(e) => setAdjudicationScore(parseInt(e.target.value) || 0)}
+                        className="form-input"
+                        style={{ fontSize: '0.75rem', height: '32px' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: '8px' }}>
+                    <label style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Decision Rationale / Scope Limits</label>
+                    <input
+                      type="text"
+                      value={adjudicationRemarks}
+                      onChange={(e) => setAdjudicationRemarks(e.target.value)}
+                      placeholder="e.g., Cleared for phased beta across approved hospitals only..."
+                      className="form-input"
+                      style={{ fontSize: '0.75rem', height: '32px' }}
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleRegulatorDecision}
+                    className="btn btn-primary"
+                    style={{ width: '100%', fontSize: '0.75rem', padding: '6px 12px' }}
+                  >
+                    <Award className="w-3.5 h-3.5" />
+                    <span>Issue NAPTCS Clearance Decision</span>
+                  </button>
                 </div>
-              </div>
+              )}
 
             </div>
           )}
         </div>
 
         {/* RIGHT COLUMN: Register New AI Project Form */}
-        <div className="glass-card" style={{ minHeight: '680px' }}>
-          <div style={{ marginBottom: '20px' }}>
-            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '6px' }}>Register New AI Project</h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-              Complete the formal registry application for governmental AI initiative validation.
+        <div className="glass-card" style={{ minHeight: '720px' }}>
+          <div style={{ marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '4px' }}>Register AI Project / System</h3>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+              Submit AI initiative identity, architecture, and evidence package for statutory clearance.
             </p>
           </div>
 
-          {!canWrite ? (
-            <div style={{ padding: '40px 20px', textTransform: 'none', border: '1px dashed var(--border-color)', borderRadius: '8px', background: 'rgba(255,255,255,0.005)', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+          {!canRegister ? (
+            <div style={{ 
+              padding: '40px 20px', 
+              border: '1px dashed var(--border-color)', 
+              borderRadius: '8px', 
+              background: 'rgba(255,255,255,0.005)', 
+              textAlign: 'center', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              gap: '16px' 
+            }}>
               <AlertCircle className="w-12 h-12 text-amber-400" />
               <div>
-                <h4 style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>Insufficient Privileges</h4>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', maxWidth: '300px', margin: '0 auto', lineHeight: 1.4 }}>
-                  Your active role <strong>{currentRole}</strong> is in read-only status. Please switch to **Super Admin** or **Institution Admin** to register projects.
+                <h4 style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>Submission Restricted</h4>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', maxWidth: '320px', margin: '0 auto', lineHeight: 1.4 }}>
+                  Your active role <strong>{currentRole}</strong> is in read-only status. Please switch to <strong>Government Applicant</strong>, <strong>Private Sector Applicant</strong>, or <strong>Super Administrator</strong> to submit an AI project.
                 </p>
               </div>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               
               {formError && (
-                <div style={{ padding: '12px 16px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', color: '#f87171', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <AlertCircle className="w-4 h-4" />
+                <div style={{ padding: '10px 14px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', color: '#f87171', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
                   <span>{formError}</span>
                 </div>
               )}
 
               {formSuccess && (
-                <div style={{ padding: '12px 16px', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '8px', color: '#34d399', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Landmark className="w-4 h-4" />
-                  <span>Project successfully registered into national ledger!</span>
+                <div style={{ padding: '10px 14px', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '8px', color: '#34d399', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                  <span>Project successfully registered for clearance review!</span>
                 </div>
               )}
 
-              <div className="form-group">
-                <label className="form-label">Project Name *</label>
+              {/* 1. Managing Entity / Organization Selector (Gatekeeper Core) */}
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Managing Entity / Organization *</span>
+                  <span style={{ fontSize: '0.68rem', color: isSelectedOrgCleared ? '#10b981' : '#f43f5e', fontWeight: 700 }}>
+                    {isSelectedOrgCleared ? '✅ Organization Cleared' : '⛔ Pending Org Clearance'}
+                  </span>
+                </label>
+                <select
+                  value={selectedOrgId}
+                  onChange={(e) => setSelectedOrgId(e.target.value)}
+                  className="form-select"
+                >
+                  <optgroup label="Government MDAs / SOEs">
+                    {organizations.filter(o => o.entityType.includes('Government')).map(org => (
+                      <option key={org.id} value={org.id}>
+                        {org.name} ({org.acronym}) — {org.clearanceStatus}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Private Sector Tech Companies & Vendors">
+                    {organizations.filter(o => !o.entityType.includes('Government')).map(org => (
+                      <option key={org.id} value={org.id}>
+                        {org.name} ({org.acronym}) — {org.clearanceStatus}
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+
+                {!isSelectedOrgCleared && (
+                  <div style={{ 
+                    marginTop: '6px', 
+                    padding: '8px 10px', 
+                    background: 'rgba(244,63,94,0.08)', 
+                    border: '1px solid rgba(244,63,94,0.2)', 
+                    borderRadius: '6px', 
+                    fontSize: '0.72rem', 
+                    color: '#fb7185',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <Lock className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>This organization is not yet cleared. Submitting this AI system will hold it in <strong>Regulatory Quarantine</strong> until the organization is cleared.</span>
+                  </div>
+                )}
+              </div>
+
+              {/* 2. Project Name & Description */}
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">AI System / Project Title *</label>
                 <input
                   type="text"
-                  placeholder="e.g., Akuafo Crop Intelligence Suite"
+                  placeholder="e.g., Ghana National Biometric Anti-Fraud Engine"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="form-input"
@@ -512,19 +949,21 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                 />
               </div>
 
-              <div className="form-group">
-                <label className="form-label">System Description *</label>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">System Description & Deployment Purpose *</label>
                 <textarea
-                  placeholder="Summarize the core algorithms, goals, datasets, and societal impact targets..."
+                  placeholder="Describe the algorithms, training datasets, autonomous capabilities, user base, and societal objectives..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   className="form-textarea"
+                  style={{ minHeight: '60px' }}
                   required
                 />
               </div>
 
-              <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: 0 }}>
-                <div className="form-group">
+              {/* 3. AI Category & Sector */}
+              <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: 0 }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">AI Category *</label>
                   <select
                     value={category}
@@ -532,92 +971,183 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                     className="form-select"
                   >
                     <option value="Machine Learning">Machine Learning</option>
-                    <option value="Generative AI">Generative AI</option>
-                    <option value="Natural Language Processing">NLP (Language)</option>
+                    <option value="Generative AI">Generative AI / LLM</option>
+                    <option value="Natural Language Processing">NLP (Speech/Text)</option>
                     <option value="Computer Vision">Computer Vision</option>
-                    <option value="Robotics">Robotics</option>
-                    <option value="Expert Systems">Expert Systems</option>
+                    <option value="Robotics">Robotics & Automation</option>
                     <option value="Predictive Analytics">Predictive Analytics</option>
-                    <option value="Smart Cities">Smart Cities</option>
+                    <option value="Smart Cities">Smart Cities & IoT</option>
                   </select>
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Sector Classification *</label>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Target Economic Sector *</label>
                   <select
                     value={sector}
                     onChange={(e) => setSector(e.target.value as any)}
                     className="form-select"
                   >
-                    <option value="Agriculture">Agriculture</option>
                     <option value="Health">Health</option>
+                    <option value="Agriculture">Agriculture</option>
+                    <option value="Finance">Finance & Fintech</option>
                     <option value="Education">Education</option>
-                    <option value="Finance">Finance</option>
-                    <option value="Security">Security</option>
-                    <option value="Energy">Energy</option>
-                    <option value="Environment">Environment</option>
-                    <option value="Justice">Justice</option>
-                    <option value="Transport">Transport</option>
+                    <option value="Security">Security & Law Enforcement</option>
+                    <option value="Transport">Transport & Ports</option>
+                    <option value="Energy">Energy & Power Grid</option>
+                    <option value="Justice">Justice & Judiciary</option>
                     <option value="Local Government">Local Government</option>
                   </select>
                 </div>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Managing Institution (MDA) *</label>
-                <select
-                  value={mdaSelect}
-                  onChange={(e) => handleMdaSelectChange(e.target.value)}
-                  className="form-select"
-                  style={{ marginBottom: isCustomMda ? '12px' : '0' }}
-                >
-                  {standardMDAs.map(m => (
-                    <option key={m.name} value={m.name}>{m.name} ({m.code})</option>
-                  ))}
-                  <option value="Other">Other (Input Custom Agency)...</option>
-                </select>
+              {/* 4. Risk Pre-Classification (SOW Section 4) */}
+              <div style={{
+                padding: '12px 14px',
+                background: 'rgba(255,255,255,0.015)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '8px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '0.74rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
+                    Risk Pre-Classification (EU AI Act & SOW)
+                  </span>
+                  <div>{getRiskTierBadge(computedRiskTier)}</div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.74rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={hasBiometricOrHighImpact}
+                      onChange={(e) => setHasBiometricOrHighImpact(e.target.checked)}
+                      style={{ accentColor: '#f59e0b' }}
+                    />
+                    <span>Processes biometric identity, health diagnostic, credit score, or citizen benefit eligibility (High Risk)</span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={hasCriticalInfrastructure}
+                      onChange={(e) => setHasCriticalInfrastructure(e.target.checked)}
+                      style={{ accentColor: '#f59e0b' }}
+                    />
+                    <span>Autonomous control over critical national infrastructure (power, water, traffic, dam operations)</span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={hasChatbotOrContentGen}
+                      onChange={(e) => setHasChatbotOrContentGen(e.target.checked)}
+                      style={{ accentColor: '#38bdf8' }}
+                    />
+                    <span>Citizen-facing chatbot, deepfake/synthetic voice, or automated natural language generator (Limited Risk)</span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={hasProhibitedPractices}
+                      onChange={(e) => setHasProhibitedPractices(e.target.checked)}
+                      style={{ accentColor: '#ef4444' }}
+                    />
+                    <span style={{ color: '#f87171' }}>Subliminal manipulation, social scoring, or biometric mass surveillance (Prohibited)</span>
+                  </label>
+                </div>
               </div>
 
-              {isCustomMda && (
-                <div className="form-grid" style={{ gridTemplateColumns: '2fr 1fr', gap: '12px', marginBottom: 0 }}>
-                  <div className="form-group">
-                    <label className="form-label">Custom MDA Name *</label>
-                    <input
-                      type="text"
-                      placeholder="e.g., Ghana Meteorological Agency"
-                      value={mda}
-                      onChange={(e) => setMda(e.target.value)}
-                      className="form-input"
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Custom MDA Code *</label>
-                    <input
-                      type="text"
-                      placeholder="e.g., GMet"
-                      value={mdaCode}
-                      onChange={(e) => setMdaCode(e.target.value)}
-                      className="form-input"
-                      required
-                    />
-                  </div>
+              {/* 5. Evidence Checklist & Gatekeeper Attestations */}
+              <div style={{
+                padding: '12px 14px',
+                background: 'rgba(255,255,255,0.015)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '8px'
+              }}>
+                <div style={{ fontSize: '0.74rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                  Mandatory Evidence Package (SOW Section 5.2)
                 </div>
-              )}
 
-              <div className="form-grid" style={{ gridTemplateColumns: '1.2fr 1fr', gap: '12px', marginBottom: 0 }}>
-                <div className="form-group">
-                  <label className="form-label">Region *</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.74rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={dpiaUploaded}
+                      onChange={(e) => setDpiaUploaded(e.target.checked)}
+                      style={{ accentColor: '#10b981' }}
+                    />
+                    <span>Act 843 DPIA Report</span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={vaptReportUploaded}
+                      onChange={(e) => setVaptReportUploaded(e.target.checked)}
+                      style={{ accentColor: '#10b981' }}
+                    />
+                    <span>VAPT Pen-Test Report</span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={modelDocUploaded}
+                      onChange={(e) => setModelDocUploaded(e.target.checked)}
+                      style={{ accentColor: '#10b981' }}
+                    />
+                    <span>Model Specs & Data Card</span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={biasAuditUploaded}
+                      onChange={(e) => setBiasAuditUploaded(e.target.checked)}
+                      style={{ accentColor: '#10b981' }}
+                    />
+                    <span>Algorithmic Bias Audit</span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={slaUploaded}
+                      onChange={(e) => setSlaUploaded(e.target.checked)}
+                      style={{ accentColor: '#10b981' }}
+                    />
+                    <span>Service Level Agreement (SLA)</span>
+                  </label>
+                </div>
+
+                <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.74rem' }}>
+                    <input
+                      type="checkbox"
+                      checked={isSovereignHosting}
+                      onChange={(e) => setIsSovereignHosting(e.target.checked)}
+                      style={{ accentColor: '#10b981' }}
+                    />
+                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Sovereign Data Residency: Datasets and models are hosted in-country or on a NITA-certified sovereign cloud</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* 6. Location & Budget */}
+              <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: 0 }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Deployment Region *</label>
                   <select
                     value={regionSelect}
                     onChange={(e) => handleRegionSelectChange(e.target.value)}
                     className="form-select"
                   >
-                    {standardRegions.map(r => (
+                    {ghanaRegions.map(r => (
                       <option key={r.name} value={r.name}>{r.name} Region</option>
                     ))}
                   </select>
                 </div>
-                <div className="form-group">
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">District / Municipality *</label>
                   <input
                     type="text"
@@ -630,59 +1160,36 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                 </div>
               </div>
 
-              <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: 0 }}>
-                <div className="form-group">
-                  <label className="form-label">Latitude Coordinate *</label>
-                  <input
-                    type="text"
-                    value={lat}
-                    onChange={(e) => setLat(e.target.value)}
-                    className="form-input"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Longitude Coordinate *</label>
-                  <input
-                    type="text"
-                    value={lng}
-                    onChange={(e) => setLng(e.target.value)}
-                    className="form-input"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="form-grid" style={{ gridTemplateColumns: '1.2fr 1fr', gap: '12px', marginBottom: 0 }}>
-                <div className="form-group">
-                  <label className="form-label">Approved Budget (GHS) *</label>
+              <div className="form-grid" style={{ gridTemplateColumns: '1.2fr 1fr', gap: '10px', marginBottom: 0 }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Allocated Budget (GHS) *</label>
                   <input
                     type="number"
-                    placeholder="e.g., 2500000"
                     value={budget}
                     onChange={(e) => setBudget(e.target.value)}
                     className="form-input"
                     required
                   />
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Funding Type *</label>
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Funding Source *</label>
                   <select
                     value={funding}
                     onChange={(e) => setFunding(e.target.value as any)}
                     className="form-select"
                   >
                     <option value="Government">Government</option>
+                    <option value="Private Sector">Private Sector</option>
                     <option value="Development Partners">Dev Partners</option>
                     <option value="Donors">Donors</option>
-                    <option value="Private Sector">Private Sector</option>
                     <option value="Research Grants">Research Grants</option>
                   </select>
                 </div>
               </div>
 
-              <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: 0 }}>
-                <div className="form-group">
+              <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: 0 }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Start Date *</label>
                   <input
                     type="date"
@@ -692,8 +1199,8 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                     required
                   />
                 </div>
-                <div className="form-group">
-                  <label className="form-label">End Date *</label>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Target Completion Date *</label>
                   <input
                     type="date"
                     value={endDate}
@@ -704,48 +1211,9 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                 </div>
               </div>
 
-              <div style={{ 
-                padding: '14px', 
-                background: 'rgba(255,255,255,0.015)', 
-                border: '1px solid var(--border-color)', 
-                borderRadius: '8px',
-                marginTop: '4px'
-              }}>
-                <div style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-secondary)', marginBottom: '10px' }}>
-                  National Governance Declarations
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-primary)' }}>DPC Registration Status</span>
-                    <select
-                      value={dpcStatus}
-                      onChange={(e) => setDpcStatus(e.target.value as any)}
-                      className="form-select"
-                      style={{ width: '130px', padding: '4px 8px', fontSize: '0.75rem' }}
-                    >
-                      <option value="Registered">Registered</option>
-                      <option value="Pending">Pending</option>
-                      <option value="Exempt">Exempt</option>
-                    </select>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-primary)' }}>Sovereign Data Residency</span>
-                    <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        checked={isSovereignHosting}
-                        onChange={(e) => setIsSovereignHosting(e.target.checked)}
-                        style={{ width: '16px', height: '16px', accentColor: 'var(--ghana-emerald)' }}
-                      />
-                      <span style={{ fontSize: '0.75rem', marginLeft: '6px', color: 'var(--text-secondary)' }}>Host inside Ghana</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              <button type="submit" className="btn btn-primary" style={{ marginTop: '10px' }}>
+              <button type="submit" className="btn btn-primary" style={{ marginTop: '6px' }}>
                 <Plus className="w-4 h-4" />
-                <span>Submit Registry Entry</span>
+                <span>Submit to NAPTCS National Registry</span>
               </button>
 
             </form>

@@ -12,7 +12,12 @@ import {
   AlertTriangle,
   FolderOpen,
   CheckCircle2,
-  HelpCircle
+  HelpCircle,
+  ShieldCheck,
+  Building2,
+  Landmark,
+  Award,
+  Lock
 } from 'lucide-react';
 import { AIProject, formatNumberToWords } from '../data/sampleProjects';
 import { UserRole } from './RoleSwitcher';
@@ -36,7 +41,7 @@ const CustomTooltip = ({ active, payload }: any) => {
           {data.project}
         </div>
         <div style={{ color: 'var(--text-secondary)', fontSize: '0.72rem', marginBottom: '8px' }}>
-          MDA: <span style={{ color: '#fff', fontWeight: 600 }}>{data.mdaName}</span>
+          Entity: <span style={{ color: '#fff', fontWeight: 600 }}>{data.mdaName}</span>
         </div>
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <div>
@@ -69,57 +74,76 @@ interface DashboardProps {
 
 export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) => {
   const [selectedSector, setSelectedSector] = useState<string>('All');
+  const [selectedTrack, setSelectedTrack] = useState<'All' | 'Government' | 'Private Sector'>('All');
   const [showProjectsTooltip, setShowProjectsTooltip] = useState(false);
 
-  const activeProjectsList = projects.filter(p => p.status === 'Active');
-  const delayedProjectsList = projects.filter(p => p.status === 'Delayed');
-  const completedProjectsList = projects.filter(p => p.status === 'Completed');
+  // Filter projects by Track and Sector
+  const filteredProjects = projects.filter(p => {
+    if (selectedTrack === 'Government' && !p.entitySectorType.includes('Government')) return false;
+    if (selectedTrack === 'Private Sector' && !p.entitySectorType.includes('Private')) return false;
+    if (selectedSector !== 'All' && p.sector !== selectedSector) return false;
+    return true;
+  });
 
-  // Calculates KPI values
-  const totalProjectsCount = projects.length;
-  const activeProjectsCount = projects.filter(p => p.status === 'Active').length;
-  const delayedProjectsCount = projects.filter(p => p.status === 'Delayed').length;
+  const activeProjectsList = filteredProjects.filter(p => p.status === 'Active');
+  const delayedProjectsList = filteredProjects.filter(p => p.status === 'Delayed');
+  const completedProjectsList = filteredProjects.filter(p => p.status === 'Completed');
+
+  // Calculates NAPTCS KPI values
+  const totalProjectsCount = filteredProjects.length;
+  const activeProjectsCount = activeProjectsList.length;
+  const delayedProjectsCount = delayedProjectsList.length;
+
+  const govCount = projects.filter(p => p.entitySectorType.includes('Government')).length;
+  const privCount = projects.filter(p => p.entitySectorType.includes('Private')).length;
+
+  // Clearance Gatekeeper status counts
+  const clearedCount = projects.filter(p => p.clearanceStatus === 'Cleared').length;
+  const conditionalCount = projects.filter(p => p.clearanceStatus === 'Conditional').length;
+  const underReviewCount = projects.filter(p => p.clearanceStatus === 'Pending Review').length;
+  const quarantinedCount = projects.filter(p => !p.isOrganizationCleared).length;
+  const prohibitedCount = projects.filter(p => p.riskTier === 'Prohibited').length;
+
+  // Risk Tier counts
+  const highRiskCount = projects.filter(p => p.riskTier === 'High Risk').length;
+  const limitedRiskCount = projects.filter(p => p.riskTier === 'Limited Risk').length;
+  const minimalRiskCount = projects.filter(p => p.riskTier === 'Minimal Risk').length;
   
-  const totalBudget = projects.reduce((acc, p) => acc + p.budget.totalAllocated, 0);
-  const totalUtilized = projects.reduce((acc, p) => acc + p.budget.utilized, 0);
+  const totalBudget = filteredProjects.reduce((acc, p) => acc + p.budget.totalAllocated, 0);
+  const totalUtilized = filteredProjects.reduce((acc, p) => acc + p.budget.utilized, 0);
   const budgetUtilizationRate = totalBudget > 0 ? (totalUtilized / totalBudget) * 100 : 0;
 
   const avgReadiness = totalProjectsCount > 0 
-    ? projects.reduce((acc, p) => acc + p.readinessScore, 0) / totalProjectsCount 
+    ? filteredProjects.reduce((acc, p) => acc + p.readinessScore, 0) / totalProjectsCount 
     : 0;
   const avgCompliance = totalProjectsCount > 0 
-    ? projects.reduce((acc, p) => {
+    ? filteredProjects.reduce((acc, p) => {
         const s = p.compliance;
         const weightedScore = (s.fairness * 0.20) + (s.transparency * 0.25) + (s.privacy * 0.20) + (s.security * 0.35);
         return acc + weightedScore;
-      }, 0) / totalProjectsCount
+      }, 0) / totalProjectsCount 
     : 0;
 
-  // Filter projects by sector for drilldowns
-  const filteredProjects = selectedSector === 'All' 
-    ? projects 
-    : projects.filter(p => p.sector === selectedSector);
-
   // 1. Data formulation for Budgets Chart
-  const budgetChartData = filteredProjects.map(p => ({
+  const budgetChartData = filteredProjects.slice(0, 10).map(p => ({
     name: p.mdaCode,
-    Approved: p.budget.totalAllocated / 1000000, // GHS Millions for graph scaling
+    Approved: p.budget.totalAllocated / 1000000,
     Utilized: p.budget.utilized / 1000000,
     ApprovedRaw: p.budget.totalAllocated,
     UtilizedRaw: p.budget.utilized,
     project: p.name,
-    mdaName: p.mda
+    mdaName: p.organizationName
   }));
 
   // 2. Data formulation for Sectors (Radar)
   const sectorCounts: { [key: string]: number } = {};
-  projects.forEach(p => {
+  filteredProjects.forEach(p => {
     sectorCounts[p.sector] = (sectorCounts[p.sector] || 0) + 1;
   });
   const sectorChartData = Object.keys(sectorCounts).map(sector => ({
     subject: sector,
     count: sectorCounts[sector],
-    fullMark: 5
+    fullMark: 6
   }));
 
   // 3. Compliance Trends Simulation
@@ -129,7 +153,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
     { month: 'Mar', Compliance: 78, Projects: 18 },
     { month: 'Apr', Compliance: 81, Projects: 20 },
     { month: 'May', Compliance: 84, Projects: 22 },
-    { month: 'Jun', Compliance: 86, Projects: 24 },
+    { month: 'Jun', Compliance: 88, Projects: 26 },
   ];
 
   // Dynamic system notifications based on roles
@@ -138,24 +162,34 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
     if (currentRole !== 'Public User') {
       notices.push({
         type: 'warning',
-        message: 'GRA Tax Fraud engine milestone verification delayed by 2 weeks.',
-        time: '3 hours ago'
-      });
-      notices.push({
-        type: 'danger',
-        message: 'Security risk check flagged on Akosombo Dam Hydrology project. Mitigation action required.',
-        time: '5 hours ago'
+        message: 'DarkStar Defense AI quarantined: Parent entity has not cleared national DPIA and TIN verification.',
+        time: '2 hours ago'
       });
       notices.push({
         type: 'success',
-        message: 'Cocoa Board disease predictor ethics review finalized and approved.',
+        message: 'Farmerline Mergdata AgTech AI cleared with certificate NAPTCS-CLR-2026-003.',
+        time: '5 hours ago'
+      });
+      notices.push({
+        type: 'info',
+        message: 'Technical Review Committee (TCC) scheduled review for 4 high-risk biometric systems.',
         time: '1 day ago'
+      });
+      notices.push({
+        type: 'danger',
+        message: 'High-risk system Akosombo Dam Hydrology flagged for annual VAPT penetration re-testing.',
+        time: '2 days ago'
       });
     } else {
       notices.push({
         type: 'info',
-        message: 'Responsible AI Authority published new statistics on agricultural tech adoption.',
+        message: 'National AI Clearance Authority has verified and certified 15 operational AI systems across Ghana.',
         time: 'Yesterday'
+      });
+      notices.push({
+        type: 'success',
+        message: 'Public certificate verification portal is online with cryptographic QR links.',
+        time: '3 days ago'
       });
     }
     return notices;
@@ -163,41 +197,155 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
 
   return (
     <div>
-      {/* Sector filter bar */}
+      {/* NAPTCS Header Banner with Dual Sector Filter */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: '24px',
+        flexWrap: 'wrap',
+        gap: '16px',
+        marginBottom: '22px',
         background: 'rgba(255,255,255,0.02)',
         padding: '16px 24px',
         borderRadius: '12px',
         border: '1px solid var(--border-color)'
       }}>
         <div>
-          <h2 style={{ fontSize: '1.2rem', fontWeight: 700 }}>National AI Dashboard</h2>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-            Real-time analytics for government Artificial Intelligence implementations
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>National AI Tracking & Clearance Dashboard (NAPTCS)</h2>
+            <span className="badge badge-success" style={{ fontSize: '0.68rem', fontWeight: 700 }}>Act 843 Statutory Oversight</span>
+          </div>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+            Real-time tracking, risk pre-classification, and clearance gatekeeper analytics across Ghana's public and private sectors.
           </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
-            Sector Focus:
-          </span>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          {/* Sector Track Toggle */}
+          <div style={{ display: 'flex', background: 'rgba(0,0,0,0.3)', padding: '3px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+            <button
+              onClick={() => setSelectedTrack('All')}
+              className={`gis-layer-btn ${selectedTrack === 'All' ? 'active' : ''}`}
+              style={{ border: 'none', padding: '6px 12px', fontSize: '0.74rem' }}
+            >
+              All Tracks ({projects.length})
+            </button>
+            <button
+              onClick={() => setSelectedTrack('Government')}
+              className={`gis-layer-btn ${selectedTrack === 'Government' ? 'active' : ''}`}
+              style={{ border: 'none', padding: '6px 12px', fontSize: '0.74rem' }}
+            >
+              <Landmark className="w-3.5 h-3.5 text-blue-400" />
+              <span>Gov ({govCount})</span>
+            </button>
+            <button
+              onClick={() => setSelectedTrack('Private Sector')}
+              className={`gis-layer-btn ${selectedTrack === 'Private Sector' ? 'active' : ''}`}
+              style={{ border: 'none', padding: '6px 12px', fontSize: '0.74rem' }}
+            >
+              <Building2 className="w-3.5 h-3.5 text-purple-400" />
+              <span>Private ({privCount})</span>
+            </button>
+          </div>
+
+          {/* Domain dropdown */}
           <select 
             value={selectedSector}
             onChange={(e) => setSelectedSector(e.target.value)}
             className="form-select"
-            style={{ width: '180px', padding: '8px 12px' }}
+            style={{ width: '150px', padding: '6px 10px', fontSize: '0.78rem' }}
           >
-            <option value="All">All Sectors</option>
+            <option value="All">All Domains</option>
             <option value="Health">Health</option>
             <option value="Agriculture">Agriculture</option>
             <option value="Finance">Finance</option>
+            <option value="Security">Security</option>
+            <option value="Transport">Transport</option>
             <option value="Energy">Energy</option>
             <option value="Justice">Justice</option>
             <option value="Environment">Environment</option>
           </select>
+        </div>
+      </div>
+
+      {/* Statutory Clearance Gatekeeper Overview Banner */}
+      <div style={{
+        background: 'linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(59,130,246,0.04) 100%)',
+        border: '1px solid rgba(16,185,129,0.25)',
+        borderRadius: '12px',
+        padding: '16px 20px',
+        marginBottom: '24px',
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: '16px',
+        alignItems: 'center'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: 'rgba(16,185,129,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
+            <Award className="w-5 h-5" />
+          </div>
+          <div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+              Cleared Systems (≥85%)
+            </div>
+            <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#10b981' }}>
+              {clearedCount}
+            </div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)' }}>
+              Full certificate issued
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: 'rgba(251,191,36,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fbbf24' }}>
+            <ShieldCheck className="w-5 h-5" />
+          </div>
+          <div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+              Conditional (60-84%)
+            </div>
+            <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#fbbf24' }}>
+              {conditionalCount}
+            </div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)' }}>
+              Active remediation bounds
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: 'rgba(56,189,248,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8' }}>
+            <Activity className="w-5 h-5" />
+          </div>
+          <div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+              Under TCC Review
+            </div>
+            <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#38bdf8' }}>
+              {underReviewCount}
+            </div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)' }}>
+              Awaiting conformity scoring
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: 'rgba(244,63,94,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fb7185' }}>
+            <Lock className="w-5 h-5" />
+          </div>
+          <div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+              Quarantined / Prohibited
+            </div>
+            <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#fb7185' }}>
+              {quarantinedCount} <span style={{ fontSize: '0.8rem', fontWeight: 500 }}>({prohibitedCount} prohibited)</span>
+            </div>
+            <div style={{ fontSize: '0.68rem', color: '#f87171' }}>
+              Withheld from public release
+            </div>
+          </div>
         </div>
       </div>
 
@@ -215,7 +363,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
           onClick={() => setShowProjectsTooltip(!showProjectsTooltip)}
         >
           <div>
-            <div className="kpi-title">Total AI Projects</div>
+            <div className="kpi-title">Tracked Systems ({selectedTrack})</div>
             <div className="kpi-value">{totalProjectsCount}</div>
             <div className="kpi-sub">
               <span style={{ color: 'var(--ghana-emerald)' }}>Active: {activeProjectsCount}</span> | Delayed: {delayedProjectsCount}
@@ -235,13 +383,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
               animation: 'fadeIn 0.2s ease-out'
             }}>
               <div style={{ fontWeight: 700, fontSize: '0.8rem', color: '#fff', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Project Registry Breakdown
+                System Lifecycle Breakdown
               </div>
               
               {/* Active Section */}
               <div>
                 <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--ghana-emerald)', display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <span>ACTIVE</span>
+                  <span>ACTIVE DEPLOYMENTS</span>
                   <span>{activeProjectsList.length}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '120px', overflowY: 'auto', paddingRight: '4px' }}>
@@ -269,7 +417,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
               {/* Delayed Section */}
               <div>
                 <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--ghana-gold)', display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <span>DELAYED</span>
+                  <span>DELAYED OR QUARANTINED</span>
                   <span>{delayedProjectsList.length}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '120px', overflowY: 'auto', paddingRight: '4px' }}>
@@ -297,7 +445,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
               {/* Completed Section */}
               <div>
                 <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#3b82f6', display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <span>COMPLETED</span>
+                  <span>OPERATIONAL AUDITED</span>
                   <span>{completedProjectsList.length}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '120px', overflowY: 'auto', paddingRight: '4px' }}>
@@ -326,7 +474,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
         </div>
 
         <div className="glass-card kpi-card" style={{ '--theme-accent': 'var(--ghana-gold)', minHeight: '140px' } as React.CSSProperties}>
-          <div className="kpi-title">Approved Budget & Utilized Funds</div>
+          <div className="kpi-title">National AI Investment & Utilization</div>
           <div className="kpi-value" style={{ fontSize: '1.05rem', lineHeight: '1.4', marginTop: '6px', fontWeight: 700, wordBreak: 'break-word' }}>
             Allocated: <span style={{ color: 'var(--text-primary)' }}>{formatNumberToWords(totalBudget)} GHS (GHS {totalBudget.toLocaleString('en-US')})</span>
           </div>
@@ -334,25 +482,39 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
             Utilized: <span style={{ color: 'var(--ghana-gold)', fontWeight: 600 }}>{formatNumberToWords(totalUtilized)} GHS (GHS {totalUtilized.toLocaleString('en-US')})</span>
           </div>
           <div className="kpi-sub" style={{ fontSize: '0.72rem', marginTop: '2px' }}>
-            Utilization Rate: <span style={{ color: 'var(--ghana-gold)' }}>{budgetUtilizationRate.toFixed(1)}%</span>
+            Budget Absorption: <span style={{ color: 'var(--ghana-gold)' }}>{budgetUtilizationRate.toFixed(1)}%</span>
           </div>
           <DollarSign className="kpi-icon-wrapper" />
         </div>
 
-        <div className="glass-card kpi-card" style={{ '--theme-accent': 'var(--ghana-emerald)' } as React.CSSProperties}>
-          <div className="kpi-title">AI Readiness index</div>
-          <div className="kpi-value">{avgReadiness.toFixed(0)}%</div>
-          <div className="kpi-sub">
-            National Maturity Tier: <span style={{ color: 'var(--ghana-emerald)' }}>Defined</span>
+        <div className="glass-card kpi-card" style={{ '--theme-accent': '#38bdf8' } as React.CSSProperties}>
+          <div className="kpi-title">Risk Pre-Classification Tiers</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.76rem' }}>
+              <span style={{ color: '#10b981' }}>🟢 Minimal Risk</span>
+              <strong>{minimalRiskCount}</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.76rem' }}>
+              <span style={{ color: '#38bdf8' }}>🔵 Limited Risk</span>
+              <strong>{limitedRiskCount}</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.76rem' }}>
+              <span style={{ color: '#f59e0b' }}>🟠 High Risk</span>
+              <strong>{highRiskCount}</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.76rem' }}>
+              <span style={{ color: '#ef4444' }}>🔴 Prohibited</span>
+              <strong>{prohibitedCount}</strong>
+            </div>
           </div>
           <Layers className="kpi-icon-wrapper" />
         </div>
 
         <div className="glass-card kpi-card" style={{ '--theme-accent': 'var(--ghana-emerald)' } as React.CSSProperties}>
-          <div className="kpi-title">Compliance Index</div>
+          <div className="kpi-title">Act 843 Privacy & Ethics Index</div>
           <div className="kpi-value">{avgCompliance.toFixed(0)}%</div>
           <div className="kpi-sub">
-            Ethical Governance Score: <span style={{ color: 'var(--ghana-emerald)' }}>Good</span>
+            Readiness Index: <span style={{ color: 'var(--ghana-emerald)' }}>{avgReadiness.toFixed(0)}%</span> (Sovereign Cloud: 100%)
           </div>
           <Activity className="kpi-icon-wrapper" />
         </div>
@@ -365,7 +527,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
           <div className="chart-header">
             <h3 className="chart-title">Financial Allotments (GHS Millions)</h3>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '4px' }}>
-              Indexed by MDA Code
+              Indexed by Entity
             </span>
           </div>
           <div className="chart-container">
@@ -389,16 +551,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
         {/* Sectoral concentration Radar chart */}
         <div className="glass-card chart-card">
           <div className="chart-header">
-            <h3 className="chart-title">Sector distribution</h3>
+            <h3 className="chart-title">Economic Domain Distribution</h3>
           </div>
           <div className="chart-container">
             <ResponsiveContainer width="100%" height="100%">
               <RadarChart cx="50%" cy="50%" outerRadius="70%" data={sectorChartData}>
                 <PolarGrid stroke="rgba(255,255,255,0.06)" />
                 <PolarAngleAxis dataKey="subject" stroke="var(--text-secondary)" fontSize={10} />
-                <PolarRadiusAxis angle={30} domain={[0, 4]} stroke="rgba(255,255,255,0.15)" fontSize={8} />
+                <PolarRadiusAxis angle={30} domain={[0, 6]} stroke="rgba(255,255,255,0.15)" fontSize={8} />
                 <Radar
-                  name="Projects Count"
+                  name="Systems Count"
                   dataKey="count"
                   stroke="var(--ghana-emerald)"
                   fill="rgba(16, 185, 129, 0.2)"
@@ -415,10 +577,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
         {/* Compliance trends Line chart */}
         <div className="glass-card" style={{ minHeight: '260px' }}>
           <div className="chart-header">
-            <h3 className="chart-title">Ethical Compliance Trends</h3>
+            <h3 className="chart-title">NAPTCS National Compliance Progression</h3>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: 'var(--ghana-emerald)' }}>
               <TrendingUp className="w-3.5 h-3.5" />
-              <span>Upward Trajectory (+14%)</span>
+              <span>Upward Trajectory (+16%)</span>
             </div>
           </div>
           <div style={{ height: '180px', width: '100%' }}>
@@ -443,8 +605,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
         {/* Dynamic Alerts and system audits panel */}
         <div className="glass-card" style={{ minHeight: '260px', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 className="chart-title">System Status & Regulatory Notices</h3>
-            <span className="badge badge-warning" style={{ fontSize: '0.65rem' }}>Active Alerts</span>
+            <h3 className="chart-title">Regulator & TCC Clearance Notices</h3>
+            <span className="badge badge-warning" style={{ fontSize: '0.65rem' }}>Active Advisories</span>
           </div>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, overflowY: 'auto' }}>

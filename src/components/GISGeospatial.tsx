@@ -49,6 +49,8 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
   // 1. Navigation, Search & Spatial Filter States
   const [activeRegion, setActiveRegion] = useState<string>('All');
   const [selectedSector, setSelectedSector] = useState<string>('All');
+  const [selectedSectorTrack, setSelectedSectorTrack] = useState<'All' | 'Government' | 'Private Sector'>('All');
+  const [clearanceFilter, setClearanceFilter] = useState<'Cleared & Public Only' | 'All (Including Quarantined)'>('Cleared & Public Only');
   const [selectedStage, setSelectedStage] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activePanelTab, setActivePanelTab] = useState<PanelTab>('telemetry');
@@ -85,6 +87,15 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
   // Filtered projects calculation
   const filteredProjects = useMemo(() => {
     return projects.filter(p => {
+      // Organization Clearance & Publication filter (Gatekeeper rule)
+      if (clearanceFilter === 'Cleared & Public Only') {
+        if (!p.isPublished && !p.isOrganizationCleared) return false;
+      }
+      // Sector Track filter (Government vs Private Sector)
+      if (selectedSectorTrack !== 'All') {
+        if (selectedSectorTrack === 'Government' && !p.entitySectorType.includes('Government')) return false;
+        if (selectedSectorTrack === 'Private Sector' && !p.entitySectorType.includes('Private')) return false;
+      }
       // Region filter
       if (activeRegion !== 'All' && p.region.toLowerCase() !== activeRegion.toLowerCase()) return false;
       // Sector filter
@@ -98,7 +109,8 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
         const matchesCode = p.projectCode.toLowerCase().includes(query);
         const matchesDistrict = p.district.toLowerCase().includes(query);
         const matchesMda = p.mda.toLowerCase().includes(query);
-        if (!matchesName && !matchesCode && !matchesDistrict && !matchesMda) return false;
+        const matchesOrg = p.organizationName.toLowerCase().includes(query);
+        if (!matchesName && !matchesCode && !matchesDistrict && !matchesMda && !matchesOrg) return false;
       }
       // Radius Proximity filter
       if (radiusFilterActive) {
@@ -112,7 +124,7 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
       }
       return true;
     });
-  }, [projects, activeRegion, selectedSector, selectedStage, searchQuery, radiusFilterActive, radiusCenter, radiusKm]);
+  }, [projects, clearanceFilter, selectedSectorTrack, activeRegion, selectedSector, selectedStage, searchQuery, radiusFilterActive, radiusCenter, radiusKm]);
 
   // Aggregate M&E statistics for current view
   const totalProjectsCount = filteredProjects.length;
@@ -334,22 +346,36 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
     // 5. Individual AI Project Deployment Nodes
     if (showProjectNodes) {
       filteredProjects.forEach(p => {
-        const markerColor = p.status === 'Delayed' ? '#ef4444' : p.stage === 'Deployment' || p.stage === 'Operational' ? '#10b981' : '#fbbf24';
+        const isQuarantined = !p.isOrganizationCleared;
+        const isPrivate = p.entitySectorType.includes('Private');
+
+        // Color coding: Quarantined = rose, Private = violet, Government = emerald or amber
+        let markerColor = p.status === 'Delayed' ? '#ef4444' : p.stage === 'Deployment' || p.stage === 'Operational' ? '#10b981' : '#fbbf24';
+        if (isQuarantined) {
+          markerColor = '#f43f5e';
+        } else if (isPrivate) {
+          markerColor = '#a855f7';
+        }
         
         const customIcon = L.divIcon({
           className: 'custom-map-marker',
           html: `<div style="
-            width: 16px; 
-            height: 16px; 
+            width: ${isQuarantined ? '18px' : '16px'}; 
+            height: ${isQuarantined ? '18px' : '16px'}; 
             border-radius: 50%; 
             background: ${markerColor}; 
-            border: 2px solid #0b0f19;
-            box-shadow: 0 0 12px ${markerColor};
+            border: 2px solid ${isQuarantined ? '#f43f5e' : '#0b0f19'};
+            box-shadow: 0 0 ${isQuarantined ? '16px #f43f5e' : '10px ' + markerColor};
             cursor: pointer;
             transition: transform 0.2s ease;
-          "></div>`,
-          iconSize: [16, 16],
-          iconAnchor: [8, 8]
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          ">
+            ${isQuarantined ? '<span style="font-size: 8px; color: #fff; font-weight: 900;">!</span>' : ''}
+          </div>`,
+          iconSize: [18, 18],
+          iconAnchor: [9, 9]
         });
 
         const marker = L.marker([p.latitude, p.longitude], { icon: customIcon });
@@ -362,29 +388,37 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
 
         const popupHtml = `
           <div style="padding: 4px; font-family: 'Inter', sans-serif;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <span style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; background: ${isPrivate ? 'rgba(168,85,247,0.2)' : 'rgba(59,130,246,0.2)'}; color: ${isPrivate ? '#c084fc' : '#60a5fa'}; font-weight: 700;">
+                ${isPrivate ? '🏢 Private Sector' : '🏛️ Government'}
+              </span>
+              <span style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; background: ${isQuarantined ? 'rgba(244,63,94,0.2)' : 'rgba(16,185,129,0.2)'}; color: ${isQuarantined ? '#fb7185' : '#34d399'}; font-weight: 700;">
+                ${isQuarantined ? '⛔ Quarantined' : '✅ ' + p.clearanceStatus}
+              </span>
+            </div>
             <div class="map-tooltip-title">${p.name}</div>
-            <div style="font-size: 0.72rem; color: #94a3b8; font-weight: 600; margin-bottom: 8px;">
-              Code: ${p.projectCode} • Owner: ${p.mdaCode}
+            <div style="font-size: 0.72rem; color: #94a3b8; font-weight: 600; margin-bottom: 6px;">
+              ${p.organizationName} (${p.projectCode})
             </div>
             <div class="map-tooltip-row">
-              <span>Sector:</span> <strong>${p.sector}</strong>
+              <span>Risk Tier:</span> <strong style="color: ${p.riskTier === 'High Risk' ? '#f59e0b' : p.riskTier === 'Prohibited' ? '#ef4444' : '#10b981'}">${p.riskTier}</strong>
             </div>
             <div class="map-tooltip-row">
-              <span>Lifecycle:</span> <strong style="color: #10b981">${p.stage} (${p.status})</strong>
+              <span>Certificate:</span> <strong style="color: #10b981; font-size: 0.68rem;">${p.clearanceCertificateId || 'Pending Accreditation'}</strong>
+            </div>
+            <div class="map-tooltip-row">
+              <span>Sector & Stage:</span> <strong>${p.sector} • ${p.stage}</strong>
             </div>
             <div class="map-tooltip-row">
               <span>Allocated Budget:</span> <strong>GHS ${p.budget.totalAllocated.toLocaleString('en-US')}</strong>
             </div>
-            <div class="map-tooltip-row">
-              <span>Compliance:</span> <strong style="color: ${p.compliance.overallGrade === 'Excellent' ? '#10b981' : '#fbbf24'}">${p.compliance.overallGrade}</strong>
-            </div>
-            <div style="margin-top: 8px; font-size: 0.7rem; color: #64748b; font-style: italic;">
-              District: ${p.district}, ${p.region} Region
+            <div style="margin-top: 6px; font-size: 0.68rem; color: #64748b; font-style: italic;">
+              ${p.district}, ${p.region} Region
             </div>
           </div>
         `;
 
-        marker.bindPopup(popupHtml, { maxWidth: 290 });
+        marker.bindPopup(popupHtml, { maxWidth: 300 });
         group.addLayer(marker);
       });
     }
@@ -670,16 +704,45 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
             />
           </div>
 
+          {/* Sector Track Filter (Government vs Private Sector) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: 600 }}>Track:</span>
+            <select
+              value={selectedSectorTrack}
+              onChange={(e) => setSelectedSectorTrack(e.target.value as any)}
+              className="form-input"
+              style={{ height: '36px', fontSize: '0.78rem', minWidth: '130px' }}
+            >
+              <option value="All">All Tracks</option>
+              <option value="Government">🏛️ Government</option>
+              <option value="Private Sector">🏢 Private Sector</option>
+            </select>
+          </div>
+
+          {/* Gatekeeper Clearance Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: 600 }}>Clearance:</span>
+            <select
+              value={clearanceFilter}
+              onChange={(e) => setClearanceFilter(e.target.value as any)}
+              className="form-input"
+              style={{ height: '36px', fontSize: '0.78rem', minWidth: '150px' }}
+            >
+              <option value="Cleared & Public Only">✅ Cleared & Public Only</option>
+              <option value="All (Including Quarantined)">⛔ All (Include Quarantined)</option>
+            </select>
+          </div>
+
           {/* Sector Filter */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: 600 }}>Sector:</span>
+            <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: 600 }}>Domain:</span>
             <select
               value={selectedSector}
               onChange={(e) => setSelectedSector(e.target.value)}
               className="form-input"
-              style={{ height: '36px', fontSize: '0.78rem', minWidth: '130px' }}
+              style={{ height: '36px', fontSize: '0.78rem', minWidth: '120px' }}
             >
-              <option value="All">All Sectors</option>
+              <option value="All">All Domains</option>
               <option value="Health">Health</option>
               <option value="Agriculture">Agriculture</option>
               <option value="Transport">Transport</option>
@@ -698,7 +761,7 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
               value={selectedStage}
               onChange={(e) => setSelectedStage(e.target.value)}
               className="form-input"
-              style={{ height: '36px', fontSize: '0.78rem', minWidth: '130px' }}
+              style={{ height: '36px', fontSize: '0.78rem', minWidth: '110px' }}
             >
               <option value="All">All Stages</option>
               <option value="Operational">Operational</option>
@@ -1206,16 +1269,36 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: 'rgba(16,185,129,0.05)', padding: '10px', borderRadius: '6px', border: '1px solid rgba(16,185,129,0.2)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>Managing Ministry:</span>
-                      <strong>{selectedProject.mda}</strong>
+                      <span style={{ color: 'var(--text-muted)' }}>Managing Entity:</span>
+                      <strong style={{ color: '#fff' }}>{selectedProject.organizationName}</strong>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>Sector / Category:</span>
-                      <strong>{selectedProject.sector} ({selectedProject.category})</strong>
+                      <span style={{ color: 'var(--text-muted)' }}>Sector Track:</span>
+                      <strong style={{ color: selectedProject.entitySectorType.includes('Private') ? '#c084fc' : '#60a5fa' }}>
+                        {selectedProject.entitySectorType}
+                      </strong>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>Lifecycle Status:</span>
-                      <strong style={{ color: '#10b981' }}>{selectedProject.stage} ({selectedProject.status})</strong>
+                      <span style={{ color: 'var(--text-muted)' }}>Org Accreditation:</span>
+                      <strong style={{ color: selectedProject.isOrganizationCleared ? '#10b981' : '#f43f5e' }}>
+                        {selectedProject.isOrganizationCleared ? '✅ Cleared & Accredited' : '⛔ Quarantined (Pending Org Clearance)'}
+                      </strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Risk Tier:</span>
+                      <strong style={{ color: selectedProject.riskTier === 'High Risk' ? '#f59e0b' : selectedProject.riskTier === 'Prohibited' ? '#ef4444' : '#10b981' }}>
+                        {selectedProject.riskTier}
+                      </strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Clearance Certificate:</span>
+                      <strong style={{ color: '#10b981', fontSize: '0.7rem' }}>
+                        {selectedProject.clearanceCertificateId || 'Pending Review'}
+                      </strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Domain & Lifecycle:</span>
+                      <strong>{selectedProject.sector} • {selectedProject.stage} ({selectedProject.status})</strong>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem' }}>
                       <span style={{ color: 'var(--text-muted)' }}>Total Allocated:</span>

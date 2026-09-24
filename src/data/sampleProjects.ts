@@ -44,6 +44,79 @@ export interface DocumentAsset {
   signedBy: string[];
 }
 
+// ----------------------------------------------------------------------------
+// NAPTCS Dual-Sector Clearance & Organization Types
+// ----------------------------------------------------------------------------
+
+export type EntitySectorType = 
+  | 'Government (MDA/MMDA/SOE)' 
+  | 'Private Sector (Commercial Enterprise)' 
+  | 'Private Sector (Startup/SME)' 
+  | 'Academic & Research Institution' 
+  | 'International Vendor / Partner';
+
+export type OrganizationClearanceStatus = 
+  | 'Cleared' 
+  | 'Pending Review' 
+  | 'Conditional' 
+  | 'Not Cleared' 
+  | 'Suspended';
+
+export interface Organization {
+  id: string;
+  name: string;
+  acronym: string;
+  entityType: EntitySectorType;
+  tinOrRegNumber: string; // GRA TIN or Registrar General Department Registration
+  dpcRegNumber: string;   // Data Protection Commission (Act 843) Certificate Number
+  sector: 'Health' | 'Education' | 'Agriculture' | 'Finance' | 'Security' | 'Transport' | 'Energy' | 'Environment' | 'Justice' | 'Local Government';
+  region: string;
+  district: string;
+  dpoName: string;
+  dpoEmail: string;
+  contactEmail: string;
+  website: string;
+  clearanceStatus: OrganizationClearanceStatus;
+  clearanceCertificateId?: string;
+  clearedDate?: string;
+  expiryDate?: string;
+  reviewNotes?: string;
+  submittedAt: string;
+  sovereignDataHosting: 'In-Country (National Data Centre)' | 'Government-Approved Cloud' | 'Hybrid Edge' | 'Pending Verification';
+}
+
+export type RiskTier = 'Minimal Risk' | 'Limited Risk' | 'High Risk' | 'Prohibited';
+export type ProjectClearanceStatus = 'Cleared' | 'Conditional' | 'Pending Review' | 'Not Cleared' | 'Draft';
+
+export interface ClearanceEvidence {
+  dpiaUploaded: boolean;
+  vaptReportUploaded: boolean;
+  modelDocumentationUploaded: boolean;
+  slaUploaded: boolean;
+  biasAuditUploaded: boolean;
+  procurementRecordsUploaded: boolean;
+}
+
+export interface ClearanceCondition {
+  id: string;
+  requirement: string;
+  deadline: string;
+  status: 'Open' | 'Resolved';
+}
+
+export interface ClearanceDecision {
+  status: ProjectClearanceStatus;
+  overallScore: number;
+  decisionDate: string;
+  decidedBy: string;
+  clearanceCertificateId?: string;
+  certificateQrCodeUrl?: string;
+  validUntil?: string;
+  scopeLimits?: string;
+  conditions?: ClearanceCondition[];
+  mandatoryGateOverride?: string;
+}
+
 export interface AIProject {
   id: string;
   projectCode: string;
@@ -60,6 +133,17 @@ export interface AIProject {
   longitude: number;
   mda: string;
   mdaCode: string;
+  organizationId: string;
+  organizationName: string;
+  entitySectorType: EntitySectorType;
+  riskTier: RiskTier;
+  clearanceStatus: ProjectClearanceStatus;
+  clearanceCertificateId?: string;
+  clearanceScore: number;
+  clearanceEvidence: ClearanceEvidence;
+  clearanceDecision?: ClearanceDecision;
+  isOrganizationCleared: boolean;
+  isPublished: boolean;
   region: string;
   district: string;
   budget: Budget;
@@ -69,6 +153,411 @@ export interface AIProject {
   risks: RiskItem[];
   documents: DocumentAsset[];
 }
+
+// ----------------------------------------------------------------------------
+// Registered Organizations (Government MDAs and Private Sector Entities)
+// ----------------------------------------------------------------------------
+
+export const sampleOrganizations: Organization[] = [
+  {
+    id: "org-1",
+    name: "Ministry of Communications and Digitalisation",
+    acronym: "MoCD",
+    entityType: "Government (MDA/MMDA/SOE)",
+    tinOrRegNumber: "GA-GOV-MOCD-001",
+    dpcRegNumber: "DPC/GOV/2018/00142",
+    sector: "Local Government",
+    region: "Greater Accra",
+    district: "Accra Metropolitan",
+    dpoName: "Dr. Kofi Mensah",
+    dpoEmail: "dpo@mocd.gov.gh",
+    contactEmail: "registry@mocd.gov.gh",
+    website: "https://mocd.gov.gh",
+    clearanceStatus: "Cleared",
+    clearanceCertificateId: "GH-ORG-CLR-2026-001",
+    clearedDate: "2024-01-15",
+    expiryDate: "2027-01-15",
+    reviewNotes: "Sovereign government ministry with appointed statutory DPO and in-country hosting infrastructure.",
+    submittedAt: "2023-11-10",
+    sovereignDataHosting: "In-Country (National Data Centre)"
+  },
+  {
+    id: "org-2",
+    name: "National Identification Authority",
+    acronym: "NIA",
+    entityType: "Government (MDA/MMDA/SOE)",
+    tinOrRegNumber: "GA-GOV-NIA-002",
+    dpcRegNumber: "DPC/GOV/2019/00088",
+    sector: "Security",
+    region: "Greater Accra",
+    district: "Accra Metropolitan",
+    dpoName: "Evelyn Addo-Kufuor",
+    dpoEmail: "dpo@nia.gov.gh",
+    contactEmail: "info@nia.gov.gh",
+    website: "https://nia.gov.gh",
+    clearanceStatus: "Cleared",
+    clearanceCertificateId: "GH-ORG-CLR-2026-002",
+    clearedDate: "2024-02-20",
+    expiryDate: "2027-02-20",
+    reviewNotes: "National biometric authority. Hardware Security Modules (HSM) verified compliant with Act 843 & Act 1038.",
+    submittedAt: "2023-12-01",
+    sovereignDataHosting: "In-Country (National Data Centre)"
+  },
+  {
+    id: "org-3",
+    name: "Ghana Cocoa Board",
+    acronym: "COCOBOD",
+    entityType: "Government (MDA/MMDA/SOE)",
+    tinOrRegNumber: "GA-SOE-COCOBOD-003",
+    dpcRegNumber: "DPC/SOE/2021/00452",
+    sector: "Agriculture",
+    region: "Western North",
+    district: "Sefwi Wiawso",
+    dpoName: "Kwame Boateng",
+    dpoEmail: "dpo@cocobod.gh",
+    contactEmail: "cms@cocobod.gh",
+    website: "https://cocobod.gh",
+    clearanceStatus: "Cleared",
+    clearanceCertificateId: "GH-ORG-CLR-2026-003",
+    clearedDate: "2024-03-10",
+    expiryDate: "2027-03-10",
+    reviewNotes: "Geospatial farmer database validated under national agricultural digital sovereignty protocols.",
+    submittedAt: "2024-01-08",
+    sovereignDataHosting: "In-Country (National Data Centre)"
+  },
+  {
+    id: "org-4",
+    name: "Judicial Service of Ghana",
+    acronym: "MOJ",
+    entityType: "Government (MDA/MMDA/SOE)",
+    tinOrRegNumber: "GA-GOV-MOJ-004",
+    dpcRegNumber: "DPC/GOV/2020/00311",
+    sector: "Justice",
+    region: "Greater Accra",
+    district: "Accra Metropolitan",
+    dpoName: "Justice Samuel Osei",
+    dpoEmail: "dpo@court.gov.gh",
+    contactEmail: "ejustice@court.gov.gh",
+    website: "https://judicial.gov.gh",
+    clearanceStatus: "Cleared",
+    clearanceCertificateId: "GH-ORG-CLR-2026-004",
+    clearedDate: "2024-04-12",
+    expiryDate: "2027-04-12",
+    reviewNotes: "Court automation framework verified for judicial case record confidentiality.",
+    submittedAt: "2024-01-15",
+    sovereignDataHosting: "In-Country (National Data Centre)"
+  },
+  {
+    id: "org-5",
+    name: "National Health Insurance Authority",
+    acronym: "NHIA",
+    entityType: "Government (MDA/MMDA/SOE)",
+    tinOrRegNumber: "GA-GOV-NHIA-005",
+    dpcRegNumber: "DPC/GOV/2021/00619",
+    sector: "Health",
+    region: "Greater Accra",
+    district: "Accra Metropolitan",
+    dpoName: "Dr. Sheila Quaye",
+    dpoEmail: "dpo@nhia.gov.gh",
+    contactEmail: "claims@nhia.gov.gh",
+    website: "https://nhis.gov.gh",
+    clearanceStatus: "Cleared",
+    clearanceCertificateId: "GH-ORG-CLR-2026-005",
+    clearedDate: "2024-05-18",
+    expiryDate: "2027-05-18",
+    reviewNotes: "Medical claims biometric verification engine verified. DPIA on patient diagnostics approved.",
+    submittedAt: "2024-02-10",
+    sovereignDataHosting: "In-Country (National Data Centre)"
+  },
+  {
+    id: "org-6",
+    name: "Ministry of Gender, Children and Social Protection",
+    acronym: "MOGCSP",
+    entityType: "Government (MDA/MMDA/SOE)",
+    tinOrRegNumber: "GA-GOV-MOGCSP-006",
+    dpcRegNumber: "DPC/GOV/2022/00880",
+    sector: "Local Government",
+    region: "Northern",
+    district: "Tamale Metropolitan",
+    dpoName: "Fatima Alhassan",
+    dpoEmail: "dpo@mogcsp.gov.gh",
+    contactEmail: "leap@mogcsp.gov.gh",
+    website: "https://mogcsp.gov.gh",
+    clearanceStatus: "Cleared",
+    clearanceCertificateId: "GH-ORG-CLR-2026-006",
+    clearedDate: "2024-06-05",
+    expiryDate: "2027-06-05",
+    reviewNotes: "LEAP social beneficiary classification engine cleared for vulnerable household protections.",
+    submittedAt: "2024-03-01",
+    sovereignDataHosting: "In-Country (National Data Centre)"
+  },
+  {
+    id: "org-7",
+    name: "Volta River Authority",
+    acronym: "VRA",
+    entityType: "Government (MDA/MMDA/SOE)",
+    tinOrRegNumber: "GA-SOE-VRA-007",
+    dpcRegNumber: "DPC/SOE/2020/00299",
+    sector: "Energy",
+    region: "Eastern",
+    district: "Asuogyaman",
+    dpoName: "Ing. Emmanuel Darko",
+    dpoEmail: "dpo@vra.com",
+    contactEmail: "hydro@vra.com",
+    website: "https://vra.com",
+    clearanceStatus: "Cleared",
+    clearanceCertificateId: "GH-ORG-CLR-2026-007",
+    clearedDate: "2024-07-22",
+    expiryDate: "2027-07-22",
+    reviewNotes: "Critical Information Infrastructure (CII) verified under Cybersecurity Act 2020 (Act 1038).",
+    submittedAt: "2024-04-10",
+    sovereignDataHosting: "In-Country (National Data Centre)"
+  },
+  {
+    id: "org-8",
+    name: "Kumasi Metropolitan Assembly / MRH",
+    acronym: "KMA",
+    entityType: "Government (MDA/MMDA/SOE)",
+    tinOrRegNumber: "AS-GOV-KMA-008",
+    dpcRegNumber: "DPC/MMDA/2023/01044",
+    sector: "Transport",
+    region: "Ashanti",
+    district: "Kumasi Metropolitan",
+    dpoName: "Baffour Gyan",
+    dpoEmail: "dpo@kma.gov.gh",
+    contactEmail: "roads@kma.gov.gh",
+    website: "https://kma.gov.gh",
+    clearanceStatus: "Cleared",
+    clearanceCertificateId: "GH-ORG-CLR-2026-008",
+    clearedDate: "2024-08-14",
+    expiryDate: "2027-08-14",
+    reviewNotes: "Urban transit cameras cleared with edge license plate and facial blurring privacy filters.",
+    submittedAt: "2024-05-15",
+    sovereignDataHosting: "Hybrid Edge"
+  },
+  {
+    id: "org-9",
+    name: "Ministry of Environment, Science, Technology and Innovation",
+    acronym: "MESTI",
+    entityType: "Government (MDA/MMDA/SOE)",
+    tinOrRegNumber: "GA-GOV-MESTI-009",
+    dpcRegNumber: "DPC/GOV/2022/00741",
+    sector: "Environment",
+    region: "Savannah",
+    district: "West Gonja",
+    dpoName: "Dr. Paulina Amoah",
+    dpoEmail: "dpo@mesti.gov.gh",
+    contactEmail: "climate@mesti.gov.gh",
+    website: "https://mesti.gov.gh",
+    clearanceStatus: "Cleared",
+    clearanceCertificateId: "GH-ORG-CLR-2026-009",
+    clearedDate: "2024-09-02",
+    expiryDate: "2027-09-02",
+    reviewNotes: "Savannah drought forecasting model cleared under open scientific environmental monitoring.",
+    submittedAt: "2024-06-01",
+    sovereignDataHosting: "In-Country (National Data Centre)"
+  },
+  {
+    id: "org-10",
+    name: "Ghana Health Service",
+    acronym: "GHS",
+    entityType: "Government (MDA/MMDA/SOE)",
+    tinOrRegNumber: "GA-GOV-GHS-010",
+    dpcRegNumber: "DPC/GOV/2019/00199",
+    sector: "Health",
+    region: "Upper East",
+    district: "Bolgatanga Municipal",
+    dpoName: "Dr. Anthony Nsiah",
+    dpoEmail: "dpo@ghs.gov.gh",
+    contactEmail: "telehealth@ghs.gov.gh",
+    website: "https://ghs.gov.gh",
+    clearanceStatus: "Cleared",
+    clearanceCertificateId: "GH-ORG-CLR-2026-010",
+    clearedDate: "2024-09-15",
+    expiryDate: "2027-09-15",
+    reviewNotes: "Autonomous drone delivery and telehealth network cleared with GCAA aviation and medical clearance.",
+    submittedAt: "2024-06-20",
+    sovereignDataHosting: "In-Country (National Data Centre)"
+  },
+  {
+    id: "org-11",
+    name: "Ghana Ports and Harbours Authority",
+    acronym: "GPHA",
+    entityType: "Government (MDA/MMDA/SOE)",
+    tinOrRegNumber: "WR-SOE-GPHA-011",
+    dpcRegNumber: "DPC/SOE/2021/00508",
+    sector: "Transport",
+    region: "Western",
+    district: "Sekondi-Takoradi",
+    dpoName: "Captain Alex Asmah",
+    dpoEmail: "dpo@ghanaports.gov.gh",
+    contactEmail: "customs-ai@ghanaports.gov.gh",
+    website: "https://ghanaports.gov.gh",
+    clearanceStatus: "Cleared",
+    clearanceCertificateId: "GH-ORG-CLR-2026-011",
+    clearedDate: "2024-10-01",
+    expiryDate: "2027-10-01",
+    reviewNotes: "Port automated container OCR manifest system cleared for ICUMS customs verification.",
+    submittedAt: "2024-07-15",
+    sovereignDataHosting: "In-Country (National Data Centre)"
+  },
+  {
+    id: "org-12",
+    name: "Environmental Protection Agency",
+    acronym: "EPA",
+    entityType: "Government (MDA/MMDA/SOE)",
+    tinOrRegNumber: "CR-GOV-EPA-012",
+    dpcRegNumber: "DPC/GOV/2021/00477",
+    sector: "Environment",
+    region: "Central",
+    district: "Cape Coast Metropolitan",
+    dpoName: "Naa Borley Tackie",
+    dpoEmail: "dpo@epa.gov.gh",
+    contactEmail: "coastal@epa.gov.gh",
+    website: "https://epa.gov.gh",
+    clearanceStatus: "Cleared",
+    clearanceCertificateId: "GH-ORG-CLR-2026-012",
+    clearedDate: "2024-10-18",
+    expiryDate: "2027-10-18",
+    reviewNotes: "Satellite coastal erosion monitor cleared for municipal disaster risk alerting.",
+    submittedAt: "2024-08-01",
+    sovereignDataHosting: "In-Country (National Data Centre)"
+  },
+
+  // ---------------- PRIVATE SECTOR & COMMERCIAL VENDORS ----------------
+  {
+    id: "org-13",
+    name: "mPharma Health AI Ghana Ltd",
+    acronym: "mPharma",
+    entityType: "Private Sector (Commercial Enterprise)",
+    tinOrRegNumber: "C002891924X",
+    dpcRegNumber: "DPC/PVT/2022/01984",
+    sector: "Health",
+    region: "Greater Accra",
+    district: "Accra Metropolitan",
+    dpoName: "Kofi Owusu-Ansah, Esq.",
+    dpoEmail: "privacy@mpharma.com",
+    contactEmail: "ai-labs@mpharma.com",
+    website: "https://mpharma.com",
+    clearanceStatus: "Cleared",
+    clearanceCertificateId: "GH-ORG-CLR-2026-013",
+    clearedDate: "2024-11-04",
+    expiryDate: "2026-11-04",
+    reviewNotes: "Commercial pharmaceutical supply chain and epidemic forecasting AI cleared. Data strictly anonymized.",
+    submittedAt: "2024-09-01",
+    sovereignDataHosting: "Government-Approved Cloud"
+  },
+  {
+    id: "org-14",
+    name: "Zeepay Ghana Ltd / Fintech AI Lab",
+    acronym: "Zeepay",
+    entityType: "Private Sector (Commercial Enterprise)",
+    tinOrRegNumber: "C004128941Y",
+    dpcRegNumber: "DPC/PVT/2021/01420",
+    sector: "Finance",
+    region: "Greater Accra",
+    district: "Accra Metropolitan",
+    dpoName: "Selorm Adadevoh",
+    dpoEmail: "dpo@myzeepay.com",
+    contactEmail: "fintech-ai@myzeepay.com",
+    website: "https://myzeepay.com",
+    clearanceStatus: "Cleared",
+    clearanceCertificateId: "GH-ORG-CLR-2026-014",
+    clearedDate: "2024-11-15",
+    expiryDate: "2026-11-15",
+    reviewNotes: "Cross-border remittance AML and transaction anomaly detection AI cleared under Bank of Ghana regulatory sandbox.",
+    submittedAt: "2024-09-12",
+    sovereignDataHosting: "In-Country (National Data Centre)"
+  },
+  {
+    id: "org-15",
+    name: "Farmerline Africa Ltd",
+    acronym: "Farmerline",
+    entityType: "Private Sector (Commercial Enterprise)",
+    tinOrRegNumber: "C001928472Z",
+    dpcRegNumber: "DPC/PVT/2020/00912",
+    sector: "Agriculture",
+    region: "Ashanti",
+    district: "Kumasi Metropolitan",
+    dpoName: "Abena Serwaa",
+    dpoEmail: "legal@farmerline.co",
+    contactEmail: "mergdata@farmerline.co",
+    website: "https://farmerline.co",
+    clearanceStatus: "Cleared",
+    clearanceCertificateId: "GH-ORG-CLR-2026-015",
+    clearedDate: "2024-12-01",
+    expiryDate: "2026-12-01",
+    reviewNotes: "Agricultural predictive credit scoring and satellite crop yield forecasting model cleared.",
+    submittedAt: "2024-10-05",
+    sovereignDataHosting: "Government-Approved Cloud"
+  },
+
+  // ---------------- UNCLEARED / PENDING / QUARANTINED ENTITIES ----------------
+  {
+    id: "org-16",
+    name: "WiredWave Robotics & Computer Vision Ltd",
+    acronym: "WiredWave",
+    entityType: "Private Sector (Startup/SME)",
+    tinOrRegNumber: "C005991820W",
+    dpcRegNumber: "DPC/PVT/2025/PENDING",
+    sector: "Security",
+    region: "Western",
+    district: "Sekondi-Takoradi",
+    dpoName: "Kwaku Mensah",
+    dpoEmail: "kmensah@wiredwave.ai",
+    contactEmail: "ops@wiredwave.ai",
+    website: "https://wiredwave.ai",
+    clearanceStatus: "Pending Review",
+    reviewNotes: "Registration submitted; awaiting submission of mandatory Data Protection Commission (DPC) audit certificate. All projects quarantined.",
+    submittedAt: "2026-02-14",
+    sovereignDataHosting: "Pending Verification"
+  },
+  {
+    id: "org-17",
+    name: "Apex Cognitive Technologies International",
+    acronym: "Apex AI",
+    entityType: "International Vendor / Partner",
+    tinOrRegNumber: "EXT-FOR-2025-099",
+    dpcRegNumber: "DPC/EXT/2024/00344",
+    sector: "Education",
+    region: "Greater Accra",
+    district: "Accra Metropolitan",
+    dpoName: "Julian Vance",
+    dpoEmail: "jvance@apexcognitive.com",
+    contactEmail: "ghana-rep@apexcognitive.com",
+    website: "https://apexcognitive.com",
+    clearanceStatus: "Conditional",
+    clearanceCertificateId: "GH-ORG-CLR-2026-017-COND",
+    clearedDate: "2026-01-20",
+    expiryDate: "2026-07-20",
+    reviewNotes: "Conditional clearance granted for public chatbot trial. Must complete local Ghanaian DPO appointment within 90 days.",
+    submittedAt: "2025-11-30",
+    sovereignDataHosting: "Government-Approved Cloud"
+  },
+  {
+    id: "org-18",
+    name: "DarkStar Analytics Ghana Ltd",
+    acronym: "DarkStar",
+    entityType: "Private Sector (Commercial Enterprise)",
+    tinOrRegNumber: "C003881900D",
+    dpcRegNumber: "DPC/PVT/REVOKED",
+    sector: "Security",
+    region: "Greater Accra",
+    district: "Accra Metropolitan",
+    dpoName: "Unregistered",
+    dpoEmail: "privacy@darkstar.com",
+    contactEmail: "sales@darkstar.com",
+    website: "https://darkstar.com",
+    clearanceStatus: "Not Cleared",
+    reviewNotes: "Failed Act 843 Section 45 cross-border data transfer audit and lacked biometric consent protocols. Registration BLOCKED.",
+    submittedAt: "2025-08-10",
+    sovereignDataHosting: "Pending Verification"
+  }
+];
+
+// ----------------------------------------------------------------------------
+// Registered AI Projects (With Clearance Status & Parent Organization Links)
+// ----------------------------------------------------------------------------
 
 export const sampleProjects: AIProject[] = [
   {
@@ -87,6 +576,32 @@ export const sampleProjects: AIProject[] = [
     longitude: -0.1870,
     mda: "Ministry of Communications and Digitalisation (MoCD)",
     mdaCode: "MOCD",
+    organizationId: "org-1",
+    organizationName: "Ministry of Communications and Digitalisation",
+    entitySectorType: "Government (MDA/MMDA/SOE)",
+    riskTier: "Limited Risk",
+    clearanceStatus: "Cleared",
+    clearanceCertificateId: "NAPTCS-CLR-2026-001",
+    clearanceScore: 92,
+    clearanceEvidence: {
+      dpiaUploaded: true,
+      vaptReportUploaded: true,
+      modelDocumentationUploaded: true,
+      slaUploaded: true,
+      biasAuditUploaded: true,
+      procurementRecordsUploaded: true
+    },
+    clearanceDecision: {
+      status: "Cleared",
+      overallScore: 92,
+      decisionDate: "2024-01-20",
+      decidedBy: "NAPTCS Regulator / Clearance Authority",
+      clearanceCertificateId: "NAPTCS-CLR-2026-001",
+      validUntil: "2028-01-20",
+      scopeLimits: "Sovereign Digital Addressing across all 16 Ghanaian Administrative Regions"
+    },
+    isOrganizationCleared: true,
+    isPublished: true,
     region: "Greater Accra",
     district: "Accra Metropolitan",
     budget: {
@@ -121,16 +636,6 @@ export const sampleProjects: AIProject[] = [
         description: "Inaccurate satellite signals inside high-density settlements like Jamestown create misrouting logs.",
         mitigationPlan: "Integrate WiFi triangulation and cell-tower mapping to refine location coordinates.",
         status: "Mitigated"
-      },
-      {
-        id: "r1-2",
-        category: "Operational Risk",
-        severity: "Low",
-        likelihood: 2,
-        impact: 2,
-        description: "Low public familiarity with utilizing digital postal addresses for utility services.",
-        mitigationPlan: "Deploy community communication clinics and work with Ghana Water and ECG to mandate digital codes.",
-        status: "Open"
       }
     ],
     documents: [
@@ -153,6 +658,32 @@ export const sampleProjects: AIProject[] = [
     longitude: -0.1821,
     mda: "National Identification Authority (NIA)",
     mdaCode: "NIA",
+    organizationId: "org-2",
+    organizationName: "National Identification Authority",
+    entitySectorType: "Government (MDA/MMDA/SOE)",
+    riskTier: "High Risk",
+    clearanceStatus: "Cleared",
+    clearanceCertificateId: "NAPTCS-CLR-2026-002",
+    clearanceScore: 94,
+    clearanceEvidence: {
+      dpiaUploaded: true,
+      vaptReportUploaded: true,
+      modelDocumentationUploaded: true,
+      slaUploaded: true,
+      biasAuditUploaded: true,
+      procurementRecordsUploaded: true
+    },
+    clearanceDecision: {
+      status: "Cleared",
+      overallScore: 94,
+      decisionDate: "2024-02-25",
+      decidedBy: "NAPTCS Regulator / Clearance Authority",
+      clearanceCertificateId: "NAPTCS-CLR-2026-002",
+      validUntil: "2028-02-25",
+      scopeLimits: "National Biometric AFIS & Instant Verification API Services"
+    },
+    isOrganizationCleared: true,
+    isPublished: true,
     region: "Greater Accra",
     district: "Accra Metropolitan",
     budget: {
@@ -209,6 +740,32 @@ export const sampleProjects: AIProject[] = [
     longitude: -1.7583,
     mda: "Ghana Cocoa Board (COCOBOD)",
     mdaCode: "COCOBOD",
+    organizationId: "org-3",
+    organizationName: "Ghana Cocoa Board",
+    entitySectorType: "Government (MDA/MMDA/SOE)",
+    riskTier: "Limited Risk",
+    clearanceStatus: "Cleared",
+    clearanceCertificateId: "NAPTCS-CLR-2026-003",
+    clearanceScore: 89,
+    clearanceEvidence: {
+      dpiaUploaded: true,
+      vaptReportUploaded: true,
+      modelDocumentationUploaded: true,
+      slaUploaded: true,
+      biasAuditUploaded: true,
+      procurementRecordsUploaded: true
+    },
+    clearanceDecision: {
+      status: "Cleared",
+      overallScore: 89,
+      decisionDate: "2024-03-15",
+      decidedBy: "NAPTCS Regulator / Clearance Authority",
+      clearanceCertificateId: "NAPTCS-CLR-2026-003",
+      validUntil: "2027-03-15",
+      scopeLimits: "Geospatial Cocoa Farm Boundary Mapping & Yield Analytics"
+    },
+    isOrganizationCleared: true,
+    isPublished: true,
     region: "Western North",
     district: "Sefwi Wiawso",
     budget: {
@@ -265,6 +822,35 @@ export const sampleProjects: AIProject[] = [
     longitude: -0.2078,
     mda: "Ministry of Justice and Attorney General's Department",
     mdaCode: "MOJ",
+    organizationId: "org-4",
+    organizationName: "Judicial Service of Ghana",
+    entitySectorType: "Government (MDA/MMDA/SOE)",
+    riskTier: "High Risk",
+    clearanceStatus: "Conditional",
+    clearanceCertificateId: "NAPTCS-CLR-2026-004-COND",
+    clearanceScore: 78,
+    clearanceEvidence: {
+      dpiaUploaded: true,
+      vaptReportUploaded: true,
+      modelDocumentationUploaded: true,
+      slaUploaded: true,
+      biasAuditUploaded: false,
+      procurementRecordsUploaded: true
+    },
+    clearanceDecision: {
+      status: "Conditional",
+      overallScore: 78,
+      decisionDate: "2024-04-20",
+      decidedBy: "NAPTCS Technical Review Committee",
+      clearanceCertificateId: "NAPTCS-CLR-2026-004-COND",
+      validUntil: "2026-10-20",
+      scopeLimits: "Case Docket Allocation & Audio Transcription Pilot",
+      conditions: [
+        { id: "c-1", requirement: "Complete dialectic bias testing on local court speech models (Twi, Ewe, Ga)", deadline: "2026-10-01", status: "Open" }
+      ]
+    },
+    isOrganizationCleared: true,
+    isPublished: true,
     region: "Greater Accra",
     district: "Accra Metropolitan",
     budget: {
@@ -321,6 +907,32 @@ export const sampleProjects: AIProject[] = [
     longitude: -0.1982,
     mda: "National Health Insurance Authority (NHIA)",
     mdaCode: "NHIA",
+    organizationId: "org-5",
+    organizationName: "National Health Insurance Authority",
+    entitySectorType: "Government (MDA/MMDA/SOE)",
+    riskTier: "High Risk",
+    clearanceStatus: "Cleared",
+    clearanceCertificateId: "NAPTCS-CLR-2026-005",
+    clearanceScore: 88,
+    clearanceEvidence: {
+      dpiaUploaded: true,
+      vaptReportUploaded: true,
+      modelDocumentationUploaded: true,
+      slaUploaded: true,
+      biasAuditUploaded: true,
+      procurementRecordsUploaded: true
+    },
+    clearanceDecision: {
+      status: "Cleared",
+      overallScore: 88,
+      decisionDate: "2024-05-25",
+      decidedBy: "NAPTCS Regulator / Clearance Authority",
+      clearanceCertificateId: "NAPTCS-CLR-2026-005",
+      validUntil: "2027-05-25",
+      scopeLimits: "Medical Claims Auditing & Biometric Verification"
+    },
+    isOrganizationCleared: true,
+    isPublished: true,
     region: "Greater Accra",
     district: "Accra Metropolitan",
     budget: {
@@ -377,6 +989,32 @@ export const sampleProjects: AIProject[] = [
     longitude: -0.8393,
     mda: "Ministry of Gender, Children and Social Protection",
     mdaCode: "MOGCSP",
+    organizationId: "org-6",
+    organizationName: "Ministry of Gender, Children and Social Protection",
+    entitySectorType: "Government (MDA/MMDA/SOE)",
+    riskTier: "High Risk",
+    clearanceStatus: "Cleared",
+    clearanceCertificateId: "NAPTCS-CLR-2026-006",
+    clearanceScore: 91,
+    clearanceEvidence: {
+      dpiaUploaded: true,
+      vaptReportUploaded: true,
+      modelDocumentationUploaded: true,
+      slaUploaded: true,
+      biasAuditUploaded: true,
+      procurementRecordsUploaded: true
+    },
+    clearanceDecision: {
+      status: "Cleared",
+      overallScore: 91,
+      decisionDate: "2024-06-10",
+      decidedBy: "NAPTCS Regulator / Clearance Authority",
+      clearanceCertificateId: "NAPTCS-CLR-2026-006",
+      validUntil: "2028-06-10",
+      scopeLimits: "LEAP Social Cash Transfer Targeting & Biometric Authentication"
+    },
+    isOrganizationCleared: true,
+    isPublished: true,
     region: "Northern",
     district: "Tamale Metropolitan",
     budget: {
@@ -433,6 +1071,32 @@ export const sampleProjects: AIProject[] = [
     longitude: 0.0500,
     mda: "Volta River Authority (VRA)",
     mdaCode: "VRA",
+    organizationId: "org-7",
+    organizationName: "Volta River Authority",
+    entitySectorType: "Government (MDA/MMDA/SOE)",
+    riskTier: "High Risk",
+    clearanceStatus: "Cleared",
+    clearanceCertificateId: "NAPTCS-CLR-2026-007",
+    clearanceScore: 95,
+    clearanceEvidence: {
+      dpiaUploaded: true,
+      vaptReportUploaded: true,
+      modelDocumentationUploaded: true,
+      slaUploaded: true,
+      biasAuditUploaded: true,
+      procurementRecordsUploaded: true
+    },
+    clearanceDecision: {
+      status: "Cleared",
+      overallScore: 95,
+      decisionDate: "2024-07-28",
+      decidedBy: "NAPTCS Regulator / Clearance Authority",
+      clearanceCertificateId: "NAPTCS-CLR-2026-007",
+      validUntil: "2028-07-28",
+      scopeLimits: "Hydrological River Basin Monitoring & Turbine Grid AI Dispatch"
+    },
+    isOrganizationCleared: true,
+    isPublished: true,
     region: "Eastern",
     district: "Asuogyaman",
     budget: {
@@ -489,6 +1153,32 @@ export const sampleProjects: AIProject[] = [
     longitude: -1.6163,
     mda: "Ministry of Roads and Highways / KMA",
     mdaCode: "MRH",
+    organizationId: "org-8",
+    organizationName: "Kumasi Metropolitan Assembly / MRH",
+    entitySectorType: "Government (MDA/MMDA/SOE)",
+    riskTier: "Limited Risk",
+    clearanceStatus: "Cleared",
+    clearanceCertificateId: "NAPTCS-CLR-2026-008",
+    clearanceScore: 86,
+    clearanceEvidence: {
+      dpiaUploaded: true,
+      vaptReportUploaded: true,
+      modelDocumentationUploaded: true,
+      slaUploaded: true,
+      biasAuditUploaded: true,
+      procurementRecordsUploaded: true
+    },
+    clearanceDecision: {
+      status: "Cleared",
+      overallScore: 86,
+      decisionDate: "2024-08-20",
+      decidedBy: "NAPTCS Regulator / Clearance Authority",
+      clearanceCertificateId: "NAPTCS-CLR-2026-008",
+      validUntil: "2027-08-20",
+      scopeLimits: "Urban Traffic Signaling & Congestion Vision Analytics"
+    },
+    isOrganizationCleared: true,
+    isPublished: true,
     region: "Ashanti",
     district: "Kumasi Metropolitan",
     budget: {
@@ -545,6 +1235,32 @@ export const sampleProjects: AIProject[] = [
     longitude: -1.8167,
     mda: "Ministry of Environment, Science, Technology and Innovation (MESTI)",
     mdaCode: "MESTI",
+    organizationId: "org-9",
+    organizationName: "Ministry of Environment, Science, Technology and Innovation",
+    entitySectorType: "Government (MDA/MMDA/SOE)",
+    riskTier: "Minimal Risk",
+    clearanceStatus: "Cleared",
+    clearanceCertificateId: "NAPTCS-CLR-2026-009",
+    clearanceScore: 87,
+    clearanceEvidence: {
+      dpiaUploaded: true,
+      vaptReportUploaded: true,
+      modelDocumentationUploaded: true,
+      slaUploaded: true,
+      biasAuditUploaded: true,
+      procurementRecordsUploaded: true
+    },
+    clearanceDecision: {
+      status: "Cleared",
+      overallScore: 87,
+      decisionDate: "2024-09-08",
+      decidedBy: "NAPTCS Regulator / Clearance Authority",
+      clearanceCertificateId: "NAPTCS-CLR-2026-009",
+      validUntil: "2027-09-08",
+      scopeLimits: "Savannah Agricultural Drought Prediction & Microclimate Telemetry"
+    },
+    isOrganizationCleared: true,
+    isPublished: true,
     region: "Savannah",
     district: "West Gonja",
     budget: {
@@ -601,6 +1317,32 @@ export const sampleProjects: AIProject[] = [
     longitude: -0.8514,
     mda: "Ghana Health Service (GHS)",
     mdaCode: "GHS",
+    organizationId: "org-10",
+    organizationName: "Ghana Health Service",
+    entitySectorType: "Government (MDA/MMDA/SOE)",
+    riskTier: "High Risk",
+    clearanceStatus: "Cleared",
+    clearanceCertificateId: "NAPTCS-CLR-2026-010",
+    clearanceScore: 96,
+    clearanceEvidence: {
+      dpiaUploaded: true,
+      vaptReportUploaded: true,
+      modelDocumentationUploaded: true,
+      slaUploaded: true,
+      biasAuditUploaded: true,
+      procurementRecordsUploaded: true
+    },
+    clearanceDecision: {
+      status: "Cleared",
+      overallScore: 96,
+      decisionDate: "2024-09-20",
+      decidedBy: "NAPTCS Regulator / Clearance Authority",
+      clearanceCertificateId: "NAPTCS-CLR-2026-010",
+      validUntil: "2029-09-20",
+      scopeLimits: "Medical Emergency Blood & Vaccine Autonomous Flight Dispatch"
+    },
+    isOrganizationCleared: true,
+    isPublished: true,
     region: "Upper East",
     district: "Bolgatanga Municipal",
     budget: {
@@ -657,6 +1399,32 @@ export const sampleProjects: AIProject[] = [
     longitude: -1.7580,
     mda: "Ghana Ports and Harbours Authority (GPHA) / GRA",
     mdaCode: "GPHA",
+    organizationId: "org-11",
+    organizationName: "Ghana Ports and Harbours Authority",
+    entitySectorType: "Government (MDA/MMDA/SOE)",
+    riskTier: "Limited Risk",
+    clearanceStatus: "Cleared",
+    clearanceCertificateId: "NAPTCS-CLR-2026-011",
+    clearanceScore: 90,
+    clearanceEvidence: {
+      dpiaUploaded: true,
+      vaptReportUploaded: true,
+      modelDocumentationUploaded: true,
+      slaUploaded: true,
+      biasAuditUploaded: true,
+      procurementRecordsUploaded: true
+    },
+    clearanceDecision: {
+      status: "Cleared",
+      overallScore: 90,
+      decisionDate: "2024-10-05",
+      decidedBy: "NAPTCS Regulator / Clearance Authority",
+      clearanceCertificateId: "NAPTCS-CLR-2026-011",
+      validUntil: "2028-10-05",
+      scopeLimits: "Maritime Container Identification & Customs Manifest Validation"
+    },
+    isOrganizationCleared: true,
+    isPublished: true,
     region: "Western",
     district: "Sekondi-Takoradi",
     budget: {
@@ -713,6 +1481,32 @@ export const sampleProjects: AIProject[] = [
     longitude: -1.2466,
     mda: "Environmental Protection Agency (EPA)",
     mdaCode: "EPA",
+    organizationId: "org-12",
+    organizationName: "Environmental Protection Agency",
+    entitySectorType: "Government (MDA/MMDA/SOE)",
+    riskTier: "Minimal Risk",
+    clearanceStatus: "Cleared",
+    clearanceCertificateId: "NAPTCS-CLR-2026-012",
+    clearanceScore: 89,
+    clearanceEvidence: {
+      dpiaUploaded: true,
+      vaptReportUploaded: true,
+      modelDocumentationUploaded: true,
+      slaUploaded: true,
+      biasAuditUploaded: true,
+      procurementRecordsUploaded: true
+    },
+    clearanceDecision: {
+      status: "Cleared",
+      overallScore: 89,
+      decisionDate: "2024-10-22",
+      decidedBy: "NAPTCS Regulator / Clearance Authority",
+      clearanceCertificateId: "NAPTCS-CLR-2026-012",
+      validUntil: "2027-10-22",
+      scopeLimits: "Central Coastline Satellite Monitoring & Mangrove Biomass Tracking"
+    },
+    isOrganizationCleared: true,
+    isPublished: true,
     region: "Central",
     district: "Cape Coast Metropolitan",
     budget: {
@@ -752,6 +1546,496 @@ export const sampleProjects: AIProject[] = [
     documents: [
       { id: "doc-12-1", fileName: "EPA_Coastal_Erosion_AI_Baseline.pdf", fileType: "pdf", uploadedAt: "2024-02-10", version: 1, signedBy: ["Executive Director EPA", "Marine Geologist"] }
     ]
+  },
+
+  // ---------------- CLEARED PRIVATE SECTOR PROJECTS ----------------
+  {
+    id: "proj-13",
+    projectCode: "GN-AI-2026-013",
+    name: "mPharma Bloom AI Supply Chain & Epidemic Predictor",
+    description: "Private healthcare supply chain intelligence. Predicts community drug shortages, forecasts seasonal malaria and cholera surges across 850 retail pharmacy nodes, and auto-dispatches wholesale stocks.",
+    category: "Predictive Analytics",
+    sector: "Health",
+    stage: "Operational",
+    status: "Active",
+    startDate: "2022-05-10",
+    endDate: "2028-12-31",
+    expectedCompletionDate: "2028-12-31",
+    latitude: 5.6145,
+    longitude: -0.1988,
+    mda: "Private Commercial / MoH Regulated",
+    mdaCode: "mPharma",
+    organizationId: "org-13",
+    organizationName: "mPharma Health AI Ghana Ltd",
+    entitySectorType: "Private Sector (Commercial Enterprise)",
+    riskTier: "High Risk",
+    clearanceStatus: "Cleared",
+    clearanceCertificateId: "NAPTCS-CLR-2026-013",
+    clearanceScore: 93,
+    clearanceEvidence: {
+      dpiaUploaded: true,
+      vaptReportUploaded: true,
+      modelDocumentationUploaded: true,
+      slaUploaded: true,
+      biasAuditUploaded: true,
+      procurementRecordsUploaded: true
+    },
+    clearanceDecision: {
+      status: "Cleared",
+      overallScore: 93,
+      decisionDate: "2024-11-10",
+      decidedBy: "NAPTCS Regulator / Clearance Authority",
+      clearanceCertificateId: "NAPTCS-CLR-2026-013",
+      validUntil: "2026-11-10",
+      scopeLimits: "Private Pharmaceutical Inventory & Public Health Epidemiological Prediction"
+    },
+    isOrganizationCleared: true,
+    isPublished: true,
+    region: "Greater Accra",
+    district: "Accra Metropolitan",
+    budget: {
+      totalAllocated: 16500000,
+      disbursed: 15000000,
+      utilized: 14200000,
+      remaining: 2300000,
+      primaryFundingSource: "Private Sector",
+      currency: "GHS"
+    },
+    compliance: {
+      fairness: 92,
+      transparency: 90,
+      accountability: 94,
+      privacy: 96,
+      security: 95,
+      overallGrade: "Excellent"
+    },
+    readinessScore: 94,
+    milestones: [
+      { id: "m13-1", title: "Pharmacy inventory API sync", dueDate: "2023-04-15", progressPercent: 100, status: "Completed" },
+      { id: "m13-2", title: "Epidemic predictive model validation", dueDate: "2024-09-30", progressPercent: 100, status: "Completed" },
+      { id: "m13-3", title: "Community clinic autonomous restock trigger", dueDate: "2026-12-01", progressPercent: 60, status: "Pending" }
+    ],
+    risks: [
+      {
+        id: "r13-1",
+        category: "Data Privacy Risk",
+        severity: "High",
+        likelihood: 1,
+        impact: 4,
+        description: "Potential leakage of prescription patterns revealing individual patient chronic conditions.",
+        mitigationPlan: "Strip all patient PII at pharmacy terminal before telemetry transmission using k-anonymity (k=10).",
+        status: "Mitigated"
+      }
+    ],
+    documents: [
+      { id: "doc-13-1", fileName: "mPharma_DPC_Act843_Privacy_Impact.pdf", fileType: "pdf", uploadedAt: "2024-10-12", version: 1, signedBy: ["Chief Medical Officer", "DPC Lead Inspector"] }
+    ]
+  },
+  {
+    id: "proj-14",
+    projectCode: "GN-AI-2026-014",
+    name: "Zeepay Cross-Border Remittance Fraud & AML AI",
+    description: "Fintech deep learning transaction monitoring engine. Inspects international inbound remittances, flags smurfing patterns, and enforces anti-money laundering (AML) controls under Bank of Ghana financial guidelines.",
+    category: "Machine Learning",
+    sector: "Finance",
+    stage: "Operational",
+    status: "Active",
+    startDate: "2022-08-01",
+    endDate: "2028-06-30",
+    expectedCompletionDate: "2028-06-30",
+    latitude: 5.5840,
+    longitude: -0.1750,
+    mda: "Private Commercial / Bank of Ghana Sandboxed",
+    mdaCode: "Zeepay",
+    organizationId: "org-14",
+    organizationName: "Zeepay Ghana Ltd / Fintech AI Lab",
+    entitySectorType: "Private Sector (Commercial Enterprise)",
+    riskTier: "High Risk",
+    clearanceStatus: "Cleared",
+    clearanceCertificateId: "NAPTCS-CLR-2026-014",
+    clearanceScore: 95,
+    clearanceEvidence: {
+      dpiaUploaded: true,
+      vaptReportUploaded: true,
+      modelDocumentationUploaded: true,
+      slaUploaded: true,
+      biasAuditUploaded: true,
+      procurementRecordsUploaded: true
+    },
+    clearanceDecision: {
+      status: "Cleared",
+      overallScore: 95,
+      decisionDate: "2024-11-20",
+      decidedBy: "NAPTCS Regulator / Clearance Authority",
+      clearanceCertificateId: "NAPTCS-CLR-2026-014",
+      validUntil: "2026-11-20",
+      scopeLimits: "Mobile Money & Cross-Border Remittance Fraud Detection"
+    },
+    isOrganizationCleared: true,
+    isPublished: true,
+    region: "Greater Accra",
+    district: "Accra Metropolitan",
+    budget: {
+      totalAllocated: 21000000,
+      disbursed: 19500000,
+      utilized: 18800000,
+      remaining: 2200000,
+      primaryFundingSource: "Private Sector",
+      currency: "GHS"
+    },
+    compliance: {
+      fairness: 90,
+      transparency: 92,
+      accountability: 96,
+      privacy: 95,
+      security: 98,
+      overallGrade: "Excellent"
+    },
+    readinessScore: 96,
+    milestones: [
+      { id: "m14-1", title: "BoG regulatory sandbox compliance approval", dueDate: "2023-02-10", progressPercent: 100, status: "Completed" },
+      { id: "m14-2", title: "Real-time AML graph neural network rollout", dueDate: "2024-05-18", progressPercent: 100, status: "Completed" },
+      { id: "m14-3", title: "Synthetic identity fraud prevention engine", dueDate: "2026-11-15", progressPercent: 75, status: "Pending" }
+    ],
+    risks: [
+      {
+        id: "r14-1",
+        category: "Financial & Compliance Risk",
+        severity: "Critical",
+        likelihood: 1,
+        impact: 5,
+        description: "False positive transaction freezes interrupting urgent diaspora remittances to rural relatives.",
+        mitigationPlan: "Deploy human-in-the-loop review tier with 15-minute SLA for contested transactions.",
+        status: "Mitigated"
+      }
+    ],
+    documents: [
+      { id: "doc-14-1", fileName: "Zeepay_AML_AI_Independent_Model_Audit.pdf", fileType: "pdf", uploadedAt: "2024-10-30", version: 2, signedBy: ["Head of Compliance", "External FinTech Auditor"] }
+    ]
+  },
+  {
+    id: "proj-15",
+    projectCode: "GN-AI-2026-015",
+    name: "Farmerline Mergdata Credit Scoring & Satellite Agronomy AI",
+    description: "Agricultural credit assessment and satellite crop health analytics. Utilizes remote sensing vegetation indices and farm management records to grant micro-loans and input credits to unbanked farmers.",
+    category: "Predictive Analytics",
+    sector: "Agriculture",
+    stage: "Operational",
+    status: "Active",
+    startDate: "2021-09-01",
+    endDate: "2028-12-31",
+    expectedCompletionDate: "2028-12-31",
+    latitude: 6.6850,
+    longitude: -1.6240,
+    mda: "Private Commercial / MOFA Regulated",
+    mdaCode: "Farmerline",
+    organizationId: "org-15",
+    organizationName: "Farmerline Africa Ltd",
+    entitySectorType: "Private Sector (Commercial Enterprise)",
+    riskTier: "High Risk",
+    clearanceStatus: "Cleared",
+    clearanceCertificateId: "NAPTCS-CLR-2026-015",
+    clearanceScore: 91,
+    clearanceEvidence: {
+      dpiaUploaded: true,
+      vaptReportUploaded: true,
+      modelDocumentationUploaded: true,
+      slaUploaded: true,
+      biasAuditUploaded: true,
+      procurementRecordsUploaded: true
+    },
+    clearanceDecision: {
+      status: "Cleared",
+      overallScore: 91,
+      decisionDate: "2024-12-05",
+      decidedBy: "NAPTCS Regulator / Clearance Authority",
+      clearanceCertificateId: "NAPTCS-CLR-2026-015",
+      validUntil: "2026-12-05",
+      scopeLimits: "Smallholder Farmer Agronomic Credit Scoring & Yield Forecasting"
+    },
+    isOrganizationCleared: true,
+    isPublished: true,
+    region: "Ashanti",
+    district: "Kumasi Metropolitan",
+    budget: {
+      totalAllocated: 13000000,
+      disbursed: 11800000,
+      utilized: 11200000,
+      remaining: 1800000,
+      primaryFundingSource: "Private Sector",
+      currency: "GHS"
+    },
+    compliance: {
+      fairness: 94,
+      transparency: 88,
+      accountability: 90,
+      privacy: 88,
+      security: 90,
+      overallGrade: "Excellent"
+    },
+    readinessScore: 90,
+    milestones: [
+      { id: "m15-1", title: "Mergdata AI algorithm launch", dueDate: "2022-07-20", progressPercent: 100, status: "Completed" },
+      { id: "m15-2", title: "600,000 smallholder farmer credit profiling", dueDate: "2024-08-15", progressPercent: 100, status: "Completed" },
+      { id: "m15-3", title: "Climate resilience index integration", dueDate: "2026-10-31", progressPercent: 50, status: "Pending" }
+    ],
+    risks: [
+      {
+        id: "r15-1",
+        category: "Algorithmic Bias Risk",
+        severity: "Medium",
+        likelihood: 2,
+        impact: 4,
+        description: "Algorithmic bias penalizing female farmers who lack formal customary land titles.",
+        mitigationPlan: "Incorporate community peer-vouching and cooperative group harvest guarantees into credit scoring model.",
+        status: "Mitigated"
+      }
+    ],
+    documents: [
+      { id: "doc-15-1", fileName: "Farmerline_Algorithmic_Fairness_Report.pdf", fileType: "pdf", uploadedAt: "2024-11-18", version: 1, signedBy: ["CTO", "Lead Agronomist"] }
+    ]
+  },
+
+  // ---------------- QUARANTINED / PENDING CLEARANCE PROJECTS ----------------
+  {
+    id: "proj-16",
+    projectCode: "GN-AI-2026-016",
+    name: "WiredWave Autonomous Mining Drone Inspector",
+    description: "Computer vision and autonomous drone fleet for commercial open-cast gold mining inspection in the Western Region. Automatically calculates earthwork volumes and detects perimeter intrusions.",
+    category: "Robotics",
+    sector: "Security",
+    stage: "Development",
+    status: "Active",
+    startDate: "2025-01-10",
+    endDate: "2028-12-31",
+    expectedCompletionDate: "2028-12-31",
+    latitude: 5.2500,
+    longitude: -2.0500,
+    mda: "Private Sector Startup",
+    mdaCode: "WiredWave",
+    organizationId: "org-16",
+    organizationName: "WiredWave Robotics & Computer Vision Ltd",
+    entitySectorType: "Private Sector (Startup/SME)",
+    riskTier: "High Risk",
+    clearanceStatus: "Pending Review",
+    clearanceScore: 54,
+    clearanceEvidence: {
+      dpiaUploaded: false,
+      vaptReportUploaded: false,
+      modelDocumentationUploaded: true,
+      slaUploaded: false,
+      biasAuditUploaded: false,
+      procurementRecordsUploaded: true
+    },
+    clearanceDecision: {
+      status: "Pending Review",
+      overallScore: 54,
+      decisionDate: "Pending Decision",
+      decidedBy: "Awaiting Committee Evaluation",
+      mandatoryGateOverride: "Parent organization 'WiredWave Robotics' has not yet attained Sovereign Clearance from the Regulator. DPIA and VAPT reports missing."
+    },
+    isOrganizationCleared: false,
+    isPublished: false, // QUARANTINED!
+    region: "Western",
+    district: "Tarkwa Nsuaem",
+    budget: {
+      totalAllocated: 4500000,
+      disbursed: 2000000,
+      utilized: 1800000,
+      remaining: 2700000,
+      primaryFundingSource: "Private Sector",
+      currency: "GHS"
+    },
+    compliance: {
+      fairness: 70,
+      transparency: 65,
+      accountability: 60,
+      privacy: 50,
+      security: 65,
+      overallGrade: "Moderate"
+    },
+    readinessScore: 68,
+    milestones: [
+      { id: "m16-1", title: "Drone fleet hardware prototyping", dueDate: "2025-06-30", progressPercent: 100, status: "Completed" },
+      { id: "m16-2", title: "Computer vision pit volumetric training", dueDate: "2026-03-31", progressPercent: 80, status: "Pending" }
+    ],
+    risks: [
+      {
+        id: "r16-1",
+        category: "Aviation Safety Risk",
+        severity: "Critical",
+        likelihood: 2,
+        impact: 5,
+        description: "Drone collisions with active mining heavy machinery during night flights.",
+        mitigationPlan: "Implement optical obstacle avoidance and geofenced safe landing zones.",
+        status: "Open"
+      }
+    ],
+    documents: [
+      { id: "doc-16-1", fileName: "WiredWave_Preliminary_Architecture.pdf", fileType: "pdf", uploadedAt: "2026-02-14", version: 1, signedBy: ["Founder"] }
+    ]
+  },
+  {
+    id: "proj-17",
+    projectCode: "GN-AI-2026-017",
+    name: "Apex Civic Engagement & Public Chatbot",
+    description: "Multilingual generative AI conversational assistant providing public service information, local school registrations, and council waste collection schedules across selected municipalities.",
+    category: "Generative AI",
+    sector: "Education",
+    stage: "Pilot",
+    status: "Active",
+    startDate: "2025-06-01",
+    endDate: "2027-12-31",
+    expectedCompletionDate: "2027-12-31",
+    latitude: 5.6200,
+    longitude: -0.1600,
+    mda: "International Vendor Partnership",
+    mdaCode: "Apex AI",
+    organizationId: "org-17",
+    organizationName: "Apex Cognitive Technologies International",
+    entitySectorType: "International Vendor / Partner",
+    riskTier: "Limited Risk",
+    clearanceStatus: "Conditional",
+    clearanceCertificateId: "NAPTCS-CLR-2026-017-COND",
+    clearanceScore: 74,
+    clearanceEvidence: {
+      dpiaUploaded: true,
+      vaptReportUploaded: true,
+      modelDocumentationUploaded: true,
+      slaUploaded: true,
+      biasAuditUploaded: false,
+      procurementRecordsUploaded: true
+    },
+    clearanceDecision: {
+      status: "Conditional",
+      overallScore: 74,
+      decisionDate: "2026-01-25",
+      decidedBy: "NAPTCS Technical Review Committee",
+      clearanceCertificateId: "NAPTCS-CLR-2026-017-COND",
+      validUntil: "2026-07-25",
+      scopeLimits: "Civic Information Q&A Only (No Personal Identity Processing)",
+      conditions: [
+        { id: "c-17", requirement: "Complete data residency migration ensuring Ghanaian citizen chat logs are stored strictly inside Ghana's borders under Act 843.", deadline: "2026-07-01", status: "Open" }
+      ]
+    },
+    isOrganizationCleared: true,
+    isPublished: true,
+    region: "Greater Accra",
+    district: "Accra Metropolitan",
+    budget: {
+      totalAllocated: 3200000,
+      disbursed: 2100000,
+      utilized: 1900000,
+      remaining: 1300000,
+      primaryFundingSource: "Private Sector",
+      currency: "GHS"
+    },
+    compliance: {
+      fairness: 72,
+      transparency: 78,
+      accountability: 74,
+      privacy: 75,
+      security: 80,
+      overallGrade: "Good"
+    },
+    readinessScore: 82,
+    milestones: [
+      { id: "m17-1", title: "Pilot municipal launch in Accra and Tema", dueDate: "2025-10-15", progressPercent: 100, status: "Completed" },
+      { id: "m17-2", title: "Local language dialect fine-tuning", dueDate: "2026-06-30", progressPercent: 65, status: "Pending" }
+    ],
+    risks: [
+      {
+        id: "r17-1",
+        category: "Hallucination Risk",
+        severity: "Medium",
+        likelihood: 3,
+        impact: 3,
+        description: "Chatbot hallucinating incorrect statutory property rate payment instructions.",
+        mitigationPlan: "Enforce strict retrieval-augmented generation (RAG) restricted to official municipal bylaws.",
+        status: "Open"
+      }
+    ],
+    documents: [
+      { id: "doc-17-1", fileName: "Apex_Chatbot_RAG_Safeguards.pdf", fileType: "pdf", uploadedAt: "2025-12-01", version: 1, signedBy: ["Director of AI"] }
+    ]
+  },
+  {
+    id: "proj-18",
+    projectCode: "GN-AI-2026-018",
+    name: "DarkStar Autonomous Facial Mass Surveillance Scanner",
+    description: "An unapproved commercial facial recognition CCTV scanning network intended for shopping mall visitor tracking and commercial behavioural advertising profiling.",
+    category: "Computer Vision",
+    sector: "Security",
+    stage: "Concept",
+    status: "Suspended",
+    startDate: "2025-04-01",
+    endDate: "2026-04-01",
+    expectedCompletionDate: "2026-04-01",
+    latitude: 5.6100,
+    longitude: -0.1900,
+    mda: "Unapproved Commercial Entity",
+    mdaCode: "DarkStar",
+    organizationId: "org-18",
+    organizationName: "DarkStar Analytics Ghana Ltd",
+    entitySectorType: "Private Sector (Commercial Enterprise)",
+    riskTier: "Prohibited",
+    clearanceStatus: "Not Cleared",
+    clearanceScore: 28,
+    clearanceEvidence: {
+      dpiaUploaded: false,
+      vaptReportUploaded: false,
+      modelDocumentationUploaded: false,
+      slaUploaded: false,
+      biasAuditUploaded: false,
+      procurementRecordsUploaded: false
+    },
+    clearanceDecision: {
+      status: "Not Cleared",
+      overallScore: 28,
+      decisionDate: "2025-09-01",
+      decidedBy: "NAPTCS Regulator / Clearance Authority",
+      mandatoryGateOverride: "PROHIBITED SYSTEM: Real-time untargeted biometric facial surveillance in public retail areas without statutory authorization violates Ghana Data Protection Act 2012 (Act 843 Section 20) and national AI governance red-lines."
+    },
+    isOrganizationCleared: false,
+    isPublished: false, // BLOCKED & HIDDEN FROM PUBLIC SYSTEM!
+    region: "Greater Accra",
+    district: "Accra Metropolitan",
+    budget: {
+      totalAllocated: 5000000,
+      disbursed: 500000,
+      utilized: 450000,
+      remaining: 4550000,
+      primaryFundingSource: "Private Sector",
+      currency: "GHS"
+    },
+    compliance: {
+      fairness: 25,
+      transparency: 20,
+      accountability: 30,
+      privacy: 15,
+      security: 40,
+      overallGrade: "High Risk"
+    },
+    readinessScore: 35,
+    milestones: [
+      { id: "m18-1", title: "Commercial proposal drafted", dueDate: "2025-05-01", progressPercent: 100, status: "Completed" },
+      { id: "m18-2", title: "Regulatory submission rejected", dueDate: "2025-09-01", progressPercent: 100, status: "Completed" }
+    ],
+    risks: [
+      {
+        id: "r18-1",
+        category: "Constitutional Privacy Risk",
+        severity: "Critical",
+        likelihood: 5,
+        impact: 5,
+        description: "Mass public biometric profiling without consent infringing Article 18(2) constitutional privacy rights.",
+        mitigationPlan: "Decommission system immediately as mandated by Regulator injunction.",
+        status: "Open"
+      }
+    ],
+    documents: [
+      { id: "doc-18-1", fileName: "NAPTCS_Rejection_Notice_DarkStar.pdf", fileType: "pdf", uploadedAt: "2025-09-01", version: 1, signedBy: ["Director General, NITA", "Data Protection Commissioner"] }
+    ]
   }
 ];
 
@@ -763,9 +2047,9 @@ export interface RegionInfo {
 }
 
 export const ghanaRegions: RegionInfo[] = [
-  { name: "Greater Accra", center: [5.6037, -0.1870], projectCount: 4, description: "Capital administrative hub, hosting GhanaCard biometric AFIS, national digital address systems, E-Justice registry, and NHIS Claims AI validation." },
-  { name: "Ashanti", center: [6.6922, -1.6163], projectCount: 1, description: "Ashanti region administrative and digital technology hub, hosting the Kumasi Urban Mobility & Traffic Vision AI." },
-  { name: "Western", center: [4.9340, -1.7580], projectCount: 1, description: "Western coastal and maritime hub, hosting Takoradi Port Autonomous Container OCR & Customs Vision." },
+  { name: "Greater Accra", center: [5.6037, -0.1870], projectCount: 6, description: "Capital administrative hub, hosting GhanaCard biometric AFIS, national digital address systems, E-Justice registry, NHIS Claims AI validation, and private fintech/healthtech AI labs." },
+  { name: "Ashanti", center: [6.6922, -1.6163], projectCount: 2, description: "Ashanti region administrative and digital technology hub, hosting Kumasi Urban Mobility Vision AI and Farmerline Mergdata AgTech AI." },
+  { name: "Western", center: [4.9340, -1.7580], projectCount: 2, description: "Western coastal and maritime hub, hosting Takoradi Port Autonomous Container OCR & Customs Vision, and Tarkwa mining drone inspection." },
   { name: "Western North", center: [6.2041, -1.7583], projectCount: 1, description: "Agriculture technology hub, hosting the Cocoa Board geospatial farm mapping and yield prediction CMS." },
   { name: "Central", center: [5.1053, -1.2466], projectCount: 1, description: "Central coastal zone, hosting Cape Coast Coastal Erosion & Mangrove Satellite Monitoring." },
   { name: "Eastern", center: [6.3000, 0.0500], projectCount: 1, description: "Eastern hydrological and smart energy zone, hosting the Akosombo Dam Hydro-AI Smart Grid & Flood Forecaster." },

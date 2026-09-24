@@ -36,6 +36,14 @@ export interface GeoJSONProjectProperties {
   status: string;
   mda: string;
   mdaCode: string;
+  organizationId: string;
+  organizationName: string;
+  entitySectorType: string;
+  riskTier: string;
+  clearanceStatus: string;
+  clearanceCertificateId?: string;
+  isOrganizationCleared: boolean;
+  isPublished: boolean;
   region: string;
   district: string;
   latitude: number;
@@ -375,6 +383,14 @@ export async function getProjectsGeoJSON(
         status: p.status,
         mda: p.mda,
         mdaCode: p.mdaCode,
+        organizationId: p.organizationId,
+        organizationName: p.organizationName,
+        entitySectorType: p.entitySectorType,
+        riskTier: p.riskTier,
+        clearanceStatus: p.clearanceStatus,
+        clearanceCertificateId: p.clearanceCertificateId,
+        isOrganizationCleared: p.isOrganizationCleared,
+        isPublished: p.isPublished,
         region: p.region,
         district: p.district,
         latitude: p.latitude,
@@ -480,6 +496,14 @@ export async function querySpatialRadius(
           status: p.status,
           mda: p.mda,
           mdaCode: p.mdaCode,
+          organizationId: p.organizationId,
+          organizationName: p.organizationName,
+          entitySectorType: p.entitySectorType,
+          riskTier: p.riskTier,
+          clearanceStatus: p.clearanceStatus,
+          clearanceCertificateId: p.clearanceCertificateId,
+          isOrganizationCleared: p.isOrganizationCleared,
+          isPublished: p.isPublished,
           region: p.region,
           district: p.district,
           latitude: p.latitude,
@@ -707,6 +731,13 @@ export function exportSpatialData(
         properties: {
           projectCode: p.projectCode,
           name: p.name,
+          organizationName: p.organizationName,
+          entitySectorType: p.entitySectorType,
+          riskTier: p.riskTier,
+          clearanceStatus: p.clearanceStatus,
+          clearanceCertificateId: p.clearanceCertificateId || 'N/A',
+          isOrganizationCleared: p.isOrganizationCleared,
+          isPublished: p.isPublished,
           category: p.category,
           sector: p.sector,
           stage: p.stage,
@@ -725,7 +756,7 @@ export function exportSpatialData(
     return {
       data: JSON.stringify(geojsonObj, null, 2),
       mimeType: 'application/geo+json',
-      filename: `GNAPRMS_Ghana_AI_Projects_${timestamp}.geojson`
+      filename: `NAPTCS_Ghana_AI_Projects_${timestamp}.geojson`
     };
   }
 
@@ -733,6 +764,13 @@ export function exportSpatialData(
     const headers = [
       'Project Code',
       'Name',
+      'Organization',
+      'Sector Type',
+      'Risk Tier',
+      'Clearance Status',
+      'Clearance Certificate ID',
+      'Org Cleared',
+      'Published',
       'Category',
       'Sector',
       'Stage',
@@ -751,6 +789,13 @@ export function exportSpatialData(
     const rows = projects.map(p => [
       `"${p.projectCode}"`,
       `"${p.name.replace(/"/g, '""')}"`,
+      `"${p.organizationName}"`,
+      `"${p.entitySectorType}"`,
+      `"${p.riskTier}"`,
+      `"${p.clearanceStatus}"`,
+      `"${p.clearanceCertificateId || 'N/A'}"`,
+      p.isOrganizationCleared ? 'YES' : 'NO',
+      p.isPublished ? 'YES' : 'NO',
       `"${p.category}"`,
       `"${p.sector}"`,
       `"${p.stage}"`,
@@ -771,7 +816,7 @@ export function exportSpatialData(
     return {
       data: csvContent,
       mimeType: 'text/csv',
-      filename: `GNAPRMS_Ghana_AI_Coordinates_${timestamp}.csv`
+      filename: `NAPTCS_Ghana_AI_Coordinates_${timestamp}.csv`
     };
   }
 

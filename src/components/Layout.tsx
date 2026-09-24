@@ -9,7 +9,9 @@ import {
   Files, 
   MessageSquareCode, 
   Calendar,
-  Globe
+  Globe,
+  Building2,
+  FileCheck
 } from 'lucide-react';
 import { UserRole, RoleSwitcher } from './RoleSwitcher';
 
@@ -29,16 +31,18 @@ export const Layout: React.FC<LayoutProps> = ({
   children 
 }) => {
   
-  // Navigation tabs with role filter flags
+  // Navigation tabs with role filter flags aligned with NAPTCS Scope of Work
   const menuItems = [
-    { id: 'dashboard', label: 'M&E Dashboard', icon: <LayoutDashboard />, public: true },
-    { id: 'registry', label: 'Project Registry', icon: <FilePlus2 />, public: false },
+    { id: 'dashboard', label: 'NAPTCS Analytics & M&E', icon: <LayoutDashboard />, public: true },
+    { id: 'organizations', label: 'Organization Clearance', icon: <Building2 />, public: false },
+    { id: 'registry', label: 'AI Projects Registry', icon: <FilePlus2 />, public: false },
+    { id: 'verification', label: 'Public Verification Portal', icon: <FileCheck />, public: true },
     { id: 'gis', label: 'GIS Spatial Map', icon: <Map />, public: true },
-    { id: 'governance', label: 'Governance & Ethics', icon: <ShieldCheck />, public: false },
-    { id: 'readiness', label: 'AI Readiness', icon: <Award />, public: false },
-    { id: 'risk', label: 'Risk Matrix', icon: <AlertOctagon />, public: false },
-    { id: 'documents', label: 'Documents & OCR', icon: <Files />, public: false },
-    { id: 'chat', label: 'AI Chat Assistant', icon: <MessageSquareCode />, public: true }
+    { id: 'governance', label: 'Governance & Ethics (Act 843)', icon: <ShieldCheck />, public: false },
+    { id: 'readiness', label: 'AI Readiness & Scoring', icon: <Award />, public: false },
+    { id: 'risk', label: 'Risk Matrix & Tiers', icon: <AlertOctagon />, public: false },
+    { id: 'documents', label: 'Document Vault & OCR', icon: <Files />, public: false },
+    { id: 'chat', label: 'Regulator AI Assistant', icon: <MessageSquareCode />, public: true }
   ];
 
   // Restricts viewing tabs if public user tries to access internal modules
@@ -54,10 +58,12 @@ export const Layout: React.FC<LayoutProps> = ({
       {/* Sidebar Navigation */}
       <aside className="sidebar">
         <div className="sidebar-header">
-          <div className="sidebar-logo">GN</div>
+          <div className="sidebar-logo" style={{ background: 'linear-gradient(135deg, #059669 0%, #0d9488 100%)', letterSpacing: '0.05em' }}>
+            NAPT
+          </div>
           <div>
-            <div className="sidebar-logo-text">GNAPRMS</div>
-            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.05em' }}>
+            <div className="sidebar-logo-text" style={{ fontSize: '0.96rem', letterSpacing: '0.04em' }}>NAPTCS</div>
+            <div style={{ fontSize: '0.64rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.06em' }}>
               REPUBLIC OF GHANA
             </div>
           </div>
@@ -65,7 +71,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
         <nav className="sidebar-menu">
           <div style={{ padding: '0 12px 8px 12px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
-            Modules
+            NAPTCS Modules
           </div>
           {filteredMenuItems.map((item) => (
             <div
@@ -86,13 +92,13 @@ export const Layout: React.FC<LayoutProps> = ({
           flexDirection: 'column',
           gap: '8px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
             <Calendar className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Fiscal Year: 2026</span>
+            <span>Clearance Cycle: 2026</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
             <Globe className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Registry V1.04</span>
+            <span>NAPTCS Portal V2.10</span>
           </div>
         </div>
       </aside>
@@ -103,8 +109,13 @@ export const Layout: React.FC<LayoutProps> = ({
         <header className="top-bar">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <span style={{ fontSize: '1.4rem' }}>🇬🇭</span>
-            <div className="top-bar-title">
-              National AI Projects Registry & Monitoring System
+            <div>
+              <div className="top-bar-title" style={{ fontSize: '1.05rem', fontWeight: 800 }}>
+                National AI Project Tracking and Clearance System (NAPTCS)
+              </div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                Statutory Oversight for Government (MDAs/SOEs) & Private Sector AI Systems • Act 843 Conformance
+              </div>
             </div>
           </div>
           <div className="top-bar-right">
@@ -112,8 +123,8 @@ export const Layout: React.FC<LayoutProps> = ({
               currentRole={currentRole} 
               onRoleChange={(newRole) => {
                 onRoleChange(newRole);
-                // Resets active tab to dashboard if moving from administrator to public role
-                if (newRole === 'Public User' && !['dashboard', 'gis', 'chat'].includes(activeTab)) {
+                // Resets active tab to dashboard if moving to public role and on restricted tab
+                if (newRole === 'Public User' && !['dashboard', 'verification', 'gis', 'chat'].includes(activeTab)) {
                   setActiveTab('dashboard');
                 }
               }} 

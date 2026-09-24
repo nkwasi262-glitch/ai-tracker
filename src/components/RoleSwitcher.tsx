@@ -1,11 +1,14 @@
 import React from 'react';
-import { UserCheck, ShieldAlert, Award, FileText } from 'lucide-react';
+import { UserCheck, ShieldAlert, Award, FileText, Building2, Landmark, CheckCircle2 } from 'lucide-react';
 
 export type UserRole = 
   | 'Super Administrator'
-  | 'National AI Authority'
+  | 'Regulator / Clearance Authority'
+  | 'Technical Review Committee (TCC)'
   | 'Government Administrator'
   | 'Institution Administrator'
+  | 'Government Applicant (MDA/SOE)'
+  | 'Private Sector Applicant'
   | 'Project Manager'
   | 'Monitoring & Evaluation Officer'
   | 'Auditor'
@@ -18,12 +21,12 @@ interface RoleSwitcherProps {
 
 export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ currentRole, onRoleChange }) => {
   const roles: UserRole[] = [
+    'Regulator / Clearance Authority',
+    'Technical Review Committee (TCC)',
     'Super Administrator',
-    'National AI Authority',
-    'Government Administrator',
+    'Government Applicant (MDA/SOE)',
+    'Private Sector Applicant',
     'Institution Administrator',
-    'Project Manager',
-    'Monitoring & Evaluation Officer',
     'Auditor',
     'Public User'
   ];
@@ -31,12 +34,15 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ currentRole, onRoleC
   const getRoleIcon = (role: UserRole) => {
     switch (role) {
       case 'Super Administrator': return <ShieldAlert className="w-4 h-4 text-red-400" />;
-      case 'National AI Authority': return <Award className="w-4 h-4 text-emerald-400" />;
-      case 'Government Administrator': return <Award className="w-4 h-4 text-amber-400" />;
-      case 'Institution Administrator': return <UserCheck className="w-4 h-4 text-blue-400" />;
+      case 'Regulator / Clearance Authority': return <Award className="w-4 h-4 text-emerald-400" />;
+      case 'Technical Review Committee (TCC)': return <CheckCircle2 className="w-4 h-4 text-blue-400" />;
+      case 'Government Administrator':
+      case 'Institution Administrator':
+      case 'Government Applicant (MDA/SOE)': return <Landmark className="w-4 h-4 text-amber-400" />;
+      case 'Private Sector Applicant': return <Building2 className="w-4 h-4 text-purple-400" />;
       case 'Project Manager': return <UserCheck className="w-4 h-4 text-indigo-400" />;
-      case 'Monitoring & Evaluation Officer': return <FileText className="w-4 h-4 text-purple-400" />;
-      case 'Auditor': return <FileText className="w-4 h-4 text-teal-400" />;
+      case 'Monitoring & Evaluation Officer': return <FileText className="w-4 h-4 text-teal-400" />;
+      case 'Auditor': return <FileText className="w-4 h-4 text-slate-400" />;
       default: return <UserCheck className="w-4 h-4 text-slate-400" />;
     }
   };
@@ -44,7 +50,7 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ currentRole, onRoleC
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
       <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-        Active Role Profile:
+        Active NAPTCS Role:
       </span>
       <div style={{ position: 'relative', display: 'inline-block' }}>
         <select
