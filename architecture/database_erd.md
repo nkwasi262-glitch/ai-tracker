@@ -122,6 +122,28 @@ erDiagram
         text details "JSON snapshot of old/new values"
         timestamp timestamp
     }
+
+    SPATIAL_TELEMETRY_NODES {
+        uuid id PK
+        uuid project_id FK
+        varchar node_code UNIQUE "TEL-ACC-01"
+        varchar name "Node description"
+        geometry location "Point(EPSG:4326) GIST indexed"
+        varchar sensor_type "Hydrological, Optical, IoT"
+        varchar status "ONLINE, ACTIVE_POLLING, STANDBY"
+        float uptime_percent
+        varchar data_protocol "MQTT, CoAP, HTTPS"
+        timestamp last_ping
+    }
+
+    REGIONAL_BOUNDARIES {
+        varchar region_code PK "GA, AS, WR, etc."
+        varchar name "16 Administrative Regions"
+        geometry boundary "Polygon(EPSG:4326)"
+        geometry centroid "Point(EPSG:4326)"
+        varchar capital
+        integer project_count "Aggregated"
+    }
 ```
 
 ---

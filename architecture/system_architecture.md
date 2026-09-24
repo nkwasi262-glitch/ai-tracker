@@ -36,9 +36,10 @@ graph TD
     Analytics(AI Analytics Engine - FastAPI / Python):::service
     Notification(Notification Service - NestJS / Twilio):::service
     DocMS(Document Management & OCR - NestJS):::service
+    GIS(GIS & Spatial Telemetry Service - NestJS / PostGIS):::service
 
     %% Storage & Caching
-    PG[(PostgreSQL Primary DB)]:::db
+    PG[(PostgreSQL + PostGIS Spatial DB)]:::db
     Mongo[(MongoDB - Audits & Risk)]:::db
     S3[(MinIO / AWS S3 - Docs)]:::db
     Elastic[(Elasticsearch - OCR Search)]:::db
@@ -56,11 +57,13 @@ graph TD
     GW --> Compliance
     GW --> Analytics
     GW --> DocMS
+    GW --> GIS
 
     %% Event Bus Integration
     Registry --> Rabbit
     Compliance --> Rabbit
     DocMS --> Rabbit
+    GIS --> Rabbit
     Rabbit --> Notification
     Rabbit --> Analytics
 
@@ -71,6 +74,7 @@ graph TD
     DocMS --> S3
     DocMS --> Elastic
     Analytics --> Mongo
+    GIS --> PG
 ```
 
 ---
@@ -81,7 +85,7 @@ graph TD
 Acts as the single entry point for all frontend apps (Web, Mobile, Public Portal). It handles:
 * **Rate Limiting**: Protects downstream microservices from DDoS or scraper bots.
 * **SSL Termination**: Terminates TLS 1.3 certificates.
-* **Routing**: Inspects incoming HTTP path prefixes and forwards requests (e.g., `/api/v1/projects` to Registry Service, `/api/v1/ocr` to Document MS).
+* **Routing**: Inspects incoming HTTP path prefixes and forwards requests (e.g., `/api/v1/projects` to Registry Service, `/api/v1/gis` to GIS Spatial Telemetry Service, `/api/v1/ocr` to Document MS).
 * **CORS & Security Headers**: Enforces strict browser-level security policies.
 
 ### B. Auth Service (NestJS)
@@ -113,6 +117,14 @@ Python-based microservice that leverages Machine Learning models:
 * Predicts project success rates, budget overruns, and expected delay margins using **Scikit-learn** algorithms.
 * Provides semantic clusters of projects to identify collaborations and reduce duplicated efforts.
 * Connects directly to **MongoDB** to ingest unstructured data points and feed the AI recommendation engine.
+
+### G. GIS & Spatial Telemetry Service (NestJS + PostGIS)
+A high-performance geospatial and edge telemetry microservice powering national spatial intelligence:
+* **OGC & GeoJSON RFC 7946 Compliance**: Exposes standard GeoJSON `FeatureCollection` structures (`GET /api/v1/gis/geojson/projects`) for seamless consumption by Leaflet.js, OpenLayers, QGIS, and national SDI portals.
+* **PostGIS Spatial Indexing (`GIST`)**: Executes spatial queries using `ST_DWithin` for proximity radius filtering, `ST_Contains` for regional polygon boundary containment, and `ST_AsGeoJSON` for sub-millisecond serialization.
+* **National Sovereign Border Enforcement (Act 843 Sec 45)**: Performs automated spatial boundary validation (`GET /api/v1/gis/compliance/sovereign-boundary`), guaranteeing all project node coordinates reside strictly within the sovereign territorial and maritime bounds of the Republic of Ghana (Lat 4.70°N - 11.20°N, Lng -3.30°W - 1.30°E).
+* **Live IoT Edge Telemetry Ingestion**: Integrates with national edge sensors (Akosombo Dam Hydrological Radar, Cocoa Board Soil Moisture Arrays, Kumasi Traffic Vision AI nodes, Bolgatanga Drone Dispatch Vertiports) over MQTT/TLS and CoAP, streaming real-time status updates and battery health over WebSocket (`/ws/telemetry`) and REST (`GET /api/v1/gis/telemetry/live`).
+* **Multi-Format Spatial Data Export**: Implements automated on-the-fly serialization to GeoJSON, CSV coordinates, and KML (Google Earth) formats (`POST /api/v1/gis/export`).
 
 ---
 
