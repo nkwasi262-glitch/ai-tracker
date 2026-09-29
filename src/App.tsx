@@ -18,7 +18,8 @@ import {
   OrganizationClearanceStatus, 
   ProjectClearanceStatus, 
   ComplianceScore, 
-  DocumentAsset 
+  DocumentAsset,
+  ClearanceUploadedDocument 
 } from './data/sampleProjects';
 import { UserRole } from './components/RoleSwitcher';
 
@@ -69,6 +70,27 @@ function App() {
   // Add new registered organization
   const handleAddOrganization = (newOrg: Organization) => {
     setOrganizations(prev => [newOrg, ...prev]);
+  };
+
+  // Update Organization Clearance Documents
+  const handleUpdateOrganizationDocuments = (
+    orgId: string, 
+    documents: ClearanceUploadedDocument[], 
+    newStatus?: OrganizationClearanceStatus
+  ) => {
+    setOrganizations(prev => prev.map(org => {
+      if (org.id === orgId) {
+        return {
+          ...org,
+          clearanceDocuments: documents,
+          clearanceStatus: newStatus || org.clearanceStatus,
+          reviewNotes: documents.length >= 3 
+            ? `Clearance dossier submitted with ${documents.length} verified PDF documents. Queued for Technical Review Committee (TCC) audit.`
+            : org.reviewNotes
+        };
+      }
+      return org;
+    }));
   };
 
   // Project Clearance Adjudication Mutation
@@ -197,6 +219,7 @@ function App() {
             projects={projects} 
             onUpdateOrganizationClearance={handleUpdateOrganizationClearance} 
             onAddOrganization={handleAddOrganization} 
+            onUpdateOrganizationDocuments={handleUpdateOrganizationDocuments}
             currentRole={currentRole} 
           />
         );
@@ -250,8 +273,10 @@ function App() {
         return (
           <DocumentManager 
             projects={projects} 
+            organizations={organizations}
             onAddDocument={handleAddDocument} 
             onSignDocument={handleSignDocument} 
+            onUpdateOrganizationDocuments={handleUpdateOrganizationDocuments}
             currentRole={currentRole} 
           />
         );

@@ -11,21 +11,25 @@ import {
   Lock, 
   Unlock, 
   Download, 
-  QrCode
+  QrCode,
+  Upload
 } from 'lucide-react';
 import { 
   Organization, 
   OrganizationClearanceStatus, 
   EntitySectorType, 
-  AIProject 
+  AIProject,
+  ClearanceUploadedDocument 
 } from '../data/sampleProjects';
 import { UserRole } from './RoleSwitcher';
+import { ClearanceDocumentUploader } from './ClearanceDocumentUploader';
 
 interface OrganizationClearanceProps {
   organizations: Organization[];
   projects: AIProject[];
   onUpdateOrganizationClearance: (orgId: string, newStatus: OrganizationClearanceStatus, certId?: string) => void;
   onAddOrganization: (newOrg: Organization) => void;
+  onUpdateOrganizationDocuments?: (orgId: string, documents: ClearanceUploadedDocument[], newStatus?: OrganizationClearanceStatus) => void;
   currentRole: UserRole;
 }
 
@@ -34,6 +38,7 @@ export const OrganizationClearance: React.FC<OrganizationClearanceProps> = ({
   projects,
   onUpdateOrganizationClearance,
   onAddOrganization,
+  onUpdateOrganizationDocuments,
   currentRole
 }) => {
   // Filters
@@ -43,6 +48,10 @@ export const OrganizationClearance: React.FC<OrganizationClearanceProps> = ({
   
   // Certificate view modal
   const [viewingCertOrg, setViewingCertOrg] = useState<Organization | null>(null);
+  
+  // Clearance Document Uploader Modal
+  const [showClearanceUploaderModal, setShowClearanceUploaderModal] = useState(false);
+  const [uploaderTargetOrg, setUploaderTargetOrg] = useState<Organization | null>(null);
   
   // New Organization Modal
   const [showRegisterModal, setShowRegisterModal] = useState(false);
@@ -185,7 +194,28 @@ export const OrganizationClearance: React.FC<OrganizationClearanceProps> = ({
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => {
+              setUploaderTargetOrg(null);
+              setShowClearanceUploaderModal(true);
+            }}
+            className="btn btn-secondary"
+            style={{ 
+              padding: '8px 16px', 
+              fontSize: '0.82rem', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px',
+              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(56, 189, 248, 0.1))',
+              borderColor: 'rgba(16, 185, 129, 0.4)',
+              color: '#34d399'
+            }}
+          >
+            <Upload className="w-4 h-4" />
+            <span>Apply for Clearance / Upload Documents</span>
+          </button>
+
           <button
             onClick={() => setShowRegisterModal(true)}
             className="btn btn-primary"
@@ -391,6 +421,7 @@ export const OrganizationClearance: React.FC<OrganizationClearanceProps> = ({
               <th>TIN / DPC Reg</th>
               <th>Data Hosting</th>
               <th>Linked AI Projects</th>
+              <th>Clearance Dossier (3-5 Docs)</th>
               <th>Clearance Status</th>
               <th>Actions</th>
             </tr>
@@ -456,6 +487,44 @@ export const OrganizationClearance: React.FC<OrganizationClearanceProps> = ({
                   </td>
 
                   <td>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                      <button
+                        onClick={() => {
+                          setUploaderTargetOrg(org);
+                          setShowClearanceUploaderModal(true);
+                        }}
+                        className="btn btn-secondary"
+                        style={{
+                          padding: '3px 8px',
+                          fontSize: '0.7rem',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          background: (org.clearanceDocuments && org.clearanceDocuments.length >= 3) || org.clearanceStatus === 'Cleared'
+                            ? 'rgba(16, 185, 129, 0.08)'
+                            : 'rgba(245, 158, 11, 0.08)',
+                          borderColor: (org.clearanceDocuments && org.clearanceDocuments.length >= 3) || org.clearanceStatus === 'Cleared'
+                            ? 'rgba(16, 185, 129, 0.3)'
+                            : 'rgba(245, 158, 11, 0.3)'
+                        }}
+                        title="Upload or inspect statutory clearance documents (min 3, max 5)"
+                      >
+                        <FileText className="w-3 h-3 text-emerald-400" />
+                        <span>
+                          {org.clearanceDocuments && org.clearanceDocuments.length > 0
+                            ? `${org.clearanceDocuments.length}/5 PDFs`
+                            : org.clearanceStatus === 'Cleared' ? '4/5 PDFs' : 'Upload Docs (0/5)'}
+                        </span>
+                      </button>
+                      <span style={{ fontSize: '0.62rem', color: (org.clearanceDocuments && org.clearanceDocuments.length >= 3) || org.clearanceStatus === 'Cleared' ? '#34d399' : '#fbbf24' }}>
+                        {(org.clearanceDocuments && org.clearanceDocuments.length >= 3) || org.clearanceStatus === 'Cleared'
+                          ? '✅ Min 3 met'
+                          : '⚠️ Min 3 required'}
+                      </span>
+                    </div>
+                  </td>
+
+                  <td>
                     <span className={`badge ${
                       isCleared ? 'badge-success' : isPending ? 'badge-warning' : isConditional ? 'badge-info' : 'badge-danger'
                     }`} style={{ fontSize: '0.68rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
@@ -471,6 +540,20 @@ export const OrganizationClearance: React.FC<OrganizationClearanceProps> = ({
 
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {/* Upload / View Dossier */}
+                      <button
+                        onClick={() => {
+                          setUploaderTargetOrg(org);
+                          setShowClearanceUploaderModal(true);
+                        }}
+                        className="btn btn-secondary"
+                        style={{ padding: '4px 8px', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        title="Upload or review clearance documents (min 3, max 5)"
+                      >
+                        <Upload className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Dossier</span>
+                      </button>
+
                       {/* View Certificate */}
                       {org.clearanceCertificateId && (
                         <button
@@ -885,6 +968,29 @@ export const OrganizationClearance: React.FC<OrganizationClearanceProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* MODAL: Clearance Document Uploader */}
+      {showClearanceUploaderModal && (
+        <ClearanceDocumentUploader
+          organization={uploaderTargetOrg}
+          organizations={organizations}
+          currentRole={currentRole}
+          isModal={true}
+          onClose={() => {
+            setShowClearanceUploaderModal(false);
+            setUploaderTargetOrg(null);
+          }}
+          onSaveDocuments={(orgId, docs, newStatus) => {
+            if (onUpdateOrganizationDocuments) {
+              onUpdateOrganizationDocuments(orgId, docs, newStatus);
+            }
+            setShowClearanceUploaderModal(false);
+            setUploaderTargetOrg(null);
+            setSuccessToast(`Clearance application dossier containing ${docs.length} verified PDF documents has been lodged for review.`);
+            setTimeout(() => setSuccessToast(null), 5000);
+          }}
+        />
       )}
     </div>
   );

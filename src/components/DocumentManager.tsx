@@ -1,21 +1,28 @@
 import React, { useState } from 'react';
 import { Upload, Search, FileText, CheckCircle2, ShieldCheck, HelpCircle } from 'lucide-react';
-import { AIProject, DocumentAsset } from '../data/sampleProjects';
+import { AIProject, DocumentAsset, Organization, ClearanceUploadedDocument } from '../data/sampleProjects';
 import { UserRole } from './RoleSwitcher';
+import { ClearanceDocumentUploader } from './ClearanceDocumentUploader';
 
 interface DocumentManagerProps {
   projects: AIProject[];
+  organizations?: Organization[];
   onAddDocument: (projectId: string, newDoc: DocumentAsset) => void;
   onSignDocument: (projectId: string, docId: string, signerName: string) => void;
+  onUpdateOrganizationDocuments?: (orgId: string, documents: ClearanceUploadedDocument[], newStatus?: any) => void;
   currentRole: UserRole;
 }
 
 export const DocumentManager: React.FC<DocumentManagerProps> = ({
   projects,
+  organizations = [],
   onAddDocument,
   onSignDocument,
+  onUpdateOrganizationDocuments,
   currentRole
 }) => {
+  const [activeView, setActiveView] = useState<'clearance' | 'vault'>('clearance');
+  const [clearanceNotice, setClearanceNotice] = useState<string | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string>(projects[0]?.id || '');
   const activeProject = projects.find(p => p.id === selectedProjectId);
 
@@ -118,7 +125,89 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
 
   return (
     <div>
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.1fr', gap: '24px', alignItems: 'stretch' }}>
+      {/* Top Module Switcher Bar */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '12px',
+        marginBottom: '20px',
+        background: 'rgba(255,255,255,0.02)',
+        padding: '12px 18px',
+        borderRadius: '12px',
+        border: '1px solid var(--border-color)'
+      }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => setActiveView('clearance')}
+            className={`btn ${activeView === 'clearance' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ 
+              padding: '8px 16px', 
+              fontSize: '0.82rem', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px'
+            }}
+          >
+            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <span>Clearance Applicant Document Portal (Min 3, Max 5 PDFs)</span>
+          </button>
+          
+          <button
+            onClick={() => setActiveView('vault')}
+            className={`btn ${activeView === 'vault' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ 
+              padding: '8px 16px', 
+              fontSize: '0.82rem', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px'
+            }}
+          >
+            <FileText className="w-4 h-4 text-blue-400" />
+            <span>Project Technical Vault & OCR Search</span>
+          </button>
+        </div>
+
+        <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+          Statutory Document Repository • Act 843 & NAPTCS Framework
+        </div>
+      </div>
+
+      {clearanceNotice && (
+        <div style={{
+          marginBottom: '16px',
+          padding: '10px 16px',
+          background: 'rgba(16, 185, 129, 0.12)',
+          border: '1px solid rgba(16, 185, 129, 0.35)',
+          borderRadius: '8px',
+          color: '#34d399',
+          fontSize: '0.8rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <CheckCircle2 className="w-4 h-4" />
+          <span>{clearanceNotice}</span>
+        </div>
+      )}
+
+      {activeView === 'clearance' ? (
+        <ClearanceDocumentUploader
+          organizations={organizations}
+          currentRole={currentRole}
+          isModal={false}
+          onSaveDocuments={(orgId, docs, newStatus) => {
+            if (onUpdateOrganizationDocuments) {
+              onUpdateOrganizationDocuments(orgId, docs, newStatus);
+            }
+            setClearanceNotice(`Clearance application dossier containing ${docs.length} statutory PDF documents successfully lodged!`);
+            setTimeout(() => setClearanceNotice(null), 5000);
+          }}
+        />
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.1fr', gap: '24px', alignItems: 'stretch' }}>
         
         {/* LEFT COLUMN: Project documents grid and OCR uploads */}
         <div className="glass-card" style={{ minHeight: '620px', display: 'flex', flexDirection: 'column' }}>
@@ -356,6 +445,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
         </div>
 
       </div>
+      )}
     </div>
   );
 };

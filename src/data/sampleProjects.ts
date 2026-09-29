@@ -62,6 +62,21 @@ export type OrganizationClearanceStatus =
   | 'Not Cleared' 
   | 'Suspended';
 
+export interface ClearanceUploadedDocument {
+  id: string;
+  name: string;
+  category: string;
+  fileName: string;
+  fileSize: string;
+  fileType: 'pdf';
+  isImageConverted: boolean;
+  uploadedAt: string;
+  dataUrl?: string;
+  previewUrl?: string;
+  verifiedByRegulator?: boolean;
+  notes?: string;
+}
+
 export interface Organization {
   id: string;
   name: string;
@@ -83,6 +98,7 @@ export interface Organization {
   reviewNotes?: string;
   submittedAt: string;
   sovereignDataHosting: 'In-Country (National Data Centre)' | 'Government-Approved Cloud' | 'Hybrid Edge' | 'Pending Verification';
+  clearanceDocuments?: ClearanceUploadedDocument[];
 }
 
 export type RiskTier = 'Minimal Risk' | 'Limited Risk' | 'High Risk' | 'Prohibited';

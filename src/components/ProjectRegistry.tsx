@@ -9,7 +9,8 @@ import {
   AlertTriangle, 
   CheckCircle2, 
   Award, 
-  Lock
+  Lock,
+  Upload
 } from 'lucide-react';
 import { 
   AIProject, 
@@ -20,6 +21,7 @@ import {
   sampleOrganizations
 } from '../data/sampleProjects';
 import { UserRole } from './RoleSwitcher';
+import { ClearanceDocumentUploader } from './ClearanceDocumentUploader';
 
 interface ProjectRegistryProps {
   projects: AIProject[];
@@ -89,6 +91,7 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
   const [modelDocUploaded, setModelDocUploaded] = useState(true);
   const [slaUploaded, setSlaUploaded] = useState(true);
   const [biasAuditUploaded, setBiasAuditUploaded] = useState(false);
+  const [showProjectClearanceModal, setShowProjectClearanceModal] = useState(false);
 
   // Governance Declarations
   const [isSovereignHosting, setIsSovereignHosting] = useState(true);
@@ -1063,8 +1066,28 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                 border: '1px solid var(--border-color)',
                 borderRadius: '8px'
               }}>
-                <div style={{ fontSize: '0.74rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-                  Mandatory Evidence Package (SOW Section 5.2)
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ fontSize: '0.74rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
+                    Mandatory Evidence Package (SOW Section 5.2)
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowProjectClearanceModal(true)}
+                    className="btn btn-secondary"
+                    style={{
+                      padding: '4px 10px',
+                      fontSize: '0.7rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      background: 'rgba(16, 185, 129, 0.1)',
+                      borderColor: 'rgba(16, 185, 129, 0.3)',
+                      color: '#34d399'
+                    }}
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Upload Clearance Documents (3-5 PDFs)</span>
+                  </button>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.74rem' }}>
@@ -1221,6 +1244,26 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
 
         </div>
       </div>
+
+      {/* MODAL: Clearance Document Uploader for Project Evidence */}
+      {showProjectClearanceModal && (
+        <ClearanceDocumentUploader
+          organization={selectedOrg}
+          organizations={organizations}
+          currentRole={currentRole}
+          isModal={true}
+          onClose={() => setShowProjectClearanceModal(false)}
+          onSaveDocuments={(_orgId, docs) => {
+            setShowProjectClearanceModal(false);
+            setDpiaUploaded(true);
+            setVaptReportUploaded(true);
+            setModelDocUploaded(true);
+            if (docs.length >= 4) {
+              setBiasAuditUploaded(true);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };
