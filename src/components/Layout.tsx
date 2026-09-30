@@ -10,7 +10,6 @@ import {
   MessageSquareCode, 
   Calendar,
   Globe,
-  Building2,
   FileCheck
 } from 'lucide-react';
 import { UserRole, RoleSwitcher } from './RoleSwitcher';
@@ -40,7 +39,6 @@ export const Layout: React.FC<LayoutProps> = ({
   // Navigation tabs with role filter flags aligned with NAPTCS Scope of Work
   const menuItems = [
     { id: 'dashboard', label: 'NAPTCS Analytics & M&E', icon: <LayoutDashboard />, public: true },
-    { id: 'organizations', label: 'Organization Clearance', icon: <Building2 />, public: false },
     { id: 'registry', label: 'AI Projects Registry', icon: <FilePlus2 />, public: false },
     { id: 'verification', label: 'Public Verification Portal', icon: <FileCheck />, public: true },
     { id: 'gis', label: 'GIS Spatial Map', icon: <Map />, public: true },

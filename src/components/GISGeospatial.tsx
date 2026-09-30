@@ -951,11 +951,11 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
       </div>
 
       {/* Main Grid: Interactive Map + Right-Hand Multi-Function Side Panel */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2.8fr 1.4fr', gap: '20px', alignItems: 'stretch' }}>
+      <div className="gis-layout-grid" style={{ gap: '20px', alignItems: 'stretch' }}>
         
         {/* Left: Leaflet Map Container */}
-        <div className="glass-card map-card" style={{ padding: '12px', minHeight: '580px', display: 'flex', flexDirection: 'column' }}>
-          <div ref={mapContainerRef} id="leaflet-map-wrapper" style={{ width: '100%', height: '560px', borderRadius: '8px', zIndex: 1 }}></div>
+        <div className="glass-card map-card" style={{ padding: '12px', minHeight: '580px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div ref={mapContainerRef} id="leaflet-map-wrapper" style={{ width: '100%', height: '560px', borderRadius: '8px', zIndex: 1, overflow: 'hidden' }}></div>
 
           {/* Under-map status bar */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
@@ -971,11 +971,11 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
         </div>
 
         {/* Right: Dynamic Multi-Mode Panel */}
-        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', minHeight: '580px', maxHeight: '620px', overflowY: 'auto' }}>
+        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', minHeight: '580px', maxHeight: '640px', overflow: 'hidden' }}>
           
           {/* TAB 1: Telemetry & Regional Registry */}
           {activePanelTab === 'telemetry' && (
-            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, overflow: 'hidden' }}>
               <div style={{ marginBottom: '16px' }}>
                 <h3 style={{ fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Activity className="w-4 h-4 text-emerald-400" />
@@ -1049,7 +1049,7 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
               </div>
 
               {/* Regional Registry Breakdown (All 16 Regions) */}
-              <div style={{ flex: 1, overflowY: 'auto' }}>
+              <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
                 <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
                   <span>Regional Density Registry</span>
                   <span style={{ color: 'var(--text-muted)' }}>16 Regions</span>
@@ -1098,7 +1098,7 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
 
           {/* TAB 2: Interactive GIS Spatial API Console */}
           {activePanelTab === 'apiConsole' && (
-            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, overflow: 'hidden' }}>
               <div style={{ marginBottom: '14px' }}>
                 <h3 style={{ fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Terminal className="w-4 h-4 text-sky-400" />
@@ -1209,7 +1209,7 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
               )}
 
               {/* JSON Terminal Output */}
-              <div style={{ flex: 1, overflowY: 'auto' }}>
+              <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
                 {apiLoading ? (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '180px', gap: '8px', color: 'var(--text-muted)' }}>
                     <RefreshCw className="w-5 h-5 animate-spin text-emerald-400" />
@@ -1226,7 +1226,7 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
 
           {/* TAB 3: Node / Sensor Inspector */}
           {activePanelTab === 'inspector' && (
-            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, overflow: 'hidden' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                 <h3 style={{ fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Crosshair className="w-4 h-4 text-emerald-400" />
@@ -1242,7 +1242,7 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
               </div>
 
               {selectedProject && (
-                <div className="inspector-card animated-fade-in" style={{ flex: 1, overflowY: 'auto' }}>
+                <div className="inspector-card animated-fade-in" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
                       <span className="badge badge-success" style={{ fontSize: '0.65rem' }}>{selectedProject.projectCode}</span>
@@ -1339,7 +1339,7 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
               )}
 
               {selectedSensor && (
-                <div className="inspector-card animated-fade-in" style={{ flex: 1, overflowY: 'auto' }}>
+                <div className="inspector-card animated-fade-in" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
                       <span className="badge badge-info" style={{ fontSize: '0.65rem' }}>{selectedSensor.nodeCode}</span>

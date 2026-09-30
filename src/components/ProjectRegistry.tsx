@@ -390,10 +390,10 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 1fr', gap: '24px', alignItems: 'start' }}>
+      <div className="project-registry-grid">
         
         {/* LEFT COLUMN: Project Registry Browser */}
-        <div className="glass-card" style={{ minHeight: '720px', display: 'flex', flexDirection: 'column' }}>
+        <div className="glass-card" style={{ minHeight: '650px', display: 'flex', flexDirection: 'column' }}>
           
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <div>
@@ -433,13 +433,19 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="form-input"
-              style={{ paddingLeft: '38px', height: '40px' }}
+              style={{ paddingLeft: '38px', minHeight: '42px', height: '42px' }}
             />
             <Search style={{ position: 'absolute', left: '12px', top: '11px', width: '18px', height: '18px', color: 'var(--text-muted)' }} />
           </div>
 
           {/* Multi-facet Filters */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '16px' }}>
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', 
+            gap: '10px', 
+            marginBottom: '16px',
+            width: '100%'
+          }}>
             <div>
               <label style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
                 Sector Track:
@@ -518,7 +524,7 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
             display: 'flex', 
             flexDirection: 'column', 
             gap: '8px', 
-            maxHeight: '480px', 
+            maxHeight: selectedProject ? '260px' : '500px', 
             overflowY: 'auto', 
             paddingRight: '4px', 
             borderBottom: '1px solid var(--border-color)', 
@@ -813,7 +819,7 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                         value={adjudicationScore}
                         onChange={(e) => setAdjudicationScore(parseInt(e.target.value) || 0)}
                         className="form-input"
-                        style={{ fontSize: '0.75rem', height: '32px' }}
+                        style={{ fontSize: '0.82rem', minHeight: '42px', height: '42px' }}
                       />
                     </div>
                   </div>
@@ -826,7 +832,7 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                       onChange={(e) => setAdjudicationRemarks(e.target.value)}
                       placeholder="e.g., Cleared for phased beta across approved hospitals only..."
                       className="form-input"
-                      style={{ fontSize: '0.75rem', height: '32px' }}
+                      style={{ fontSize: '0.82rem', minHeight: '42px', height: '42px' }}
                     />
                   </div>
 

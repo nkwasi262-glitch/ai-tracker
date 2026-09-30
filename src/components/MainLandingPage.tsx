@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { 
   ArrowRight, 
   ShieldCheck, 
-  Building2, 
   LayoutDashboard, 
   FilePlus2, 
   FileCheck, 
@@ -342,17 +341,6 @@ export const MainLandingPage: React.FC<MainLandingPageProps> = ({
       description: 'Real-time statutory clearance velocity, nationwide KPIs, MDA vs Private sector breakdowns, and deployment pipeline analytics.',
       roleRequired: 'All Roles',
       stat: `${totalProjects} Projects Monitored`
-    },
-    {
-      id: 'organizations',
-      name: 'Organization Clearance Gate',
-      badge: 'Gatekeeper Rule',
-      badgeColor: '#10b981',
-      path: '/organizations',
-      icon: <Building2 className="w-6 h-6 text-teal-400" />,
-      description: 'MDA & vendor accreditation portal with statutory multi-document upload (3–5 PDFs/images) and prerequisite accreditation vetting.',
-      roleRequired: 'Clearance Authority / Applicant',
-      stat: `${clearedOrgs}/${totalOrgs} Entities Cleared`
     },
     {
       id: 'registry',
@@ -1339,12 +1327,12 @@ export const MainLandingPage: React.FC<MainLandingPageProps> = ({
               margin: '0 auto',
               lineHeight: 1.6
             }}>
-              Select any of the 10 statutory modules below. Every module opens directly, and provides a 
+              Select any of the 9 statutory modules below. Every module opens directly, and provides a 
               <strong> single-click return button</strong> to navigate straight back to this national gateway.
             </p>
           </div>
 
-          {/* 10 Modules Grid */}
+          {/* 9 Modules Grid */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
