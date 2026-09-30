@@ -12,7 +12,6 @@ import {
   Files, 
   MessageSquareCode, 
   History, 
-  ChevronRight,
   ChevronDown,
   Layers,
   Activity,
@@ -56,7 +55,7 @@ export const MainLandingPage: React.FC<MainLandingPageProps> = ({
   const clearedProjects = projects.filter(p => p.clearanceStatus === 'Cleared').length || 6;
   const totalOrgs = organizations.length || 6;
   const clearedOrgs = organizations.filter(o => o.clearanceStatus === 'Cleared').length || 4;
-  const highRiskProjects = projects.filter(p => p.riskCategory === 'Critical' || p.riskCategory === 'High').length || 3;
+  const highRiskProjects = projects.filter(p => p.riskTier === 'High Risk' || p.riskTier === 'Prohibited').length || 3;
 
   // ---------------------------------------------------------------------------
   // 7 STATUTORY AI CLEARANCE WORKFLOW STAGES (Fully expanded with "Explain More")
