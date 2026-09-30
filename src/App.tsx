@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Layout } from './components/Layout';
+import { MainLandingPage } from './components/MainLandingPage';
+import { PageAuditLogModal } from './components/PageAuditLogModal';
 import { Dashboard } from './components/Dashboard';
 import { OrganizationClearance } from './components/OrganizationClearance';
 import { ProjectRegistry } from './components/ProjectRegistry';
@@ -22,13 +24,59 @@ import {
   ClearanceUploadedDocument 
 } from './data/sampleProjects';
 import { UserRole } from './components/RoleSwitcher';
+import { PageLogEntry, initialPageLogs } from './types/pageLog';
+
+const modulesInfo: Record<string, { name: string; path: string }> = {
+  dashboard: { name: 'NAPTCS Analytics & M&E', path: '/dashboard' },
+  organizations: { name: 'Organization Clearance Gate', path: '/organizations' },
+  registry: { name: 'AI Projects National Registry', path: '/registry' },
+  verification: { name: 'Public Verification Portal', path: '/verification' },
+  gis: { name: 'Sovereign GIS Spatial Map', path: '/gis' },
+  governance: { name: 'Governance & Ethics (Act 843)', path: '/governance' },
+  readiness: { name: 'AI Readiness & Scoring', path: '/readiness' },
+  risk: { name: 'Risk Matrix & Threat Tiers', path: '/risk' },
+  documents: { name: 'Document Vault & OCR Verification', path: '/documents' },
+  chat: { name: 'Regulator AI Policy Assistant', path: '/chat' },
+};
 
 function App() {
   // 1. Central React States
   const [projects, setProjects] = useState<AIProject[]>(sampleProjects);
   const [organizations, setOrganizations] = useState<Organization[]>(sampleOrganizations);
   const [currentRole, setCurrentRole] = useState<UserRole>('Regulator / Clearance Authority');
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
+  
+  // Navigation & Multi-page State
+  const [activePage, setActivePage] = useState<string>('home');
+  const [pageLogs, setPageLogs] = useState<PageLogEntry[]>(initialPageLogs);
+  const [isAuditLogOpen, setIsAuditLogOpen] = useState<boolean>(false);
+
+  // Navigation Handler with Automated Page Audit Logging
+  const handleNavigate = (pageId: string, pageTitle: string, routePath: string) => {
+    setActivePage(pageId);
+
+    const now = new Date();
+    const formattedDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+
+    const newLog: PageLogEntry = {
+      id: `log-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      timestamp: formattedDate,
+      pageName: pageTitle,
+      path: routePath,
+      userRole: currentRole,
+      action: pageId === 'home' ? 'Return to Home' : 'Module Access',
+      status: '200 OK',
+      sessionId: `SESS-GH-${Math.floor(1000 + Math.random() * 9000)}-${currentRole.slice(0, 3).toUpperCase()}`,
+      node: 'Accra Core (NITA Tier III)'
+    };
+
+    setPageLogs(prev => [newLog, ...prev]);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleTabChange = (tabId: string) => {
+    const mod = modulesInfo[tabId] || { name: tabId, path: `/${tabId}` };
+    handleNavigate(tabId, mod.name, mod.path);
+  };
 
   // 2. Global State Mutation Handlers (NAPTCS Gatekeeper & Tracking Engine)
   
@@ -208,7 +256,7 @@ function App() {
 
   // 3. Conditional Tab Routing Canvas
   const renderTabContent = () => {
-    switch (activeTab) {
+    switch (activePage) {
       case 'dashboard':
         return <Dashboard projects={projects} currentRole={currentRole} />;
 
@@ -290,14 +338,40 @@ function App() {
   };
 
   return (
-    <Layout 
-      currentRole={currentRole} 
-      onRoleChange={setCurrentRole} 
-      activeTab={activeTab} 
-      setActiveTab={setActiveTab}
-    >
-      {renderTabContent()}
-    </Layout>
+    <>
+      {activePage === 'home' ? (
+        <MainLandingPage 
+          currentRole={currentRole}
+          onRoleChange={setCurrentRole}
+          onNavigateToModule={(modId, modName, path) => handleNavigate(modId, modName, path)}
+          pageLogs={pageLogs}
+          onOpenAuditLog={() => setIsAuditLogOpen(true)}
+          projects={projects}
+          organizations={organizations}
+        />
+      ) : (
+        <Layout 
+          currentRole={currentRole} 
+          onRoleChange={setCurrentRole} 
+          activeTab={activePage} 
+          setActiveTab={handleTabChange}
+          onReturnToHome={() => handleNavigate('home', 'National Gateway (Main Landing)', '/')}
+          onOpenAuditLog={() => setIsAuditLogOpen(true)}
+          logCount={pageLogs.length}
+        >
+          {renderTabContent()}
+        </Layout>
+      )}
+
+      {/* Global Page Audit Trail Console Modal */}
+      <PageAuditLogModal
+        logs={pageLogs}
+        isOpen={isAuditLogOpen}
+        onClose={() => setIsAuditLogOpen(false)}
+        onClearLogs={() => setPageLogs([])}
+        currentPage={activePage === 'home' ? 'National Gateway (Main Landing)' : (modulesInfo[activePage]?.name || activePage)}
+      />
+    </>
   );
 }
 
