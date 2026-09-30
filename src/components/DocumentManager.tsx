@@ -227,7 +227,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                 setSelectedDoc(null);
               }}
               className="form-select"
-              style={{ width: '180px', padding: '6px 12px', fontSize: '0.8rem' }}
+              style={{ width: '220px', minHeight: '44px', height: '44px', fontSize: '0.85rem' }}
             >
               {projects.map(p => (
                 <option key={p.id} value={p.id}>{p.mdaCode} - {p.category}</option>

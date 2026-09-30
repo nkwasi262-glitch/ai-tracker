@@ -1530,7 +1530,7 @@ export const MainLandingPage: React.FC<MainLandingPageProps> = ({
             backgroundColor: 'rgba(15, 23, 42, 0.75)',
             border: '1px solid rgba(255, 255, 255, 0.08)',
             borderRadius: '12px',
-            overflow: 'hidden'
+            overflowX: 'auto'
           }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.82rem' }}>
               <thead>

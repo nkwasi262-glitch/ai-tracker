@@ -383,8 +383,8 @@ export const OrganizationClearance: React.FC<OrganizationClearanceProps> = ({
           <select
             value={sectorTypeFilter}
             onChange={(e) => setSectorTypeFilter(e.target.value)}
-            className="form-input"
-            style={{ height: '36px', fontSize: '0.78rem', minWidth: '150px' }}
+            className="form-select"
+            style={{ minHeight: '42px', height: '42px', fontSize: '0.82rem', minWidth: '170px' }}
           >
             <option value="All">All Sectors</option>
             <option value="Government">Government (MDAs/SOEs)</option>
@@ -399,8 +399,8 @@ export const OrganizationClearance: React.FC<OrganizationClearanceProps> = ({
           <select
             value={clearanceFilter}
             onChange={(e) => setClearanceFilter(e.target.value)}
-            className="form-input"
-            style={{ height: '36px', fontSize: '0.78rem', minWidth: '140px' }}
+            className="form-select"
+            style={{ minHeight: '42px', height: '42px', fontSize: '0.82rem', minWidth: '160px' }}
           >
             <option value="All">All Statuses</option>
             <option value="Cleared">Cleared & Approved</option>
@@ -856,6 +856,8 @@ export const OrganizationClearance: React.FC<OrganizationClearanceProps> = ({
           <div className="glass-card animated-fade-in" style={{
             maxWidth: '620px',
             width: '100%',
+            maxHeight: '90vh',
+            overflowY: 'auto',
             background: 'linear-gradient(145deg, #0d1527 0%, #111e38 100%)',
             border: '2px solid rgba(16, 185, 129, 0.4)',
             borderRadius: '16px',

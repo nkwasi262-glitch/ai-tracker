@@ -448,7 +448,7 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                 value={sectorTypeFilter}
                 onChange={(e) => setSectorTypeFilter(e.target.value as any)}
                 className="form-select"
-                style={{ fontSize: '0.74rem', height: '34px', padding: '0 6px' }}
+                style={{ fontSize: '0.82rem', minHeight: '42px', height: '42px' }}
               >
                 <option value="All">All Sectors</option>
                 <option value="Government">🏛️ Government</option>
@@ -464,7 +464,7 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                 value={clearanceStatusFilter}
                 onChange={(e) => setClearanceStatusFilter(e.target.value as any)}
                 className="form-select"
-                style={{ fontSize: '0.74rem', height: '34px', padding: '0 6px' }}
+                style={{ fontSize: '0.82rem', minHeight: '42px', height: '42px' }}
               >
                 <option value="All">All Status</option>
                 <option value="Cleared">Cleared (≥85%)</option>
@@ -482,7 +482,7 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                 value={riskTierFilter}
                 onChange={(e) => setRiskTierFilter(e.target.value as any)}
                 className="form-select"
-                style={{ fontSize: '0.74rem', height: '34px', padding: '0 6px' }}
+                style={{ fontSize: '0.82rem', minHeight: '42px', height: '42px' }}
               >
                 <option value="All">All Risk</option>
                 <option value="Minimal Risk">Minimal</option>
@@ -500,7 +500,7 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                 value={stageFilter}
                 onChange={(e) => setStageFilter(e.target.value)}
                 className="form-select"
-                style={{ fontSize: '0.74rem', height: '34px', padding: '0 6px' }}
+                style={{ fontSize: '0.82rem', minHeight: '42px', height: '42px' }}
               >
                 <option value="All">All Stages</option>
                 <option value="Concept">Concept</option>
@@ -518,7 +518,7 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
             display: 'flex', 
             flexDirection: 'column', 
             gap: '8px', 
-            maxHeight: '340px', 
+            maxHeight: '480px', 
             overflowY: 'auto', 
             paddingRight: '4px', 
             borderBottom: '1px solid var(--border-color)', 
@@ -795,7 +795,7 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                         value={adjudicationStatus}
                         onChange={(e) => setAdjudicationStatus(e.target.value as any)}
                         className="form-select"
-                        style={{ fontSize: '0.75rem', height: '32px' }}
+                        style={{ fontSize: '0.82rem', minHeight: '42px', height: '42px' }}
                       >
                         <option value="Cleared">Cleared (≥85%)</option>
                         <option value="Conditional">Conditional (60-84%)</option>

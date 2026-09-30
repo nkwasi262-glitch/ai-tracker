@@ -700,7 +700,7 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="form-input"
-              style={{ paddingLeft: '32px', height: '36px', fontSize: '0.8rem' }}
+              style={{ paddingLeft: '32px', minHeight: '42px', height: '42px', fontSize: '0.84rem' }}
             />
           </div>
 
@@ -710,8 +710,8 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
             <select
               value={selectedSectorTrack}
               onChange={(e) => setSelectedSectorTrack(e.target.value as any)}
-              className="form-input"
-              style={{ height: '36px', fontSize: '0.78rem', minWidth: '130px' }}
+              className="form-select"
+              style={{ minHeight: '42px', height: '42px', fontSize: '0.82rem', minWidth: '140px' }}
             >
               <option value="All">All Tracks</option>
               <option value="Government">🏛️ Government</option>
@@ -725,8 +725,8 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
             <select
               value={clearanceFilter}
               onChange={(e) => setClearanceFilter(e.target.value as any)}
-              className="form-input"
-              style={{ height: '36px', fontSize: '0.78rem', minWidth: '150px' }}
+              className="form-select"
+              style={{ minHeight: '42px', height: '42px', fontSize: '0.82rem', minWidth: '170px' }}
             >
               <option value="Cleared & Public Only">✅ Cleared & Public Only</option>
               <option value="All (Including Quarantined)">⛔ All (Include Quarantined)</option>
@@ -739,8 +739,8 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
             <select
               value={selectedSector}
               onChange={(e) => setSelectedSector(e.target.value)}
-              className="form-input"
-              style={{ height: '36px', fontSize: '0.78rem', minWidth: '120px' }}
+              className="form-select"
+              style={{ minHeight: '42px', height: '42px', fontSize: '0.82rem', minWidth: '140px' }}
             >
               <option value="All">All Domains</option>
               <option value="Health">Health</option>
@@ -760,8 +760,8 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
             <select
               value={selectedStage}
               onChange={(e) => setSelectedStage(e.target.value)}
-              className="form-input"
-              style={{ height: '36px', fontSize: '0.78rem', minWidth: '110px' }}
+              className="form-select"
+              style={{ minHeight: '42px', height: '42px', fontSize: '0.82rem', minWidth: '130px' }}
             >
               <option value="All">All Stages</option>
               <option value="Operational">Operational</option>

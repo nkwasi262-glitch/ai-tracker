@@ -934,6 +934,8 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
             borderRadius: '16px',
             width: '100%',
             maxWidth: '520px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
             padding: '24px',
             color: '#f8fafc',
             position: 'relative'

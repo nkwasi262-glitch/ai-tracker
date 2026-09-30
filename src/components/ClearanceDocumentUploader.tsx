@@ -564,7 +564,7 @@ export const ClearanceDocumentUploader: React.FC<ClearanceDocumentUploaderProps>
                   value={selectedOrgId}
                   onChange={(e) => handleOrgChange(e.target.value)}
                   className="form-select"
-                  style={{ minWidth: '280px', fontSize: '0.8rem', height: '36px' }}
+                  style={{ minWidth: '280px', minHeight: '44px', height: '44px', fontSize: '0.85rem' }}
                 >
                   <optgroup label="Government MDAs / SOEs">
                     {organizations.filter(o => o.entityType.includes('Government')).map(o => (
@@ -804,7 +804,7 @@ export const ClearanceDocumentUploader: React.FC<ClearanceDocumentUploaderProps>
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
                 className="form-select"
-                style={{ fontSize: '0.8rem', height: '36px' }}
+                style={{ minHeight: '44px', height: '44px', fontSize: '0.85rem' }}
               >
                 {STATUTORY_CATEGORIES.map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
@@ -983,7 +983,7 @@ export const ClearanceDocumentUploader: React.FC<ClearanceDocumentUploaderProps>
                               value={doc.category}
                               onChange={(e) => handleUpdateCategory(doc.id, e.target.value)}
                               className="form-select"
-                              style={{ height: '26px', fontSize: '0.7rem', padding: '2px 8px', maxWidth: '340px' }}
+                              style={{ minHeight: '38px', height: '38px', fontSize: '0.8rem', padding: '6px 32px 6px 10px', maxWidth: '340px' }}
                             >
                               {STATUTORY_CATEGORIES.map(cat => (
                                 <option key={cat} value={cat}>{cat}</option>
@@ -1118,6 +1118,8 @@ export const ClearanceDocumentUploader: React.FC<ClearanceDocumentUploaderProps>
             <div className="glass-card animated-fade-in" style={{
               maxWidth: '820px',
               width: '100%',
+              maxHeight: '92vh',
+              overflowY: 'auto',
               background: '#0d1527',
               border: '2px solid rgba(16, 185, 129, 0.4)',
               borderRadius: '16px',

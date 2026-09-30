@@ -1279,7 +1279,7 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
             value={selectedProjectId}
             onChange={(e) => setSelectedProjectId(e.target.value)}
             className="form-select"
-            style={{ width: '260px', padding: '8px 12px' }}
+            style={{ width: '280px', minHeight: '44px', height: '44px', fontSize: '0.85rem' }}
           >
             <option value="general">📁 General AI System Audit (Standalone)</option>
             {projects.map(p => (
@@ -1319,13 +1319,10 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
                   onChange={(e) => setFramework(e.target.value)}
                   className="form-select"
                   style={{ 
-                    padding: '6px 12px', 
-                    fontSize: '0.78rem', 
-                    borderRadius: '6px', 
-                    background: 'rgba(0,0,0,0.3)',
-                    border: '1px solid var(--border-color)',
-                    color: 'var(--text-primary)',
-                    width: '180px'
+                    minHeight: '42px',
+                    height: '42px',
+                    fontSize: '0.82rem', 
+                    width: '210px'
                   }}
                 >
                   <option value="Ghana">🇬🇭 Ghana (DPA / Act 1038)</option>

@@ -253,7 +253,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
             value={selectedSector}
             onChange={(e) => setSelectedSector(e.target.value)}
             className="form-select"
-            style={{ width: '150px', padding: '6px 10px', fontSize: '0.78rem' }}
+            style={{ width: '180px', minHeight: '44px', height: '44px', fontSize: '0.85rem' }}
           >
             <option value="All">All Domains</option>
             <option value="Health">Health</option>
@@ -392,16 +392,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
                   <span>ACTIVE DEPLOYMENTS</span>
                   <span>{activeProjectsList.length}</span>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '120px', overflowY: 'auto', paddingRight: '4px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px' }}>
                   {activeProjectsList.length > 0 ? (
                     activeProjectsList.map(p => (
                       <div key={p.id} style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '6px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.03)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', color: 'var(--text-primary)', fontWeight: 500, overflow: 'hidden' }}>
-                            <span style={{ display: 'inline-block', width: '5px', height: '5px', borderRadius: '50%', backgroundColor: 'var(--ghana-emerald)', flexShrink: 0 }} />
-                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }} title={p.name}>{p.name}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.74rem', color: 'var(--text-primary)', fontWeight: 500, overflow: 'hidden', flex: 1 }}>
+                            <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--ghana-emerald)', flexShrink: 0 }} />
+                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '260px' }} title={p.name}>{p.name}</span>
                           </div>
-                          <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>{p.readinessScore}%</span>
+                          <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>{p.readinessScore}%</span>
                         </div>
                         <div style={{ width: '100%', height: '2px', background: 'rgba(255,255,255,0.05)', borderRadius: '1px', overflow: 'hidden' }}>
                           <div style={{ width: `${p.readinessScore}%`, height: '100%', background: 'var(--ghana-emerald)' }} />
@@ -420,16 +420,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
                   <span>DELAYED OR QUARANTINED</span>
                   <span>{delayedProjectsList.length}</span>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '120px', overflowY: 'auto', paddingRight: '4px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px' }}>
                   {delayedProjectsList.length > 0 ? (
                     delayedProjectsList.map(p => (
                       <div key={p.id} style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '6px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.03)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', color: 'var(--text-primary)', fontWeight: 500, overflow: 'hidden' }}>
-                            <span style={{ display: 'inline-block', width: '5px', height: '5px', borderRadius: '50%', backgroundColor: 'var(--ghana-gold)', flexShrink: 0 }} />
-                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }} title={p.name}>{p.name}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.74rem', color: 'var(--text-primary)', fontWeight: 500, overflow: 'hidden', flex: 1 }}>
+                            <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--ghana-gold)', flexShrink: 0 }} />
+                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '260px' }} title={p.name}>{p.name}</span>
                           </div>
-                          <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>{p.readinessScore}%</span>
+                          <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>{p.readinessScore}%</span>
                         </div>
                         <div style={{ width: '100%', height: '2px', background: 'rgba(255,255,255,0.05)', borderRadius: '1px', overflow: 'hidden' }}>
                           <div style={{ width: `${p.readinessScore}%`, height: '100%', background: 'var(--ghana-gold)' }} />
@@ -448,16 +448,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
                   <span>OPERATIONAL AUDITED</span>
                   <span>{completedProjectsList.length}</span>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '120px', overflowY: 'auto', paddingRight: '4px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px' }}>
                   {completedProjectsList.length > 0 ? (
                     completedProjectsList.map(p => (
                       <div key={p.id} style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '6px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.03)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', color: 'var(--text-primary)', fontWeight: 500, overflow: 'hidden' }}>
-                            <span style={{ display: 'inline-block', width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#3b82f6', flexShrink: 0 }} />
-                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }} title={p.name}>{p.name}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.74rem', color: 'var(--text-primary)', fontWeight: 500, overflow: 'hidden', flex: 1 }}>
+                            <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#3b82f6', flexShrink: 0 }} />
+                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '260px' }} title={p.name}>{p.name}</span>
                           </div>
-                          <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>{p.readinessScore}%</span>
+                          <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>{p.readinessScore}%</span>
                         </div>
                         <div style={{ width: '100%', height: '2px', background: 'rgba(255,255,255,0.05)', borderRadius: '1px', overflow: 'hidden' }}>
                           <div style={{ width: `${p.readinessScore}%`, height: '100%', background: '#3b82f6' }} />

@@ -197,7 +197,7 @@ export const PageAuditLogModal: React.FC<PageAuditLogModalProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="form-input"
-              style={{ paddingLeft: '32px', height: '34px', fontSize: '0.78rem' }}
+              style={{ paddingLeft: '32px', minHeight: '42px', height: '42px', fontSize: '0.84rem' }}
             />
           </div>
 
@@ -208,7 +208,7 @@ export const PageAuditLogModal: React.FC<PageAuditLogModalProps> = ({
               value={selectedModuleFilter}
               onChange={(e) => setSelectedModuleFilter(e.target.value)}
               className="form-select"
-              style={{ height: '34px', fontSize: '0.76rem', minWidth: '180px' }}
+              style={{ minHeight: '42px', height: '42px', fontSize: '0.84rem', minWidth: '190px' }}
             >
               <option value="All">All Pages & Modules</option>
               <option value="National Gateway">National Gateway (Home)</option>

@@ -406,7 +406,7 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--text-secondary);
 }
 
-.form-input, .form-select, .form-textarea {
+.form-input, .form-textarea {
   width: 100%;
   padding: 12px 16px;
   background: rgba(15, 23, 42, 0.6);
@@ -419,10 +419,57 @@ h1, h2, h3, h4, h5, h6 {
   transition: all 0.2s ease;
 }
 
-.form-input:focus, .form-select:focus, .form-textarea:focus {
+.form-input:focus, .form-textarea:focus {
   border-color: var(--border-focus);
   background: rgba(15, 23, 42, 0.8);
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+/* Universal Select Dropdown Styling - Generous height, centered text, never clipped */
+select, .form-select, select.form-input, select.form-select {
+  min-height: 44px !important;
+  line-height: 1.5 !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.88rem !important;
+  padding: 10px 38px 10px 14px !important;
+  color: #f8fafc !important;
+  background-color: #0f172a !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 8px !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2334d399' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 14px center !important;
+  background-size: 16px 16px !important;
+  box-sizing: border-box !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  vertical-align: middle !important;
+}
+
+select:focus, .form-select:focus, select.form-input:focus {
+  border-color: var(--ghana-emerald) !important;
+  background-color: #131d33 !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2) !important;
+  outline: none !important;
+}
+
+select option, .form-select option {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+  padding: 12px 14px !important;
+  font-size: 0.9rem !important;
+  line-height: 1.6 !important;
+}
+
+select optgroup, .form-select optgroup {
+  background-color: #0b0f19 !important;
+  color: #fbbf24 !important;
+  font-weight: 700 !important;
+  font-size: 0.85rem !important;
+  padding: 8px 10px !important;
 }
 
 .form-textarea {
@@ -472,7 +519,8 @@ h1, h2, h3, h4, h5, h6 {
 /* Beautiful Interactive Tables */
 .table-wrapper {
   width: 100%;
-  overflow-x: auto;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
   border-radius: 8px;
   border: 1px solid var(--border-color);
 }

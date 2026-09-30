@@ -305,7 +305,7 @@ export const RiskManagement: React.FC<RiskManagementProps> = ({
               setFocusedRisk(null);
             }}
             className="form-select"
-            style={{ width: '220px', padding: '8px 12px' }}
+            style={{ width: '260px', minHeight: '44px', height: '44px', fontSize: '0.85rem' }}
           >
             {projects.map(p => (
               <option key={p.id} value={p.id}>{p.name}</option>

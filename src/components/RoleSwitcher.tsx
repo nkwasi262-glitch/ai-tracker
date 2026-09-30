@@ -58,16 +58,17 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ currentRole, onRoleC
           onChange={(e) => onRoleChange(e.target.value as UserRole)}
           className="form-select"
           style={{
-            padding: '6px 36px 6px 12px',
+            minHeight: '44px',
+            height: '44px',
+            padding: '10px 38px 10px 16px',
             fontSize: '0.85rem',
             fontWeight: 600,
             borderRadius: '9999px',
             background: 'rgba(255, 255, 255, 0.05)',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
             color: 'var(--text-primary)',
             cursor: 'pointer',
             outline: 'none',
-            appearance: 'none',
             display: 'flex',
             alignItems: 'center',
             gap: '8px'
