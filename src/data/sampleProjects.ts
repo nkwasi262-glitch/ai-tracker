@@ -44,6 +44,25 @@ export interface DocumentAsset {
   signedBy: string[];
 }
 
+export type ReviewWorkflowStatus =
+  | 'Submitted'
+  | 'Under Technical Review'
+  | 'Needs Correction'
+  | 'Recommended'
+  | 'Under DG Review'
+  | 'Approved'
+  | 'Rejected'
+  | 'Returned';
+
+export interface TechnicalReviewDetails {
+  reviewerName?: string;
+  reviewerRole?: string;
+  reviewerEmail?: string;
+  reviewedAt?: string;
+  recommendationNotes?: string;
+  flaggedDefects?: string[];
+}
+
 export interface AIProject {
   id: string;
   projectCode: string;
@@ -68,6 +87,8 @@ export interface AIProject {
   milestones: Milestone[];
   risks: RiskItem[];
   documents: DocumentAsset[];
+  reviewStatus?: ReviewWorkflowStatus;
+  technicalReview?: TechnicalReviewDetails;
 }
 
 export const sampleProjects: AIProject[] = [
@@ -135,7 +156,15 @@ export const sampleProjects: AIProject[] = [
     ],
     documents: [
       { id: "doc-1-1", fileName: "GhanaPostGPS_GeoDesign_Specs.pdf", fileType: "pdf", uploadedAt: "2018-02-15", version: 1, signedBy: ["Minister of Communications", "NITA Director"] }
-    ]
+    ],
+    reviewStatus: "Approved",
+    technicalReview: {
+      reviewerName: "Ing. Emmanuel Darko",
+      reviewerRole: "Technical Director",
+      reviewerEmail: "e.darko@mocd.gov.gh",
+      reviewedAt: "2026-09-28T10:00:00Z",
+      recommendationNotes: "Full architectural conformance verified. Deployed nationally under MoCD supervision."
+    }
   },
   {
     id: "proj-2",
@@ -191,7 +220,15 @@ export const sampleProjects: AIProject[] = [
     ],
     documents: [
       { id: "doc-2-1", fileName: "NIA_Biometric_Security_Protocol.pdf", fileType: "pdf", uploadedAt: "2019-01-10", version: 3, signedBy: ["Executive Secretary NIA", "DPO"] }
-    ]
+    ],
+    reviewStatus: "Recommended",
+    technicalReview: {
+      reviewerName: "Ama Osei-Bonsu",
+      reviewerRole: "Technical Clearance Team",
+      reviewerEmail: "a.osei@nita.gov.gh",
+      reviewedAt: "2026-10-01T14:30:00Z",
+      recommendationNotes: "Biometric security protocols tested and validated. HSM operational. Recommended for Director General final statutory verdict."
+    }
   },
   {
     id: "proj-3",
@@ -247,7 +284,15 @@ export const sampleProjects: AIProject[] = [
     ],
     documents: [
       { id: "doc-3-1", fileName: "CMS_Farming_Data_Provenance.pdf", fileType: "pdf", uploadedAt: "2021-04-12", version: 1, signedBy: ["CMS Project Lead"] }
-    ]
+    ],
+    reviewStatus: "Recommended",
+    technicalReview: {
+      reviewerName: "Kofi Annan Jr.",
+      reviewerRole: "Technical Clearance Team",
+      reviewerEmail: "k.annan@nita.gov.gh",
+      reviewedAt: "2026-10-02T11:20:00Z",
+      recommendationNotes: "Cocoa farm boundary telemetry audited. 90% fairness score. Recommended for Director General final statutory verdict."
+    }
   },
   {
     id: "proj-4",

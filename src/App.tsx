@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
 import { ProjectRegistry } from './components/ProjectRegistry';
@@ -8,18 +8,42 @@ import { AIReadiness } from './components/AIReadiness';
 import { RiskManagement } from './components/RiskManagement';
 import { DocumentManager } from './components/DocumentManager';
 import { AIChatAssistant } from './components/AIChatAssistant';
-import { sampleProjects, AIProject, ComplianceScore, DocumentAsset } from './data/sampleProjects';
-import { UserRole } from './components/RoleSwitcher';
+import { DGDecisionQueue } from './components/DGDecisionQueue';
+import { FinanceMinisterView } from './components/FinanceMinisterView';
+import { InternalReportsHub } from './components/InternalReportsHub';
+import { AuditLogViewer } from './components/AuditLogViewer';
+import { EntryGateModal } from './components/EntryGateModal';
+import { AccessDenied } from './components/AccessDenied';
+import { sampleProjects, AIProject, ComplianceScore, DocumentAsset, ReviewWorkflowStatus } from './data/sampleProjects';
+import { UserSession } from './data/authTypes';
+import { getStoredSession, clearSession } from './services/authService';
+import { AppModuleId, canAccessModule } from './services/rbacPolicy';
 
 function App() {
-  // 1. Central React States
+  // 1. Session State from Mandatory Entry Gate
+  const [session, setSession] = useState<UserSession | null>(() => getStoredSession());
+
+  // 2. Central Registry & Navigation States
   const [projects, setProjects] = useState<AIProject[]>(sampleProjects);
-  const [currentRole, setCurrentRole] = useState<UserRole>('Super Administrator');
   const [activeTab, setActiveTab] = useState<string>('dashboard');
 
-  // 2. Global State Mutation Callback Handlers
+  // Ensure active tab is reset if current role changes to one without permission
+  useEffect(() => {
+    if (session && !canAccessModule(session.role, activeTab as AppModuleId)) {
+      setActiveTab('dashboard');
+    }
+  }, [session, activeTab]);
+
+  // Handle Switch Role / Sign Out: clears session and immediately reveals Entry Gate
+  const handleSwitchRole = () => {
+    clearSession();
+    setSession(null);
+    setActiveTab('dashboard');
+  };
+
+  // 3. Global State Mutation Callback Handlers
   
-  // Appends new projects to state (updates dashboard, GIS map, and recommendations instantly)
+  // Appends new projects to state
   const handleAddProject = (newProject: AIProject) => {
     setProjects(prev => [newProject, ...prev]);
   };
@@ -99,11 +123,65 @@ function App() {
     }));
   };
 
-  // 3. Conditional Tab Routing Canvas
+  // Updates project review lifecycle status (Technical review / DG clearance)
+  const handleUpdateProjectReviewStatus = (
+    projectId: string, 
+    newReviewStatus: ReviewWorkflowStatus, 
+    notes?: string
+  ) => {
+    setProjects(prev => prev.map(p => {
+      if (p.id === projectId) {
+        return {
+          ...p,
+          reviewStatus: newReviewStatus,
+          technicalReview: notes ? {
+            reviewerName: session?.fullName,
+            reviewerRole: session?.role,
+            reviewerEmail: session?.email,
+            reviewedAt: new Date().toISOString(),
+            recommendationNotes: notes
+          } : p.technicalReview
+        };
+      }
+      return p;
+    }));
+  };
+
+  // 4. If No Verified Session Exists, Render Mandatory Entry Gate Modal (Non-Dismissible)
+  if (!session) {
+    return (
+      <EntryGateModal 
+        onSuccess={(newSession) => {
+          setSession(newSession);
+          setActiveTab('dashboard');
+        }} 
+      />
+    );
+  }
+
+  // 5. Central RBAC Policy Enforcement on Tab Routing
+  const isTabPermitted = canAccessModule(session.role, activeTab as AppModuleId);
+
+  // 6. Conditional Tab Routing Canvas
   const renderTabContent = () => {
+    // If forbidden module is accessed via deep-linking or state tampering, render AccessDenied
+    if (!isTabPermitted) {
+      return (
+        <AccessDenied
+          currentRole={session.role}
+          attemptedModule={activeTab as AppModuleId}
+          userName={session.fullName}
+          userEmail={session.email}
+          userInstitution={session.institution}
+          onNavigateHome={() => setActiveTab('dashboard')}
+          onRequestElevation={handleSwitchRole}
+        />
+      );
+    }
+
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard projects={projects} currentRole={currentRole} />;
+        return <Dashboard projects={projects} currentRole={session.role as any} />;
       case 'registry':
         return (
           <ProjectRegistry 
@@ -111,7 +189,7 @@ function App() {
             onAddProject={handleAddProject} 
             onDeleteProject={handleDeleteProject}
             onClearAllProjects={handleClearAllProjects}
-            currentRole={currentRole} 
+            currentRole={session.role as any} 
           />
         );
       case 'gis':
@@ -121,17 +199,17 @@ function App() {
           <GovernanceCompliance 
             projects={projects} 
             onUpdateCompliance={handleUpdateCompliance} 
-            currentRole={currentRole} 
+            currentRole={session.role as any} 
           />
         );
       case 'readiness':
-        return <AIReadiness currentRole={currentRole} />;
+        return <AIReadiness currentRole={session.role as any} />;
       case 'risk':
         return (
           <RiskManagement 
             projects={projects} 
             onUpdateRiskStatus={handleUpdateRiskStatus} 
-            currentRole={currentRole} 
+            currentRole={session.role as any} 
           />
         );
       case 'documents':
@@ -140,20 +218,50 @@ function App() {
             projects={projects} 
             onAddDocument={handleAddDocument} 
             onSignDocument={handleSignDocument} 
-            currentRole={currentRole} 
+            currentRole={session.role as any}
+            session={session}
+            onUpdateProjectStatus={handleUpdateProjectReviewStatus}
+          />
+        );
+      case 'dg_queue':
+        return (
+          <DGDecisionQueue
+            projects={projects}
+            session={session}
+            onUpdateProjectStatus={handleUpdateProjectReviewStatus}
+          />
+        );
+      case 'finance':
+        return (
+          <FinanceMinisterView
+            projects={projects}
+            session={session}
+          />
+        );
+      case 'reports':
+        return (
+          <InternalReportsHub
+            session={session}
+            projects={projects}
+          />
+        );
+      case 'audit':
+        return (
+          <AuditLogViewer
+            session={session}
           />
         );
       case 'chat':
         return <AIChatAssistant projects={projects} />;
       default:
-        return <Dashboard projects={projects} currentRole={currentRole} />;
+        return <Dashboard projects={projects} currentRole={session.role as any} />;
     }
   };
 
   return (
     <Layout 
-      currentRole={currentRole} 
-      onRoleChange={setCurrentRole} 
+      session={session}
+      onSwitchRole={handleSwitchRole}
       activeTab={activeTab} 
       setActiveTab={setActiveTab}
     >

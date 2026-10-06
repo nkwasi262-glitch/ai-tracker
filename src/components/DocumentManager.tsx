@@ -1,20 +1,26 @@
 import React, { useState } from 'react';
-import { Upload, Search, FileText, CheckCircle2, ShieldCheck, HelpCircle } from 'lucide-react';
-import { AIProject, DocumentAsset } from '../data/sampleProjects';
+import { Upload, Search, FileText, CheckCircle2, ShieldCheck, HelpCircle, Award, ArrowRight, RotateCcw } from 'lucide-react';
+import { AIProject, DocumentAsset, ReviewWorkflowStatus } from '../data/sampleProjects';
 import { UserRole } from './RoleSwitcher';
+import { UserSession } from '../data/authTypes';
+import { recordAuditEvent } from '../services/auditService';
 
 interface DocumentManagerProps {
   projects: AIProject[];
   onAddDocument: (projectId: string, newDoc: DocumentAsset) => void;
   onSignDocument: (projectId: string, docId: string, signerName: string) => void;
-  currentRole: UserRole;
+  currentRole: UserRole | string;
+  session?: UserSession;
+  onUpdateProjectStatus?: (projectId: string, newStatus: ReviewWorkflowStatus, notes?: string) => void;
 }
 
 export const DocumentManager: React.FC<DocumentManagerProps> = ({
   projects,
   onAddDocument,
   onSignDocument,
-  currentRole
+  currentRole,
+  session,
+  onUpdateProjectStatus
 }) => {
   const [selectedProjectId, setSelectedProjectId] = useState<string>(projects[0]?.id || '');
   const activeProject = projects.find(p => p.id === selectedProjectId);
@@ -30,6 +36,31 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
 
   // Version history states
   const [selectedDoc, setSelectedDoc] = useState<DocumentAsset | null>(null);
+
+  // Technical review states
+  const [techNotes, setTechNotes] = useState('');
+  const [statusFeedback, setStatusFeedback] = useState<string | null>(null);
+
+  const handleUpdateStatus = (newStatus: ReviewWorkflowStatus) => {
+    if (!activeProject || !onUpdateProjectStatus) return;
+    onUpdateProjectStatus(activeProject.id, newStatus, techNotes.trim() || undefined);
+    
+    if (session) {
+      recordAuditEvent({
+        eventType: 'TECH_REVIEW_TRANSITION',
+        actorName: session.fullName,
+        actorEmail: session.email,
+        actorRole: session.role,
+        actorInstitution: session.institution,
+        targetModule: 'documents',
+        targetEntityId: activeProject.id,
+        actionDetails: `Technical status updated to "${newStatus}" for project ${activeProject.projectCode}. Notes: ${techNotes || 'Standard evaluation'}`
+      });
+    }
+
+    setStatusFeedback(`Project ${activeProject.projectCode} status updated to: ${newStatus}`);
+    setTechNotes('');
+  };
 
   // Mock full-text OCR dictionary for search simulations
   const mockOcrTexts: { [key: string]: string } = {
@@ -334,7 +365,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                     onClick={() => handleDigitalSign(selectedDoc.id)}
                     className="btn btn-primary"
                     style={{ width: '100%', padding: '10px', fontSize: '0.82rem' }}
-                    disabled={!canSign || selectedDoc.signedBy.includes(currentRole)}
+                    disabled={!canSign || selectedDoc.signedBy.includes(currentRole as any)}
                   >
                     <ShieldCheck className="w-4 h-4" />
                     <span>Apply Signature Identity</span>
@@ -352,6 +383,112 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
               </div>
             )}
           </div>
+
+          {/* Technical Review & DG Clearance Elevation Panel */}
+          {activeProject && (
+            <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Award className="w-4 h-4 text-emerald-400" />
+                  <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0 }}>Technical Clearance Gate</h3>
+                </div>
+                <span style={{
+                  fontSize: '0.68rem',
+                  padding: '2px 8px',
+                  borderRadius: '9999px',
+                  fontWeight: 700,
+                  background: activeProject.reviewStatus === 'Approved'
+                    ? 'rgba(16, 185, 129, 0.2)'
+                    : activeProject.reviewStatus === 'Recommended'
+                    ? 'rgba(251, 191, 36, 0.2)'
+                    : 'rgba(59, 130, 246, 0.2)',
+                  color: activeProject.reviewStatus === 'Approved'
+                    ? '#10b981'
+                    : activeProject.reviewStatus === 'Recommended'
+                    ? '#fbbf24'
+                    : '#60a5fa'
+                }}>
+                  {activeProject.reviewStatus || 'Under Technical Review'}
+                </span>
+              </div>
+
+              <p style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', margin: 0 }}>
+                Technical clearance officers screen uploaded documents and forward validated dossiers to the Director General queue.
+              </p>
+
+              {onUpdateProjectStatus && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <textarea
+                    rows={2}
+                    value={techNotes}
+                    onChange={(e) => setTechNotes(e.target.value)}
+                    placeholder="Enter technical clearance notes or recommendation summary..."
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      background: 'rgba(255, 255, 255, 0.04)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      color: '#fff',
+                      fontSize: '0.78rem',
+                      outline: 'none',
+                      resize: 'none'
+                    }}
+                  />
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateStatus('Recommended')}
+                      style={{
+                        padding: '8px 10px',
+                        borderRadius: '6px',
+                        background: 'linear-gradient(135deg, var(--ghana-emerald), #059669)',
+                        color: '#0b0f19',
+                        fontWeight: 700,
+                        fontSize: '0.75rem',
+                        border: 'none',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <ArrowRight size={13} /> Recommend to DG
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateStatus('Needs Correction')}
+                      style={{
+                        padding: '8px 10px',
+                        borderRadius: '6px',
+                        background: 'rgba(245, 158, 11, 0.15)',
+                        border: '1px solid rgba(245, 158, 11, 0.3)',
+                        color: '#fde68a',
+                        fontWeight: 600,
+                        fontSize: '0.75rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <RotateCcw size={13} /> Needs Correction
+                    </button>
+                  </div>
+
+                  {statusFeedback && (
+                    <div style={{ fontSize: '0.72rem', color: '#10b981', textAlign: 'center' }}>
+                      ✓ {statusFeedback}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
         </div>
 

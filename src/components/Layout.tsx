@@ -8,45 +8,51 @@ import {
   AlertOctagon, 
   Files, 
   MessageSquareCode, 
-  Calendar,
-  Globe
+  Calendar, 
+  Globe,
+  DollarSign,
+  FileCheck2,
+  MessageSquare,
+  ShieldAlert
 } from 'lucide-react';
-import { UserRole, RoleSwitcher } from './RoleSwitcher';
+import { UserSession } from '../data/authTypes';
+import { HeaderProfile } from './HeaderProfile';
+import { AppModuleId, canAccessModule } from '../services/rbacPolicy';
 
 interface LayoutProps {
-  currentRole: UserRole;
-  onRoleChange: (role: UserRole) => void;
+  session: UserSession;
+  onSwitchRole: () => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
   children: React.ReactNode;
 }
 
 export const Layout: React.FC<LayoutProps> = ({ 
-  currentRole, 
-  onRoleChange, 
+  session, 
+  onSwitchRole, 
   activeTab, 
   setActiveTab, 
   children 
 }) => {
-  
-  // Navigation tabs with role filter flags
-  const menuItems = [
-    { id: 'dashboard', label: 'M&E Dashboard', icon: <LayoutDashboard />, public: true },
-    { id: 'registry', label: 'Project Registry', icon: <FilePlus2 />, public: false },
-    { id: 'gis', label: 'GIS Spatial Map', icon: <Map />, public: true },
-    { id: 'governance', label: 'Governance & Ethics', icon: <ShieldCheck />, public: false },
-    { id: 'readiness', label: 'AI Readiness', icon: <Award />, public: false },
-    { id: 'risk', label: 'Risk Matrix', icon: <AlertOctagon />, public: false },
-    { id: 'documents', label: 'Documents & OCR', icon: <Files />, public: false },
-    { id: 'chat', label: 'AI Chat Assistant', icon: <MessageSquareCode />, public: true }
+  // Navigation tabs definition
+  const menuItems: { id: AppModuleId; label: string; icon: React.ReactNode }[] = [
+    { id: 'dashboard', label: 'M&E Dashboard', icon: <LayoutDashboard size={18} /> },
+    { id: 'registry', label: 'Project Registry', icon: <FilePlus2 size={18} /> },
+    { id: 'gis', label: 'GIS Spatial Map', icon: <Map size={18} /> },
+    { id: 'governance', label: 'Governance & Ethics', icon: <ShieldCheck size={18} /> },
+    { id: 'readiness', label: 'AI Readiness', icon: <Award size={18} /> },
+    { id: 'risk', label: 'Risk Matrix', icon: <AlertOctagon size={18} /> },
+    { id: 'documents', label: 'Documents & OCR', icon: <Files size={18} /> },
+    { id: 'dg_queue', label: 'DG Decision Queue', icon: <FileCheck2 size={18} /> },
+    { id: 'finance', label: 'Financial Suite', icon: <DollarSign size={18} /> },
+    { id: 'reports', label: 'Internal Reports', icon: <MessageSquare size={18} /> },
+    { id: 'audit', label: 'Audit Trail', icon: <ShieldAlert size={18} /> },
+    { id: 'chat', label: 'AI Chat Assistant', icon: <MessageSquareCode size={18} /> }
   ];
 
-  // Restricts viewing tabs if public user tries to access internal modules
+  // Restricts viewing tabs strictly according to active role permissions in policy engine
   const filteredMenuItems = menuItems.filter(item => {
-    if (currentRole === 'Public User') {
-      return item.public;
-    }
-    return true;
+    return canAccessModule(session.role, item.id);
   });
 
   return (
@@ -65,7 +71,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
         <nav className="sidebar-menu">
           <div style={{ padding: '0 12px 8px 12px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
-            Modules
+            Authorized Modules
           </div>
           {filteredMenuItems.map((item) => (
             <div
@@ -92,7 +98,7 @@ export const Layout: React.FC<LayoutProps> = ({
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
             <Globe className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Registry V1.04</span>
+            <span>Security Gate: Act 843</span>
           </div>
         </div>
       </aside>
@@ -108,15 +114,9 @@ export const Layout: React.FC<LayoutProps> = ({
             </div>
           </div>
           <div className="top-bar-right">
-            <RoleSwitcher 
-              currentRole={currentRole} 
-              onRoleChange={(newRole) => {
-                onRoleChange(newRole);
-                // Resets active tab to dashboard if moving from administrator to public role
-                if (newRole === 'Public User' && !['dashboard', 'gis', 'chat'].includes(activeTab)) {
-                  setActiveTab('dashboard');
-                }
-              }} 
+            <HeaderProfile 
+              session={session} 
+              onSwitchRole={onSwitchRole} 
             />
           </div>
         </header>
