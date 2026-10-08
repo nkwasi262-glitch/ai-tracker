@@ -7,22 +7,6 @@ export type ActiveRole =
   | 'Finance Minister'
   | 'Public User';
 
-export type UserStatus = 'Active' | 'Suspended' | 'Pending';
-
-export interface PlatformUser {
-  id: string;
-  fullName: string;
-  email: string;
-  role: ActiveRole;
-  institution: string;
-  institutionCategory: InstitutionCategory;
-  status: UserStatus;
-  createdAt: string;
-  lastLoginAt?: string;
-  onboardedBy?: string;
-  notes?: string;
-}
-
 export type InstitutionCategory = 'MDA' | 'MMDA' | 'SOE' | 'Private Sector' | 'Other';
 
 export interface ManagingInstitution {

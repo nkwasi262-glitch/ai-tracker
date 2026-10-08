@@ -1,7 +1,6 @@
 import { UserSession, ActiveRole, InstitutionCategory } from '../data/authTypes';
 import { isApprovedInstitutionalEmail } from './rbacPolicy';
 import { recordAuditEvent } from './auditService';
-import { findUserByEmail } from './userService';
 
 const SESSION_KEY = 'gnaprms_user_session_v1';
 const PENDING_OTP_KEY = 'gnaprms_pending_otp_v1';
@@ -47,10 +46,10 @@ export function clearSession(): void {
 }
 
 export interface GateSubmissionInput {
-  fullName?: string;
-  institution?: string;
-  institutionCategory?: InstitutionCategory;
-  role?: ActiveRole;
+  fullName: string;
+  institution: string;
+  institutionCategory: InstitutionCategory;
+  role: ActiveRole;
   email: string;
   submissionDate: string;
 }
@@ -60,86 +59,22 @@ export interface GateResult {
   requiresOtp: boolean;
   otpCode?: string;
   isDomainApproved: boolean;
-  isSuspended?: boolean;
   message: string;
-  detectedRole?: ActiveRole;
 }
 
 export function processGateSubmission(input: GateSubmissionInput): GateResult {
-  const cleanEmail = input.email.trim().toLowerCase();
-  const registeredUser = findUserByEmail(cleanEmail);
-
-  // 1. Check if user is suspended by admin
-  if (registeredUser && registeredUser.status === 'Suspended') {
-    recordAuditEvent({
-      eventType: 'ACCESS_DENIED',
-      actorName: registeredUser.fullName,
-      actorEmail: registeredUser.email,
-      actorRole: registeredUser.role,
-      actorInstitution: registeredUser.institution,
-      targetModule: 'gate',
-      actionDetails: `Blocked gate login attempt on suspended account (${registeredUser.email}).`
-    });
-
-    const suspendedSession: UserSession = {
-      sessionId: `sess-suspended-${Date.now()}`,
-      fullName: registeredUser.fullName,
-      institution: registeredUser.institution,
-      institutionCategory: registeredUser.institutionCategory,
-      role: 'Public User',
-      email: cleanEmail,
-      submissionDate: input.submissionDate,
-      isVerified: false,
-      token: '',
-      createdAt: new Date().toISOString(),
-      lastActiveAt: new Date().toISOString()
-    };
-
-    return {
-      session: suspendedSession,
-      requiresOtp: false,
-      isDomainApproved: false,
-      isSuspended: true,
-      detectedRole: registeredUser.role,
-      message: 'Access Denied: This account has been suspended by the System Administrator under Act 843 governance.'
-    };
-  }
-
-  // 2. Auto-detect role from registered account or email domain
-  let detectedRole: ActiveRole = 'Public User';
-  let detectedName = input.fullName?.trim() || 'Citizen User';
-  let detectedInstitution = input.institution?.trim() || 'Public Citizen';
-  let detectedCategory: InstitutionCategory = input.institutionCategory || 'Other';
-
-  if (registeredUser) {
-    detectedRole = registeredUser.role;
-    detectedName = registeredUser.fullName;
-    detectedInstitution = registeredUser.institution;
-    detectedCategory = registeredUser.institutionCategory;
-  } else {
-    // Unregistered email: check institutional domain
-    const isDomainApproved = isApprovedInstitutionalEmail(cleanEmail);
-    if (isDomainApproved) {
-      detectedRole = 'AI Manager'; // newly registered institutional profile
-      detectedInstitution = input.institution?.trim() || 'Government Agency';
-      detectedCategory = input.institutionCategory || 'MDA';
-    } else {
-      detectedRole = 'Public User';
-    }
-  }
-
-  const isPrivileged = detectedRole !== 'Public User';
-  const isDomainApproved = isApprovedInstitutionalEmail(cleanEmail);
+  const isPrivileged = input.role !== 'Public User';
+  const isDomainApproved = isApprovedInstitutionalEmail(input.email);
 
   // If Public User, grant immediate access
   if (!isPrivileged) {
     const session: UserSession = {
       sessionId: `sess-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-      fullName: detectedName,
-      institution: detectedInstitution,
-      institutionCategory: detectedCategory,
+      fullName: input.fullName.trim(),
+      institution: input.institution.trim(),
+      institutionCategory: input.institutionCategory,
       role: 'Public User',
-      email: cleanEmail,
+      email: input.email.trim().toLowerCase(),
       submissionDate: input.submissionDate,
       isVerified: true,
       token: `token-pub-${Date.now()}`,
@@ -154,13 +89,12 @@ export function processGateSubmission(input: GateSubmissionInput): GateResult {
       actorRole: 'Public User',
       actorInstitution: session.institution,
       targetModule: 'gate',
-      actionDetails: `Public User entry gate completed for ${session.fullName} (${session.institution}). Role auto-detected: Public User.`
+      actionDetails: `Public User entry gate completed for ${session.fullName} (${session.institution})`
     });
     return {
       session,
       requiresOtp: false,
       isDomainApproved: true,
-      detectedRole: 'Public User',
       message: 'Access granted immediately as Public User.'
     };
   }
@@ -170,11 +104,11 @@ export function processGateSubmission(input: GateSubmissionInput): GateResult {
   if (!isDomainApproved) {
     const session: UserSession = {
       sessionId: `sess-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-      fullName: detectedName,
-      institution: detectedInstitution,
-      institutionCategory: detectedCategory,
+      fullName: input.fullName.trim(),
+      institution: input.institution.trim(),
+      institutionCategory: input.institutionCategory,
       role: 'Public User', // Downgraded
-      email: cleanEmail,
+      email: input.email.trim().toLowerCase(),
       submissionDate: input.submissionDate,
       isVerified: false,
       token: `token-unverified-${Date.now()}`,
@@ -189,13 +123,12 @@ export function processGateSubmission(input: GateSubmissionInput): GateResult {
       actorRole: 'Public User',
       actorInstitution: session.institution,
       targetModule: 'gate',
-      actionDetails: `Non-governmental email (${cleanEmail}) attempted privileged role (${detectedRole}). Downgraded to Public User access.`
+      actionDetails: `Non-governmental email (${input.email}) attempted privileged role (${input.role}). Downgraded to Public User access.`
     });
     return {
       session,
       requiresOtp: false,
       isDomainApproved: false,
-      detectedRole: 'Public User',
       message: `Domain not recognized as approved government authority (.gov.gh). Granted Public User access.`
     };
   }
@@ -204,25 +137,18 @@ export function processGateSubmission(input: GateSubmissionInput): GateResult {
   const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
   localStorage.setItem(PENDING_OTP_KEY, JSON.stringify({
     otp: generatedOtp,
-    input: {
-      fullName: detectedName,
-      institution: detectedInstitution,
-      institutionCategory: detectedCategory,
-      role: detectedRole,
-      email: cleanEmail,
-      submissionDate: input.submissionDate
-    },
+    input,
     expiresAt: Date.now() + 10 * 60 * 1000 // 10 minutes
   }));
 
   // Initial unverified session (acts as Public User until verified)
   const tempSession: UserSession = {
     sessionId: `sess-pending-${Date.now()}`,
-    fullName: detectedName,
-    institution: detectedInstitution,
-    institutionCategory: detectedCategory,
+    fullName: input.fullName.trim(),
+    institution: input.institution.trim(),
+    institutionCategory: input.institutionCategory,
     role: 'Public User',
-    email: cleanEmail,
+    email: input.email.trim().toLowerCase(),
     submissionDate: input.submissionDate,
     isVerified: false,
     token: `token-temp-${Date.now()}`,
@@ -235,8 +161,7 @@ export function processGateSubmission(input: GateSubmissionInput): GateResult {
     requiresOtp: true,
     otpCode: generatedOtp,
     isDomainApproved: true,
-    detectedRole,
-    message: `Verification code dispatched to institutional email ${cleanEmail} for role: ${detectedRole}.`
+    message: `Verification code dispatched to institutional email ${input.email}.`
   };
 }
 
@@ -258,10 +183,10 @@ export function verifyPendingOtp(enteredOtp: string): { success: boolean; sessio
     const input: GateSubmissionInput = data.input;
     const finalSession: UserSession = {
       sessionId: `sess-verified-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-      fullName: (input.fullName || 'Institutional Officer').trim(),
-      institution: (input.institution || 'National Agency').trim(),
-      institutionCategory: input.institutionCategory || 'MDA',
-      role: input.role || 'AI Manager',
+      fullName: input.fullName.trim(),
+      institution: input.institution.trim(),
+      institutionCategory: input.institutionCategory,
+      role: input.role,
       email: input.email.trim().toLowerCase(),
       submissionDate: input.submissionDate,
       isVerified: true,

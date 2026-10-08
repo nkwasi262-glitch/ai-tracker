@@ -18,12 +18,7 @@ export type AuditEventType =
   | 'INTERNAL_REPORT_CREATED'
   | 'REPORT_COMMENT_ADDED'
   | 'FINANCIAL_EXPORT'
-  | 'SYSTEM_CONFIG_UPDATED'
-  | 'USER_ONBOARDED'
-  | 'USER_ROLE_UPDATED'
-  | 'USER_SUSPENDED'
-  | 'USER_REACTIVATED'
-  | 'USER_REMOVED';
+  | 'SYSTEM_CONFIG_UPDATED';
 
 export interface AuditLogEntry {
   id: string;

@@ -11,98 +11,36 @@ import {
   KeyRound,
   FileCheck2,
   Search,
-  Sparkles,
-  Ban,
-  CheckCircle2
+  Sparkles
 } from 'lucide-react';
 import { 
   ActiveRole, 
   InstitutionCategory, 
   STANDARD_INSTITUTIONS, 
-  APPROVED_GOV_DOMAINS,
-  PlatformUser
+  APPROVED_GOV_DOMAINS 
 } from '../data/authTypes';
 import { 
   processGateSubmission, 
   verifyPendingOtp, 
   GateResult 
 } from '../services/authService';
-import { findUserByEmail } from '../services/userService';
 import { UserSession } from '../data/authTypes';
 
 interface EntryGateModalProps {
   onSuccess: (session: UserSession) => void;
 }
 
-// Role display metadata
-const ROLE_METADATA: Record<ActiveRole, { label: string; badge: string; color: string; desc: string }> = {
-  'Super Admin': {
-    label: 'Super Admin',
-    badge: 'Tier-1 Security Oversight',
-    color: '#ef4444',
-    desc: 'Full system governance, audit trail inspection, and institutional user onboarding.'
-  },
-  'Director General': {
-    label: 'Director General',
-    badge: 'Executive Clearance',
-    color: '#fbbf24',
-    desc: 'Statutory decision queue for approving and clearing National AI initiatives.'
-  },
-  'Technical Director': {
-    label: 'Technical Director',
-    badge: 'Clearance Leadership',
-    color: '#6366f1',
-    desc: 'Supervises technical audits, escalations, risk dossiers, and recommendations.'
-  },
-  'Technical Clearance Team': {
-    label: 'Technical Clearance Team',
-    badge: 'Technical Inspector',
-    color: '#10b981',
-    desc: 'Evaluates architectural dossiers, OCR models, and ethics matrices.'
-  },
-  'AI Manager': {
-    label: 'AI Manager',
-    badge: 'Institutional Lead',
-    color: '#06b6d4',
-    desc: 'Manages project registration portfolios and compliance dossiers.'
-  },
-  'Finance Minister': {
-    label: 'Finance Minister',
-    badge: 'Fiscal Authority',
-    color: '#f59e0b',
-    desc: 'Accesses M&E dashboards, budgets, funding streams, and financial exports.'
-  },
-  'Public User': {
-    label: 'Public User',
-    badge: 'Open Citizen Access',
-    color: '#94a3b8',
-    desc: 'General public overview of transparent AI initiatives and GIS spatial map.'
-  }
-};
-
-const DEMO_PERSONAS = [
-  { label: 'Super Admin', email: 'k.mensah@nita.gov.gh', role: 'Super Admin', name: 'Dr. Kwaku Mensah', icon: '🛡️', color: '#ef4444' },
-  { label: 'Director General', email: 'dg@nita.gov.gh', role: 'Director General', name: 'Hon. Director General', icon: '🏛️', color: '#fbbf24' },
-  { label: 'Tech Director', email: 'e.darko@mocd.gov.gh', role: 'Technical Director', name: 'Ing. Emmanuel Darko', icon: '⚡', color: '#6366f1' },
-  { label: 'Clearance Team', email: 'a.osei@nita.gov.gh', role: 'Technical Clearance Team', name: 'Ama Osei-Bonsu', icon: '🔍', color: '#10b981' },
-  { label: 'Finance Minister', email: 'minister@mof.gov.gh', role: 'Finance Minister', name: 'Hon. Finance Minister', icon: '💰', color: '#f59e0b' },
-  { label: 'AI Manager (COCOBOD)', email: 'k.boateng@cocobod.gh', role: 'AI Manager', name: 'Kwame Boateng', icon: '🌱', color: '#06b6d4' },
-  { label: 'Suspended Account (GRA)', email: 'y.frimpong@gra.gov.gh', role: 'AI Manager', name: 'Yaw Frimpong', icon: '🚫', color: '#ef4444', isSuspended: true },
-  { label: 'Public Citizen', email: 'citizen@public.gh', role: 'Public User', name: 'Kofi Citizen', icon: '🌐', color: '#94a3b8' }
-];
-
 export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => {
-  // Pre-seed with default primary administrator for immediate evaluation
-  const defaultInitialUser = findUserByEmail('k.mensah@nita.gov.gh');
-
-  const [email, setEmail] = useState(defaultInitialUser?.email || 'k.mensah@nita.gov.gh');
-  const [detectedUser, setDetectedUser] = useState<PlatformUser | null>(defaultInitialUser || null);
-  const [fullName, setFullName] = useState(defaultInitialUser?.fullName || 'Dr. Kwaku Mensah');
+  // Form fields
+  const [fullName, setFullName] = useState('');
   const [selectedInstId, setSelectedInstId] = useState('inst-1'); // Default NITA
   const [customInstitution, setCustomInstitution] = useState('');
   const [instCategory, setInstCategory] = useState<InstitutionCategory>('MDA');
   const [instSearch, setInstSearch] = useState('');
   const [showInstDropdown, setShowInstDropdown] = useState(false);
+
+  const [role, setRole] = useState<ActiveRole>('Super Admin');
+  const [email, setEmail] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [consentGiven, setConsentGiven] = useState(false);
 
@@ -114,51 +52,58 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
   const [warningNotice, setWarningNotice] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Email domain check preview
-  const cleanEmail = email.trim().toLowerCase();
-  const emailDomain = cleanEmail.includes('@') ? cleanEmail.split('@')[1] : '';
-  const isGovEmail = APPROVED_GOV_DOMAINS.some(d => emailDomain === d || emailDomain.endsWith('.' + d));
-
-  // Determine effective auto-detected role
-  const effectiveRole: ActiveRole = detectedUser 
-    ? detectedUser.role 
-    : (isGovEmail ? 'AI Manager' : 'Public User');
-
-  const currentRoleMeta = ROLE_METADATA[effectiveRole] || ROLE_METADATA['Public User'];
-
-  // Handle email change and live auto-detection
-  const handleEmailChange = (newEmail: string) => {
-    setEmail(newEmail);
-    setErrorMessage(null);
-    setWarningNotice(null);
-
-    const clean = newEmail.trim().toLowerCase();
-    const user = findUserByEmail(clean);
-    setDetectedUser(user || null);
-
-    if (user) {
-      setFullName(user.fullName);
-      const matchInst = STANDARD_INSTITUTIONS.find(
-        i => i.name.toLowerCase() === user.institution.toLowerCase()
-      );
-      if (matchInst) {
-        setSelectedInstId(matchInst.id);
-        setInstCategory(user.institutionCategory || matchInst.category);
-      } else {
-        setSelectedInstId('other');
-        setCustomInstitution(user.institution);
-        setInstCategory(user.institutionCategory || 'Other');
-      }
-
-      if (user.status === 'Suspended') {
-        setErrorMessage(`Access Denied: Account (${user.email}) is SUSPENDED under statutory governance. Login blocked.`);
-      }
+  // Available roles for selection
+  const rolesList: { role: ActiveRole; label: string; badge: string; color: string; desc: string }[] = [
+    { 
+      role: 'Super Admin', 
+      label: 'Super Admin', 
+      badge: 'Tier-1 Security', 
+      color: '#ef4444', 
+      desc: 'Complete system oversight, audit trails, and user management.' 
+    },
+    { 
+      role: 'Director General', 
+      label: 'Director General', 
+      badge: 'Executive Clearance', 
+      color: '#fbbf24', 
+      desc: 'Passes final statutory verdicts on recommended AI projects.' 
+    },
+    { 
+      role: 'Technical Director', 
+      label: 'Technical Director', 
+      badge: 'Clearance Leadership', 
+      color: '#6366f1', 
+      desc: 'Supervises technical audits, escalations, and recommendations.' 
+    },
+    { 
+      role: 'Technical Clearance Team', 
+      label: 'Technical Clearance Team', 
+      badge: 'Technical Inspector', 
+      color: '#10b981', 
+      desc: 'Evaluates architectural dossiers, OCR models, and ethics matrices.' 
+    },
+    { 
+      role: 'AI Manager', 
+      label: 'AI Manager (newly registered)', 
+      badge: 'Institutional Lead', 
+      color: '#06b6d4', 
+      desc: 'Manages project registration portfolios and compliance dossiers.' 
+    },
+    { 
+      role: 'Finance Minister', 
+      label: 'Finance Minister', 
+      badge: 'Fiscal Authority', 
+      color: '#f59e0b', 
+      desc: 'Accesses M&E dashboards, budgets, funding streams, and exports.' 
+    },
+    { 
+      role: 'Public User', 
+      label: 'Public User', 
+      badge: 'Open Citizen Access', 
+      color: '#94a3b8', 
+      desc: 'General public overview of transparent AI initiatives and GIS map.' 
     }
-  };
-
-  const handleSelectDemoPersona = (persona: typeof DEMO_PERSONAS[0]) => {
-    handleEmailChange(persona.email);
-  };
+  ];
 
   // Selected institution name calculation
   const getSelectedInstName = () => {
@@ -174,6 +119,10 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
     inst.name.toLowerCase().includes(instSearch.toLowerCase()) ||
     inst.code.toLowerCase().includes(instSearch.toLowerCase())
   );
+
+  // Email domain check preview
+  const emailDomain = email.includes('@') ? email.split('@')[1]?.toLowerCase().trim() : '';
+  const isGovEmail = APPROVED_GOV_DOMAINS.some(d => emailDomain === d || emailDomain.endsWith('.' + d));
 
   const handleSelectInstitution = (inst: typeof STANDARD_INSTITUTIONS[0] | 'other') => {
     if (inst === 'other') {
@@ -192,12 +141,6 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
     setErrorMessage(null);
     setWarningNotice(null);
 
-    // Block if suspended
-    if (detectedUser?.status === 'Suspended') {
-      setErrorMessage(`Account Suspended: Cannot proceed with login for suspended personnel (${detectedUser.email}). Contact System Administrator.`);
-      return;
-    }
-
     // Validation
     if (!fullName.trim()) {
       setErrorMessage('Full name is required to initialize session.');
@@ -207,7 +150,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
       setErrorMessage('Please specify the name of your managing institution.');
       return;
     }
-    if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.includes('.')) {
+    if (!email.trim() || !email.includes('@') || !email.includes('.')) {
       setErrorMessage('A valid email address is required for institutional logging.');
       return;
     }
@@ -228,24 +171,19 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
       fullName: fullName.trim(),
       institution: institutionName,
       institutionCategory: instCategory,
-      role: effectiveRole,
-      email: cleanEmail,
+      role,
+      email: email.trim().toLowerCase(),
       submissionDate: date
     });
 
     setIsSubmitting(false);
 
-    if (result.isSuspended) {
-      setErrorMessage(result.message);
-      return;
-    }
-
     if (result.requiresOtp) {
       setStage('otp_challenge');
       setSimulatedOtp(result.otpCode || null);
     } else {
-      // Direct access (either Public User or fallback)
-      if (!result.isDomainApproved && effectiveRole !== 'Public User') {
+      // Direct access (either Public User or unverified fallback)
+      if (!result.isDomainApproved && role !== 'Public User') {
         setWarningNotice(result.message);
       }
       onSuccess(result.session);
@@ -270,19 +208,18 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
     }
   };
 
+  // Quick fill helper for presentation / review convenience
   const handleQuickFillOtp = () => {
     if (simulatedOtp) {
       setOtpCodeInput(simulatedOtp);
     }
   };
 
-  const isSuspendedAccount = detectedUser?.status === 'Suspended';
-
   return (
     <div style={{
       position: 'fixed',
       inset: 0,
-      zIndex: 99999,
+      zIndex: 99999, // Absolute top layer
       background: 'rgba(5, 8, 15, 0.94)',
       backdropFilter: 'blur(20px)',
       display: 'flex',
@@ -291,8 +228,9 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
       padding: '20px',
       overflowY: 'auto'
     }}>
+      {/* Container Box */}
       <div style={{
-        maxWidth: '740px',
+        maxWidth: '720px',
         width: '100%',
         background: 'linear-gradient(170deg, #111827 0%, #0d121f 100%)',
         border: '1px solid rgba(16, 185, 129, 0.25)',
@@ -309,7 +247,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
 
         {/* Modal Header */}
         <div style={{
-          padding: '26px 32px 18px 32px',
+          padding: '28px 32px 20px 32px',
           borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
           display: 'flex',
           alignItems: 'center',
@@ -347,73 +285,8 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
               National AI Projects Registry & Monitoring System
             </h1>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px', margin: 0 }}>
-              Role is automatically detected from your account credentials upon entry.
+              Mandatory Gatekeeper: Verify institutional identity and active role profile to enter.
             </p>
-          </div>
-        </div>
-
-        {/* Demo Personas Quick Picker */}
-        <div style={{
-          padding: '12px 32px',
-          background: 'rgba(255, 255, 255, 0.02)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.06)'
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: '8px'
-          }}>
-            <span style={{
-              fontSize: '0.7rem',
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '0.06em',
-              color: 'var(--text-muted)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px'
-            }}>
-              <Sparkles size={12} className="text-amber-400" />
-              Quick-Select Registered Account Persona (Auto-Detect Role):
-            </span>
-          </div>
-
-          <div style={{
-            display: 'flex',
-            gap: '8px',
-            overflowX: 'auto',
-            paddingBottom: '4px'
-          }}>
-            {DEMO_PERSONAS.map((p) => {
-              const isSelected = cleanEmail === p.email.toLowerCase();
-              return (
-                <button
-                  key={p.email}
-                  type="button"
-                  onClick={() => handleSelectDemoPersona(p)}
-                  style={{
-                    padding: '6px 10px',
-                    borderRadius: '8px',
-                    border: isSelected ? `1px solid ${p.color}` : '1px solid rgba(255, 255, 255, 0.08)',
-                    background: isSelected ? `${p.color}20` : 'rgba(255, 255, 255, 0.04)',
-                    color: isSelected ? '#fff' : 'var(--text-secondary)',
-                    fontSize: '0.72rem',
-                    fontWeight: isSelected ? 700 : 500,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    transition: 'all 0.15s ease'
-                  }}
-                  title={`${p.name} (${p.email}) - ${p.role}`}
-                >
-                  <span>{p.icon}</span>
-                  <span>{p.label}</span>
-                </button>
-              );
-            })}
           </div>
         </div>
 
@@ -455,217 +328,13 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
           </div>
         )}
 
-        {/* Stage 1: Mandatory Entry Gate Form (No role selection field) */}
+        {/* Stage 1: Mandatory Entry Gate Form */}
         {stage === 'form' && (
-          <form onSubmit={handleSubmitForm} style={{ padding: '24px 32px 30px 32px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px' }}>
+          <form onSubmit={handleSubmitForm} style={{ padding: '24px 32px 32px 32px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
               
-              {/* Field 1: Institutional Email Address (Primary credential for auto-detecting role) */}
+              {/* Field 1: Full Name */}
               <div style={{ gridColumn: 'span 2' }}>
-                <label style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontSize: '0.78rem',
-                  fontWeight: 600,
-                  color: 'var(--text-primary)',
-                  marginBottom: '6px'
-                }}>
-                  <Mail size={14} className="text-emerald-400" />
-                  <span>Institutional Email Address (Credentials) *</span>
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => handleEmailChange(e.target.value)}
-                    placeholder="e.g. k.mensah@nita.gov.gh or dg@nita.gov.gh"
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      borderRadius: '8px',
-                      background: 'rgba(255, 255, 255, 0.04)',
-                      border: isSuspendedAccount 
-                        ? '1px solid rgba(239, 68, 68, 0.6)' 
-                        : '1px solid rgba(255, 255, 255, 0.12)',
-                      color: '#fff',
-                      fontSize: '0.9rem',
-                      outline: 'none'
-                    }}
-                    onFocus={(e) => {
-                      if (!isSuspendedAccount) e.target.style.borderColor = 'var(--ghana-emerald)';
-                    }}
-                    onBlur={(e) => {
-                      if (!isSuspendedAccount) e.target.style.borderColor = 'rgba(255, 255, 255, 0.12)';
-                    }}
-                  />
-                  {detectedUser && (
-                    <div style={{
-                      position: 'absolute',
-                      right: '12px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      fontSize: '0.72rem',
-                      padding: '3px 8px',
-                      borderRadius: '6px',
-                      background: detectedUser.status === 'Active' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                      color: detectedUser.status === 'Active' ? '#10b981' : '#ef4444',
-                      fontWeight: 700
-                    }}>
-                      {detectedUser.status === 'Active' ? <CheckCircle2 size={13} /> : <Ban size={13} />}
-                      <span>{detectedUser.status} Account</span>
-                    </div>
-                  )}
-                </div>
-
-                <div style={{ fontSize: '0.72rem', color: isGovEmail ? '#10b981' : 'var(--text-muted)', marginTop: '4px' }}>
-                  {detectedUser ? (
-                    <span>✓ Matched verified directory account for {detectedUser.fullName}</span>
-                  ) : isGovEmail ? (
-                    <span>✓ Official Ghana Gov domain recognized ({emailDomain}) — Initialized as AI Manager</span>
-                  ) : (
-                    <span>Public / external citizen domain — Access granted under transparent public registry</span>
-                  )}
-                </div>
-              </div>
-
-              {/* AUTO-DETECTED ROLE PROFILE DISPLAY (REPLACES ROLE SELECTION DROPDOWN) */}
-              <div style={{ gridColumn: 'span 2' }}>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: '6px'
-                }}>
-                  <label style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    fontSize: '0.78rem',
-                    fontWeight: 600,
-                    color: 'var(--text-primary)',
-                    margin: 0
-                  }}>
-                    <Award size={14} className="text-emerald-400" />
-                    <span>Auto-Detected Role Profile</span>
-                  </label>
-                  <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                    System Role Auto-Assigned by Directory
-                  </span>
-                </div>
-
-                <div style={{
-                  padding: '14px 18px',
-                  borderRadius: '10px',
-                  background: isSuspendedAccount 
-                    ? 'rgba(239, 68, 68, 0.1)' 
-                    : 'rgba(255, 255, 255, 0.03)',
-                  border: isSuspendedAccount 
-                    ? '1px solid rgba(239, 68, 68, 0.35)' 
-                    : '1px solid rgba(255, 255, 255, 0.08)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '12px'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{
-                      width: '42px',
-                      height: '42px',
-                      borderRadius: '10px',
-                      background: `${currentRoleMeta.color}22`,
-                      border: `1px solid ${currentRoleMeta.color}55`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: currentRoleMeta.color
-                    }}>
-                      <Award size={22} />
-                    </div>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontWeight: 800, fontSize: '0.98rem', color: '#fff' }}>
-                          {effectiveRole}
-                        </span>
-                        <span style={{
-                          fontSize: '0.68rem',
-                          padding: '2px 8px',
-                          borderRadius: '9999px',
-                          background: `${currentRoleMeta.color}25`,
-                          color: currentRoleMeta.color,
-                          fontWeight: 700
-                        }}>
-                          {currentRoleMeta.badge}
-                        </span>
-                        {detectedUser && (
-                          <span style={{
-                            fontSize: '0.68rem',
-                            padding: '2px 8px',
-                            borderRadius: '9999px',
-                            background: detectedUser.status === 'Active' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                            color: detectedUser.status === 'Active' ? '#10b981' : '#ef4444',
-                            fontWeight: 700,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                          }}>
-                            {detectedUser.status === 'Active' ? <CheckCircle2 size={11} /> : <Ban size={11} />}
-                            {detectedUser.status}
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                        {currentRoleMeta.desc}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      Clearance Mode
-                    </div>
-                    <div style={{ 
-                      fontSize: '0.78rem', 
-                      color: detectedUser ? '#10b981' : isGovEmail ? '#38bdf8' : '#94a3b8', 
-                      fontWeight: 700 
-                    }}>
-                      {detectedUser ? 'Directory Verified' : isGovEmail ? 'Institutional Email' : 'Public Access'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* SUSPENSION ALERT CALLOUT */}
-              {isSuspendedAccount && (
-                <div style={{
-                  gridColumn: 'span 2',
-                  padding: '14px 16px',
-                  borderRadius: '10px',
-                  background: 'rgba(239, 68, 68, 0.18)',
-                  border: '1px solid rgba(239, 68, 68, 0.45)',
-                  color: '#fca5a5',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px'
-                }}>
-                  <Ban size={24} style={{ color: '#ef4444', flexShrink: 0 }} />
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#fee2e2' }}>
-                      Statutory Account Suspension Active
-                    </div>
-                    <div style={{ fontSize: '0.78rem', color: '#fca5a5', marginTop: '2px' }}>
-                      This account ({detectedUser?.email}) has been suspended by the System Administrator. Access to GNAPRMS is strictly prohibited under Act 843 governance until reactivated.
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Field 2: Full Name */}
-              <div style={{ gridColumn: 'span 1' }}>
                 <label style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -676,14 +345,14 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
                   marginBottom: '6px'
                 }}>
                   <User size={14} className="text-emerald-400" />
-                  <span>Full Name *</span>
+                  <span>Full Name (as registered with Institution) *</span>
                 </label>
                 <input
                   type="text"
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="e.g. Dr. Kwaku Mensah"
+                  placeholder="e.g. Dr. Kwaku Mensah or Hon. Abena Ofori"
                   style={{
                     width: '100%',
                     padding: '11px 14px',
@@ -699,41 +368,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
                 />
               </div>
 
-              {/* Field 3: Date */}
-              <div style={{ gridColumn: 'span 1' }}>
-                <label style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontSize: '0.78rem',
-                  fontWeight: 600,
-                  color: 'var(--text-primary)',
-                  marginBottom: '6px'
-                }}>
-                  <Calendar size={14} className="text-emerald-400" />
-                  <span>Access Date *</span>
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '11px 14px',
-                    borderRadius: '8px',
-                    background: 'rgba(255, 255, 255, 0.04)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    color: '#fff',
-                    fontSize: '0.88rem',
-                    outline: 'none'
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = 'var(--ghana-emerald)'}
-                  onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.12)'}
-                />
-              </div>
-
-              {/* Field 4: Managing Institution (Searchable Dropdown) */}
+              {/* Field 2: Managing Institution (Searchable Dropdown) */}
               <div style={{ gridColumn: 'span 2', position: 'relative' }}>
                 <label style={{
                   display: 'flex',
@@ -890,6 +525,148 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
                 )}
               </div>
 
+              {/* Field 3: Active Role Profile (Dropdown) */}
+              <div style={{ gridColumn: 'span 2' }}>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  color: 'var(--text-primary)',
+                  marginBottom: '6px'
+                }}>
+                  <Award size={14} className="text-emerald-400" />
+                  <span>Active Role Profile (Defines Permissions & Modules) *</span>
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <select
+                    value={role}
+                    onChange={(e) => setRole(e.target.value as ActiveRole)}
+                    style={{
+                      width: '100%',
+                      padding: '11px 14px',
+                      borderRadius: '8px',
+                      background: '#111b27',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      color: '#fff',
+                      fontSize: '0.88rem',
+                      fontWeight: 600,
+                      outline: 'none',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {rolesList.map((r) => (
+                      <option key={r.role} value={r.role} style={{ background: '#111b27', color: '#fff' }}>
+                        {r.label} — [{r.badge}]
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Role Description Card */}
+                {(() => {
+                  const currentDesc = rolesList.find(r => r.role === role);
+                  return (
+                    <div style={{
+                      marginTop: '8px',
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      border: '1px solid rgba(255, 255, 255, 0.06)',
+                      fontSize: '0.76rem',
+                      color: 'var(--text-secondary)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      <span style={{ color: currentDesc?.color, fontWeight: 700 }}>
+                        {currentDesc?.badge}:
+                      </span>
+                      <span>{currentDesc?.desc}</span>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Field 4: Institutional Email Address */}
+              <div>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  color: 'var(--text-primary)',
+                  marginBottom: '6px'
+                }}>
+                  <Mail size={14} className="text-emerald-400" />
+                  <span>Email Address *</span>
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="e.g. officer@nita.gov.gh"
+                  style={{
+                    width: '100%',
+                    padding: '11px 14px',
+                    borderRadius: '8px',
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#fff',
+                    fontSize: '0.88rem',
+                    outline: 'none'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--ghana-emerald)'}
+                  onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.12)'}
+                />
+                <div style={{ fontSize: '0.7rem', color: isGovEmail ? '#10b981' : 'var(--text-muted)', marginTop: '4px' }}>
+                  {isGovEmail ? (
+                    <span>✓ Approved Ghana Gov Domain detected ({emailDomain})</span>
+                  ) : role !== 'Public User' ? (
+                    <span>Notice: Privileged roles require institutional government domain (.gov.gh)</span>
+                  ) : (
+                    <span>Public users may use any valid email</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Field 5: Date */}
+              <div>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  color: 'var(--text-primary)',
+                  marginBottom: '6px'
+                }}>
+                  <Calendar size={14} className="text-emerald-400" />
+                  <span>Date *</span>
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '11px 14px',
+                    borderRadius: '8px',
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#fff',
+                    fontSize: '0.88rem',
+                    outline: 'none'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--ghana-emerald)'}
+                  onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.12)'}
+                />
+              </div>
+
             </div>
 
             {/* Ghana Data Protection Act (Act 843) Consent */}
@@ -925,36 +702,25 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
             <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 type="submit"
-                disabled={isSubmitting || isSuspendedAccount}
+                disabled={isSubmitting}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '10px',
                   padding: '13px 28px',
                   borderRadius: '10px',
-                  background: isSuspendedAccount 
-                    ? 'rgba(239, 68, 68, 0.3)' 
-                    : 'linear-gradient(135deg, var(--ghana-emerald) 0%, #059669 100%)',
-                  color: isSuspendedAccount ? '#fca5a5' : '#0b0f19',
+                  background: 'linear-gradient(135deg, var(--ghana-emerald) 0%, #059669 100%)',
+                  color: '#0b0f19',
                   fontWeight: 800,
                   fontSize: '0.92rem',
-                  border: isSuspendedAccount ? '1px solid rgba(239, 68, 68, 0.5)' : 'none',
-                  cursor: (isSubmitting || isSuspendedAccount) ? 'not-allowed' : 'pointer',
-                  boxShadow: isSuspendedAccount ? 'none' : '0 4px 15px rgba(16, 185, 129, 0.35)',
-                  transition: 'all 0.15s ease'
+                  border: 'none',
+                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 4px 15px rgba(16, 185, 129, 0.35)',
+                  transition: 'transform 0.15s ease'
                 }}
               >
-                {isSuspendedAccount ? (
-                  <>
-                    <Ban size={18} />
-                    <span>Access Denied (Account Suspended)</span>
-                  </>
-                ) : (
-                  <>
-                    <span>{effectiveRole === 'Public User' ? 'Enter Public Registry' : 'Proceed to Verification'}</span>
-                    <ArrowRight size={18} />
-                  </>
-                )}
+                <span>{role === 'Public User' ? 'Enter Public Registry' : 'Proceed to Verification'}</span>
+                <ArrowRight size={18} />
               </button>
             </div>
           </form>
@@ -988,12 +754,12 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
                 Institutional OTP Verification
               </h2>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
-                You have authenticated as <strong style={{ color: '#fbbf24' }}>{effectiveRole}</strong>.
+                You have requested privileged clearance as <strong style={{ color: '#fbbf24' }}>{role}</strong>.
                 A statutory 6-digit verification code has been dispatched to{' '}
                 <strong style={{ color: '#fff' }}>{email}</strong>.
               </p>
 
-              {/* Simulated OTP Display Helper */}
+              {/* Simulated OTP Display Helper (for seamless demo / evaluation) */}
               {simulatedOtp && (
                 <div style={{
                   marginTop: '16px',
@@ -1112,7 +878,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
                       institution: selectedInstId === 'other' ? customInstitution : getSelectedInstName(),
                       institutionCategory: instCategory,
                       role: 'Public User',
-                      email: cleanEmail,
+                      email,
                       submissionDate: date
                     });
                     onSuccess(fallbackResult.session);

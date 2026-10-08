@@ -12,7 +12,6 @@ export type AppModuleId =
   | 'finance'
   | 'reports'
   | 'audit'
-  | 'users'
   | 'chat';
 
 export type AppAction =
@@ -27,8 +26,7 @@ export type AppAction =
   | 'COMMENT_INTERNAL_REPORT'
   | 'SIGN_DOCUMENT'
   | 'VIEW_AUDIT_LOG'
-  | 'PURGE_AUDIT_LOG'
-  | 'MANAGE_USERS';
+  | 'PURGE_AUDIT_LOG';
 
 export interface ModuleDefinition {
   id: AppModuleId;
@@ -104,12 +102,6 @@ export const MODULE_REGISTRY: Record<AppModuleId, ModuleDefinition> = {
     description: 'Immutable, tamper-evident record of all system events compliant with Act 843.',
     category: 'security'
   },
-  users: {
-    id: 'users',
-    label: 'User Management',
-    description: 'Onboard institutional personnel, assign role profiles, manage suspensions, and revoke access.',
-    category: 'security'
-  },
   chat: {
     id: 'chat',
     label: 'AI Assistant',
@@ -132,7 +124,6 @@ const ROLE_MODULE_PERMISSIONS: Record<ActiveRole, AppModuleId[]> = {
     'finance',
     'reports',
     'audit',
-    'users',
     'chat'
   ],
   'Technical Director': [
@@ -209,8 +200,7 @@ const ROLE_ACTION_PERMISSIONS: Record<ActiveRole, Partial<Record<AppAction, bool
     COMMENT_INTERNAL_REPORT: true,
     SIGN_DOCUMENT: true,
     VIEW_AUDIT_LOG: true,
-    PURGE_AUDIT_LOG: false, // Tamper-evident: even super admin cannot purge immutable logs
-    MANAGE_USERS: true
+    PURGE_AUDIT_LOG: false // Tamper-evident: even super admin cannot purge immutable logs
   },
   'Technical Director': {
     VIEW: true,
