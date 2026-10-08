@@ -13,7 +13,8 @@ import {
   DollarSign,
   FileCheck2,
   MessageSquare,
-  ShieldAlert
+  ShieldAlert,
+  Users
 } from 'lucide-react';
 import { UserSession } from '../data/authTypes';
 import { HeaderProfile } from './HeaderProfile';
@@ -47,6 +48,7 @@ export const Layout: React.FC<LayoutProps> = ({
     { id: 'finance', label: 'Financial Suite', icon: <DollarSign size={18} /> },
     { id: 'reports', label: 'Internal Reports', icon: <MessageSquare size={18} /> },
     { id: 'audit', label: 'Audit Trail', icon: <ShieldAlert size={18} /> },
+    { id: 'users', label: 'User Management', icon: <Users size={18} /> },
     { id: 'chat', label: 'AI Chat Assistant', icon: <MessageSquareCode size={18} /> }
   ];
 

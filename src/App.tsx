@@ -12,6 +12,7 @@ import { DGDecisionQueue } from './components/DGDecisionQueue';
 import { FinanceMinisterView } from './components/FinanceMinisterView';
 import { InternalReportsHub } from './components/InternalReportsHub';
 import { AuditLogViewer } from './components/AuditLogViewer';
+import { UserManagement } from './components/UserManagement';
 import { EntryGateModal } from './components/EntryGateModal';
 import { AccessDenied } from './components/AccessDenied';
 import { sampleProjects, AIProject, ComplianceScore, DocumentAsset, ReviewWorkflowStatus } from './data/sampleProjects';
@@ -248,6 +249,12 @@ function App() {
       case 'audit':
         return (
           <AuditLogViewer
+            session={session}
+          />
+        );
+      case 'users':
+        return (
+          <UserManagement
             session={session}
           />
         );
