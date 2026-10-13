@@ -230,15 +230,17 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
       background: 'rgba(5, 8, 15, 0.94)',
       backdropFilter: 'blur(20px)',
       display: 'flex',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       justifyContent: 'center',
-      padding: '20px',
-      overflowY: 'auto'
+      padding: '36px 16px 60px 16px',
+      overflowY: 'auto',
+      WebkitOverflowScrolling: 'touch'
     }}>
       {/* Container Box */}
       <div style={{
         maxWidth: '720px',
         width: '100%',
+        margin: '0 auto',
         background: 'linear-gradient(170deg, #111827 0%, #0d121f 100%)',
         border: '1px solid rgba(16, 185, 129, 0.25)',
         boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 35px rgba(16, 185, 129, 0.12)',

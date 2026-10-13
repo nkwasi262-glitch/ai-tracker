@@ -236,10 +236,11 @@ export const HeaderProfile: React.FC<HeaderProfileProps> = ({ session, onSwitchR
           background: 'rgba(0, 0, 0, 0.75)',
           backdropFilter: 'blur(8px)',
           display: 'flex',
-          alignItems: 'center',
+          alignItems: 'flex-start',
           justifyContent: 'center',
           zIndex: 999999,
-          padding: '16px'
+          padding: '60px 16px 40px 16px',
+          overflowY: 'auto'
         }}>
           <div style={{
             background: 'var(--bg-card-solid)',
@@ -248,6 +249,7 @@ export const HeaderProfile: React.FC<HeaderProfileProps> = ({ session, onSwitchR
             padding: '24px',
             maxWidth: '420px',
             width: '100%',
+            margin: '0 auto',
             boxShadow: '0 20px 40px rgba(0, 0, 0, 0.6)'
           }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>

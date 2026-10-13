@@ -40,6 +40,11 @@ function App() {
     }
   }, [session, activeTab]);
 
+  // Ensure viewport immediately resets to top when navigating across pages/tabs
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
+  }, [activeTab]);
+
   // Handle Switch Role / Sign Out: clears session and immediately reveals Entry Gate
   const handleSwitchRole = () => {
     clearSession();

@@ -499,10 +499,12 @@ export const InternalReportsHub: React.FC<InternalReportsHubProps> = ({ session,
           background: 'rgba(0, 0, 0, 0.75)',
           backdropFilter: 'blur(8px)',
           display: 'flex',
-          alignItems: 'center',
+          alignItems: 'flex-start',
           justifyContent: 'center',
           zIndex: 999999,
-          padding: '16px'
+          padding: '40px 16px 60px 16px',
+          overflowY: 'auto',
+          WebkitOverflowScrolling: 'touch'
         }}>
           <div style={{
             background: 'var(--bg-card-solid)',
@@ -511,6 +513,7 @@ export const InternalReportsHub: React.FC<InternalReportsHubProps> = ({ session,
             padding: '28px',
             maxWidth: '560px',
             width: '100%',
+            margin: '0 auto',
             boxShadow: '0 25px 50px rgba(0, 0, 0, 0.8)'
           }}>
             <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#fff', marginBottom: '6px' }}>

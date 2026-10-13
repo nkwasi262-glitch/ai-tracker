@@ -106,14 +106,16 @@ export const ActiveRoleSelectorModal: React.FC<ActiveRoleSelectorModalProps> = (
       background: 'rgba(3, 7, 18, 0.92)',
       backdropFilter: 'blur(16px)',
       display: 'flex',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       justifyContent: 'center',
-      padding: '24px',
-      overflowY: 'auto'
+      padding: '36px 16px 60px 16px',
+      overflowY: 'auto',
+      WebkitOverflowScrolling: 'touch'
     }}>
       <div style={{
         maxWidth: '840px',
         width: '100%',
+        margin: '0 auto',
         background: 'linear-gradient(175deg, #111827 0%, #0c121e 100%)',
         border: '1px solid rgba(16, 185, 129, 0.35)',
         boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.95), 0 0 40px rgba(16, 185, 129, 0.15)',

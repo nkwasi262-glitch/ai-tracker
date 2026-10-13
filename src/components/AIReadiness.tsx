@@ -923,9 +923,11 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
           backdropFilter: 'blur(10px)',
           display: 'flex',
           justifyContent: 'center',
-          alignItems: 'center',
+          alignItems: 'flex-start',
           zIndex: 99999,
-          padding: '16px'
+          padding: '40px 16px 60px 16px',
+          overflowY: 'auto',
+          WebkitOverflowScrolling: 'touch'
         }}>
           <div style={{
             background: 'rgba(30, 41, 59, 0.95)',
@@ -934,6 +936,7 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
             borderRadius: '16px',
             width: '100%',
             maxWidth: '520px',
+            margin: '0 auto',
             padding: '24px',
             color: '#f8fafc',
             position: 'relative'
