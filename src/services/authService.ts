@@ -4,6 +4,50 @@ import { recordAuditEvent } from './auditService';
 
 const SESSION_KEY = 'gnaprms_user_session_v1';
 const PENDING_OTP_KEY = 'gnaprms_pending_otp_v1';
+const LAST_ROLE_KEY = 'gnaprms_last_selected_role_v1';
+
+export function getLastSelectedRole(): ActiveRole | null {
+  try {
+    const role = localStorage.getItem(LAST_ROLE_KEY);
+    return role ? (role as ActiveRole) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+export function setLastSelectedRole(role: ActiveRole): void {
+  try {
+    if (role !== 'First-Timer / New User') {
+      localStorage.setItem(LAST_ROLE_KEY, role);
+    }
+  } catch (e) {
+    console.error('Failed to set last selected role:', e);
+  }
+}
+
+export function elevateFromFirstTimer(newRole: ActiveRole): UserSession | null {
+  const session = getStoredSession();
+  if (!session) return null;
+  const updated: UserSession = {
+    ...session,
+    previousRole: session.role,
+    role: newRole,
+    isFirstTimer: false,
+    lastActiveAt: new Date().toISOString()
+  };
+  saveSession(updated);
+  setLastSelectedRole(newRole);
+  recordAuditEvent({
+    eventType: 'ROLE_ELEVATION',
+    actorName: updated.fullName,
+    actorEmail: updated.email,
+    actorRole: updated.role,
+    actorInstitution: updated.institution,
+    targetModule: 'gate',
+    actionDetails: `User transitioned from First-Timer / New User onboarding to active role profile: ${newRole}`
+  });
+  return updated;
+}
 
 export function getStoredSession(): UserSession | null {
   try {
@@ -52,6 +96,7 @@ export interface GateSubmissionInput {
   role: ActiveRole;
   email: string;
   submissionDate: string;
+  isFirstTimer?: boolean;
 }
 
 export interface GateResult {
@@ -63,8 +108,47 @@ export interface GateResult {
 }
 
 export function processGateSubmission(input: GateSubmissionInput): GateResult {
-  const isPrivileged = input.role !== 'Public User';
   const isDomainApproved = isApprovedInstitutionalEmail(input.email);
+
+  // 1. First-Timer / New User flow:
+  // Receives direct guided access to Documents & OCR, AI Readiness, and Governance & Ethics
+  if (input.isFirstTimer) {
+    const session: UserSession = {
+      sessionId: `sess-first-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      fullName: input.fullName.trim(),
+      institution: input.institution.trim(),
+      institutionCategory: input.institutionCategory,
+      role: 'First-Timer / New User',
+      email: input.email.trim().toLowerCase(),
+      submissionDate: input.submissionDate,
+      isVerified: isDomainApproved,
+      isFirstTimer: true,
+      token: `token-first-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      lastActiveAt: new Date().toISOString()
+    };
+    saveSession(session);
+    recordAuditEvent({
+      eventType: 'GATE_SUBMISSION',
+      actorName: session.fullName,
+      actorEmail: session.email,
+      actorRole: 'First-Timer / New User',
+      actorInstitution: session.institution,
+      targetModule: 'gate',
+      actionDetails: `First-Timer / New User onboarding initialized for ${session.fullName} (${session.institution}) with guided access to Documents, Readiness, and Ethics.`
+    });
+    return {
+      session,
+      requiresOtp: false,
+      isDomainApproved,
+      message: 'Welcome! First-Timer Onboarding initialized with guided access to Document & OCR, AI Readiness, and Governance & Ethics.'
+    };
+  }
+
+  // Remember chosen active role for returning visits
+  setLastSelectedRole(input.role);
+
+  const isPrivileged = input.role !== 'Public User';
 
   // If Public User, grant immediate access
   if (!isPrivileged) {
@@ -198,6 +282,7 @@ export function verifyPendingOtp(enteredOtp: string): { success: boolean; sessio
     };
 
     saveSession(finalSession);
+    setLastSelectedRole(finalSession.role);
     localStorage.removeItem(PENDING_OTP_KEY);
 
     recordAuditEvent({

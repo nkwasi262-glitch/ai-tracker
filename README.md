@@ -2,6 +2,9 @@
 
 Welcome to the **Ghana National AI Projects Registry & Monitoring System (GNAPRMS)**. This platform acts as the sovereign single source of truth for Artificial Intelligence initiatives being developed or deployed across Ghana. It supports national AI governance, transparency, monitoring, ethical compliance, regional GIS tracking, budget optimization, and predictive risk management.
 
+> [!TIP]
+> **Incoming Engineer / Developer Onboarding**: Refer to the comprehensive [HANDOVER_AND_SCOPE.md](HANDOVER_AND_SCOPE.md) for full project scope, architecture walkthrough, business logic formulas, local setup instructions, RBAC verification tests, and Phase 2 backend engineering roadmap.
+
 ---
 
 ## 🚀 Interactive Portal Features
@@ -34,6 +37,7 @@ The repository is structured into two primary divisions:
 
 ```text
 /
+├── HANDOVER_AND_SCOPE.md             # ⭐ Complete Scope & Developer Handover Dossier
 ├── architecture/                     # Enterprise Architecture & Compliance Suites
 │   ├── system_architecture.md        # Microservices layout, Kong API gateway, PostGIS GIS service
 │   ├── database_erd.md               # PostgreSQL + PostGIS & MongoDB Dual-DB schemas & Mermaid ERD
@@ -47,20 +51,39 @@ The repository is structured into two primary divisions:
 ├── src/                              # React + TypeScript Frontend Prototype
 │   ├── api/                          # Sovereign API & Integration Engines
 │   │   └── gisSpatialApi.ts          # PostGIS, GeoJSON RFC 7946, Telemetry & Export Engine
+│   ├── services/                     # Core Business Logic & State Services
+│   │   ├── authService.ts            # Institutional email verification & session tokens
+│   │   ├── rbacPolicy.ts             # Central RBAC permission matrix for 7 roles
+│   │   ├── auditService.ts           # Tamper-evident audit ledger with SHA-256 hashes
+│   │   ├── reportsService.ts         # Internal reports and incident discussion management
+│   │   └── verdictService.ts         # DG executive decision & directive ledger
 │   ├── components/                   # Interactive portal view sub-modules
 │   │   ├── Layout.tsx                # Sidebar shell & role-based tab filters
+│   │   ├── EntryGateModal.tsx        # Mandatory institutional verification gate
+│   │   ├── AccessDenied.tsx          # Hardened clearance access barrier
+│   │   ├── HeaderProfile.tsx         # User profile widget & sign-out trigger
 │   │   ├── RoleSwitcher.tsx          # Dynamic identity context swapper
 │   │   ├── Dashboard.tsx             # M&E statistics & Recharts plotting
 │   │   ├── ProjectRegistry.tsx       # Search browsers and validation entry forms
 │   │   ├── GISGeospatial.tsx         # Multi-layer Leaflet map & interactive GIS API console
-│   │   ├── GovernanceCompliance.tsx  # Ethical checklist scorecards
+│   │   ├── GovernanceCompliance.tsx  # Ethical checklist scorecards & NGS calculator
 │   │   ├── AIReadiness.tsx           # Multi-slider maturity calculators
 │   │   ├── RiskManagement.tsx        # 5x5 Likelihood vs Impact Matrix
 │   │   ├── DocumentManager.tsx       # S3 vault, digital signatures & OCR search
-│   │   ├── AIChatAssistant.tsx       # Natural Language conversational chatbot
-│   │   └── NationalObservatory.tsx   # Synergy recommendation engine & trends
-│   ├── data/
+│   │   ├── DGDecisionQueue.tsx       # Isolated DG executive clearance portal
+│   │   ├── FinanceMinisterView.tsx   # Isolated fiscal budget & disbursement suite
+│   │   ├── InternalReportsHub.tsx    # Classified inter-agency intelligence reports
+│   │   ├── AuditLogViewer.tsx        # Tamper-evident security audit log explorer
+│   │   └── AIChatAssistant.tsx       # Natural Language conversational chatbot
+│   ├── data/                         # Data models, types, and sample datasets
+│   │   ├── authTypes.ts              # Roles, managing institutions, user session interfaces
+│   │   ├── auditTypes.ts             # Audit log schemas & event definitions
+│   │   ├── reportTypes.ts            # Internal reports, severity levels, comment schemas
+│   │   ├── verdictTypes.ts           # DG verdict & ministerial directive interfaces
 │   │   └── sampleProjects.ts         # Preloaded cocoa, Akosombo, hydro, drone, transit & 16 regions
+│   ├── tests/                        # Automated Verification Suites
+│   │   ├── run_tests.js              # Standalone Node.js test runner (55 passing tests)
+│   │   └── rbac_compliance_tests.ts  # TypeScript test specifications
 │   ├── App.tsx                       # Master central orchestrator and state coordinator
 │   ├── main.tsx                      # Client DOM mount node
 │   └── index.css                     # Complete responsive CSS design system with GIS styling

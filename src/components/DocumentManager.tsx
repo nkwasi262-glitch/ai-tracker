@@ -144,11 +144,35 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
     }
   };
 
-  const canEdit = ['Super Administrator', 'Institution Administrator', 'Project Manager'].includes(currentRole);
+  const isFirstTimer = session?.role === 'First-Timer / New User' || !!session?.isFirstTimer;
+  const canEdit = ['Super Administrator', 'Institution Administrator', 'Project Manager'].includes(currentRole) || isFirstTimer;
   const canSign = ['Super Administrator', 'National AI Authority', 'Government Administrator', 'Auditor'].includes(currentRole);
 
   return (
     <div>
+      {isFirstTimer && (
+        <div style={{
+          marginBottom: '16px',
+          padding: '12px 18px',
+          borderRadius: '10px',
+          background: 'rgba(251, 191, 36, 0.08)',
+          border: '1px solid rgba(251, 191, 36, 0.25)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
+          <span style={{ fontSize: '1.2rem' }}>📁</span>
+          <div>
+            <div style={{ fontSize: '0.84rem', fontWeight: 700, color: '#fde68a' }}>
+              First-Timer Document & OCR Guide
+            </div>
+            <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+              Upload your institution's initial project concept proposals, technical architecture specifications, and data protection disclosures here. OCR extraction is available on all uploaded PDFs.
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.1fr', gap: '24px', alignItems: 'stretch' }}>
         
         {/* LEFT COLUMN: Project documents grid and OCR uploads */}

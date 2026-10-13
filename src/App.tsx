@@ -14,9 +14,10 @@ import { InternalReportsHub } from './components/InternalReportsHub';
 import { AuditLogViewer } from './components/AuditLogViewer';
 import { EntryGateModal } from './components/EntryGateModal';
 import { AccessDenied } from './components/AccessDenied';
+import { ActiveRoleSelectorModal } from './components/ActiveRoleSelectorModal';
 import { sampleProjects, AIProject, ComplianceScore, DocumentAsset, ReviewWorkflowStatus } from './data/sampleProjects';
-import { UserSession } from './data/authTypes';
-import { getStoredSession, clearSession } from './services/authService';
+import { UserSession, ActiveRole } from './data/authTypes';
+import { getStoredSession, clearSession, elevateFromFirstTimer } from './services/authService';
 import { AppModuleId, canAccessModule } from './services/rbacPolicy';
 
 function App() {
@@ -25,12 +26,17 @@ function App() {
 
   // 2. Central Registry & Navigation States
   const [projects, setProjects] = useState<AIProject[]>(sampleProjects);
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    const s = getStoredSession();
+    return s?.role === 'First-Timer / New User' ? 'documents' : 'dashboard';
+  });
+  const [showRoleSelectorModal, setShowRoleSelectorModal] = useState<boolean>(false);
 
   // Ensure active tab is reset if current role changes to one without permission
   useEffect(() => {
     if (session && !canAccessModule(session.role, activeTab as AppModuleId)) {
-      setActiveTab('dashboard');
+      const fallbackTab = session.role === 'First-Timer / New User' ? 'documents' : 'dashboard';
+      setActiveTab(fallbackTab);
     }
   }, [session, activeTab]);
 
@@ -39,6 +45,18 @@ function App() {
     clearSession();
     setSession(null);
     setActiveTab('dashboard');
+  };
+
+  // Handle activation from First-Timer onboarding to an official active role profile
+  const handleActivateRoleProfile = (selectedRole: ActiveRole) => {
+    const updated = elevateFromFirstTimer(selectedRole);
+    if (updated) {
+      setSession(updated);
+      const targetTab = selectedRole === 'Director General' ? 'dg_queue' :
+                        selectedRole === 'Finance Minister' ? 'finance' :
+                        'dashboard';
+      setActiveTab(targetTab);
+    }
   };
 
   // 3. Global State Mutation Callback Handlers
@@ -153,7 +171,8 @@ function App() {
       <EntryGateModal 
         onSuccess={(newSession) => {
           setSession(newSession);
-          setActiveTab('dashboard');
+          const initialTab = newSession.role === 'First-Timer / New User' ? 'documents' : 'dashboard';
+          setActiveTab(initialTab);
         }} 
       />
     );
@@ -173,8 +192,8 @@ function App() {
           userName={session.fullName}
           userEmail={session.email}
           userInstitution={session.institution}
-          onNavigateHome={() => setActiveTab('dashboard')}
-          onRequestElevation={handleSwitchRole}
+          onNavigateHome={() => setActiveTab(session.role === 'First-Timer / New User' ? 'documents' : 'dashboard')}
+          onRequestElevation={() => setShowRoleSelectorModal(true)}
         />
       );
     }
@@ -259,14 +278,24 @@ function App() {
   };
 
   return (
-    <Layout 
-      session={session}
-      onSwitchRole={handleSwitchRole}
-      activeTab={activeTab} 
-      setActiveTab={setActiveTab}
-    >
-      {renderTabContent()}
-    </Layout>
+    <>
+      <Layout 
+        session={session}
+        onSwitchRole={handleSwitchRole}
+        onOpenRoleSelector={() => setShowRoleSelectorModal(true)}
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab}
+      >
+        {renderTabContent()}
+      </Layout>
+
+      <ActiveRoleSelectorModal
+        session={session}
+        isOpen={showRoleSelectorModal}
+        onClose={() => setShowRoleSelectorModal(false)}
+        onSelectRole={handleActivateRoleProfile}
+      />
+    </>
   );
 }
 

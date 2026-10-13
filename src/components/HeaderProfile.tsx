@@ -10,20 +10,29 @@ import {
   RefreshCw, 
   CheckCircle2, 
   AlertCircle,
-  Building2
+  Building2,
+  Sparkles
 } from 'lucide-react';
 import { UserSession, ActiveRole } from '../data/authTypes';
 
 interface HeaderProfileProps {
   session: UserSession;
   onSwitchRole: () => void;
+  onOpenRoleSelector?: () => void;
 }
 
-export const HeaderProfile: React.FC<HeaderProfileProps> = ({ session, onSwitchRole }) => {
+export const HeaderProfile: React.FC<HeaderProfileProps> = ({ session, onSwitchRole, onOpenRoleSelector }) => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const getRoleBadgeStyle = (role: ActiveRole) => {
     switch (role) {
+      case 'First-Timer / New User':
+        return {
+          bg: 'rgba(251, 191, 36, 0.15)',
+          border: 'rgba(251, 191, 36, 0.4)',
+          text: '#fde68a',
+          icon: <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+        };
       case 'Super Admin':
         return {
           bg: 'rgba(239, 68, 68, 0.15)',
@@ -160,6 +169,32 @@ export const HeaderProfile: React.FC<HeaderProfileProps> = ({ session, onSwitchR
           {badge.icon}
           <span>{session.role}</span>
         </div>
+
+        {/* If First-Timer: Select Active Role Profile Button */}
+        {session.role === 'First-Timer / New User' && onOpenRoleSelector && (
+          <button
+            onClick={onOpenRoleSelector}
+            title="Activate your official Active Role Profile"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '5px 12px',
+              borderRadius: '9999px',
+              background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.25), rgba(16, 185, 129, 0.25))',
+              border: '1px solid rgba(251, 191, 36, 0.6)',
+              color: '#fef08a',
+              fontSize: '0.74rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: '0 0 12px rgba(251, 191, 36, 0.25)',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <Sparkles size={12} className="text-amber-400" />
+            <span>Select Active Role Profile ➜</span>
+          </button>
+        )}
 
         {/* Switch Role / Sign Out Trigger Button */}
         <button

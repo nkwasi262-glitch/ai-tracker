@@ -11,7 +11,8 @@ import {
   KeyRound,
   FileCheck2,
   Search,
-  Sparkles
+  Sparkles,
+  CheckCircle2
 } from 'lucide-react';
 import { 
   ActiveRole, 
@@ -22,7 +23,8 @@ import {
 import { 
   processGateSubmission, 
   verifyPendingOtp, 
-  GateResult 
+  GateResult,
+  getLastSelectedRole 
 } from '../services/authService';
 import { UserSession } from '../data/authTypes';
 
@@ -31,6 +33,9 @@ interface EntryGateModalProps {
 }
 
 export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => {
+  // First-Timer vs Returning Official status
+  const [isFirstTimer, setIsFirstTimer] = useState<boolean>(false);
+
   // Form fields
   const [fullName, setFullName] = useState('');
   const [selectedInstId, setSelectedInstId] = useState('inst-1'); // Default NITA
@@ -39,7 +44,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
   const [instSearch, setInstSearch] = useState('');
   const [showInstDropdown, setShowInstDropdown] = useState(false);
 
-  const [role, setRole] = useState<ActiveRole>('Super Admin');
+  const [role, setRole] = useState<ActiveRole>(() => getLastSelectedRole() || 'Super Admin');
   const [email, setEmail] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [consentGiven, setConsentGiven] = useState(false);
@@ -166,14 +171,16 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
     setIsSubmitting(true);
 
     const institutionName = selectedInstId === 'other' ? customInstitution.trim() : getSelectedInstName();
+    const targetRole: ActiveRole = isFirstTimer ? 'First-Timer / New User' : role;
 
     const result: GateResult = processGateSubmission({
       fullName: fullName.trim(),
       institution: institutionName,
       institutionCategory: instCategory,
-      role,
+      role: targetRole,
       email: email.trim().toLowerCase(),
-      submissionDate: date
+      submissionDate: date,
+      isFirstTimer
     });
 
     setIsSubmitting(false);
@@ -182,8 +189,8 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
       setStage('otp_challenge');
       setSimulatedOtp(result.otpCode || null);
     } else {
-      // Direct access (either Public User or unverified fallback)
-      if (!result.isDomainApproved && role !== 'Public User') {
+      // Direct access (either First-Timer, Public User, or unverified fallback)
+      if (!result.isDomainApproved && targetRole !== 'Public User' && targetRole !== 'First-Timer / New User') {
         setWarningNotice(result.message);
       }
       onSuccess(result.session);
@@ -333,6 +340,93 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
           <form onSubmit={handleSubmitForm} style={{ padding: '24px 32px 32px 32px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
               
+              {/* Gatekeeper Question: First Timer / New User vs Existing Official */}
+              <div style={{
+                gridColumn: 'span 2',
+                padding: '16px 18px',
+                borderRadius: '12px',
+                background: 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                marginBottom: '4px'
+              }}>
+                <div style={{
+                  fontSize: '0.84rem',
+                  fontWeight: 700,
+                  color: '#fff',
+                  marginBottom: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <Sparkles size={16} className="text-amber-400" />
+                  <span>Are you a First-Timer or New to GNAPRMS? *</span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  {/* Option A: Yes, First Timer */}
+                  <div
+                    onClick={() => setIsFirstTimer(true)}
+                    style={{
+                      padding: '14px 16px',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      background: isFirstTimer ? 'rgba(16, 185, 129, 0.14)' : 'rgba(255, 255, 255, 0.02)',
+                      border: isFirstTimer ? '1px solid var(--ghana-emerald)' : '1px solid rgba(255, 255, 255, 0.08)',
+                      boxShadow: isFirstTimer ? '0 0 16px rgba(16, 185, 129, 0.2)' : 'none',
+                      transition: 'all 0.18s ease'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                      <div style={{
+                        width: '16px',
+                        height: '16px',
+                        borderRadius: '50%',
+                        border: isFirstTimer ? '5px solid var(--ghana-emerald)' : '2px solid rgba(255, 255, 255, 0.3)',
+                        background: isFirstTimer ? '#fff' : 'transparent',
+                        flexShrink: 0
+                      }} />
+                      <span style={{ fontSize: '0.86rem', fontWeight: 700, color: '#fff' }}>
+                        Yes, First-Timer / New User
+                      </span>
+                    </div>
+                    <p style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', margin: '0 0 0 24px', lineHeight: 1.4 }}>
+                      Guided onboarding with access to <strong>Document & OCR</strong> (file uploads), <strong>AI Readiness</strong>, and <strong>Governance & Ethics</strong>. You can select your Active Role Profile afterwards.
+                    </p>
+                  </div>
+
+                  {/* Option B: No, Existing / Returning Official */}
+                  <div
+                    onClick={() => setIsFirstTimer(false)}
+                    style={{
+                      padding: '14px 16px',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      background: !isFirstTimer ? 'rgba(59, 130, 246, 0.14)' : 'rgba(255, 255, 255, 0.02)',
+                      border: !isFirstTimer ? '1px solid #3b82f6' : '1px solid rgba(255, 255, 255, 0.08)',
+                      boxShadow: !isFirstTimer ? '0 0 16px rgba(59, 130, 246, 0.2)' : 'none',
+                      transition: 'all 0.18s ease'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                      <div style={{
+                        width: '16px',
+                        height: '16px',
+                        borderRadius: '50%',
+                        border: !isFirstTimer ? '5px solid #3b82f6' : '2px solid rgba(255, 255, 255, 0.3)',
+                        background: !isFirstTimer ? '#fff' : 'transparent',
+                        flexShrink: 0
+                      }} />
+                      <span style={{ fontSize: '0.86rem', fontWeight: 700, color: '#fff' }}>
+                        No, Existing / Returning Official
+                      </span>
+                    </div>
+                    <p style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', margin: '0 0 0 24px', lineHeight: 1.4 }}>
+                      Direct access to your assigned <strong>Active Role Profile</strong>. Your chosen role determines your authorized modules and security clearance.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               {/* Field 1: Full Name */}
               <div style={{ gridColumn: 'span 2' }}>
                 <label style={{
@@ -525,69 +619,164 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
                 )}
               </div>
 
-              {/* Field 3: Active Role Profile (Dropdown) */}
-              <div style={{ gridColumn: 'span 2' }}>
-                <label style={{
+              {/* Field 3: First-Timer Guided Track vs Returning Active Role Profile */}
+              {isFirstTimer ? (
+                <div style={{
+                  gridColumn: 'span 2',
+                  padding: '16px 18px',
+                  borderRadius: '12px',
+                  background: 'rgba(251, 191, 36, 0.08)',
+                  border: '1px solid rgba(251, 191, 36, 0.3)',
                   display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontSize: '0.78rem',
-                  fontWeight: 600,
-                  color: 'var(--text-primary)',
-                  marginBottom: '6px'
+                  alignItems: 'flex-start',
+                  gap: '14px'
                 }}>
-                  <Award size={14} className="text-emerald-400" />
-                  <span>Active Role Profile (Defines Permissions & Modules) *</span>
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <select
-                    value={role}
-                    onChange={(e) => setRole(e.target.value as ActiveRole)}
-                    style={{
-                      width: '100%',
-                      padding: '11px 14px',
-                      borderRadius: '8px',
-                      background: '#111b27',
-                      border: '1px solid rgba(255, 255, 255, 0.15)',
-                      color: '#fff',
-                      fontSize: '0.88rem',
-                      fontWeight: 600,
-                      outline: 'none',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    {rolesList.map((r) => (
-                      <option key={r.role} value={r.role} style={{ background: '#111b27', color: '#fff' }}>
-                        {r.label} — [{r.badge}]
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Role Description Card */}
-                {(() => {
-                  const currentDesc = rolesList.find(r => r.role === role);
-                  return (
+                  <div style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '10px',
+                    background: 'rgba(251, 191, 36, 0.15)',
+                    border: '1px solid rgba(251, 191, 36, 0.35)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#fbbf24',
+                    flexShrink: 0
+                  }}>
+                    <Sparkles size={18} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '0.86rem', fontWeight: 700, color: '#fbbf24' }}>
+                        First-Timer Guided Onboarding Track Active
+                      </span>
+                      <span style={{
+                        fontSize: '0.68rem',
+                        padding: '2px 8px',
+                        borderRadius: '9999px',
+                        background: 'rgba(16, 185, 129, 0.2)',
+                        color: 'var(--ghana-emerald)',
+                        fontWeight: 700
+                      }}>
+                        Orientation Mode
+                      </span>
+                    </div>
+                    <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: '0 0 10px 0', lineHeight: 1.45 }}>
+                      As a first-timer / new user, you will enter with exclusive guided access to:
+                    </p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '10px' }}>
+                      <div style={{
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        background: 'rgba(255, 255, 255, 0.04)',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        fontSize: '0.74rem'
+                      }}>
+                        <div style={{ fontWeight: 700, color: '#fff' }}>📁 Documents & OCR</div>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '2px' }}>Upload required project & ethics files</div>
+                      </div>
+                      <div style={{
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        background: 'rgba(255, 255, 255, 0.04)',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        fontSize: '0.74rem'
+                      }}>
+                        <div style={{ fontWeight: 700, color: '#fff' }}>📈 AI Readiness</div>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '2px' }}>Institutional maturity guide</div>
+                      </div>
+                      <div style={{
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        background: 'rgba(255, 255, 255, 0.04)',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        fontSize: '0.74rem'
+                      }}>
+                        <div style={{ fontWeight: 700, color: '#fff' }}>⚖️ Governance & Ethics</div>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '2px' }}>5-pillar compliance framework</div>
+                      </div>
+                    </div>
                     <div style={{
-                      marginTop: '8px',
-                      padding: '10px 14px',
-                      borderRadius: '8px',
-                      background: 'rgba(255, 255, 255, 0.03)',
-                      border: '1px solid rgba(255, 255, 255, 0.06)',
-                      fontSize: '0.76rem',
-                      color: 'var(--text-secondary)',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '8px'
+                      gap: '6px',
+                      fontSize: '0.74rem',
+                      color: '#a7f3d0',
+                      fontWeight: 600
                     }}>
-                      <span style={{ color: currentDesc?.color, fontWeight: 700 }}>
-                        {currentDesc?.badge}:
-                      </span>
-                      <span>{currentDesc?.desc}</span>
+                      <CheckCircle2 size={13} className="text-emerald-400" />
+                      <span>After reviewing these services, you will have access to the Active Role Profile to select your permanent official option.</span>
                     </div>
-                  );
-                })()}
-              </div>
+                  </div>
+                </div>
+              ) : (
+                /* Field 3: Active Role Profile (Dropdown) for Returning / Existing Officials */
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    color: 'var(--text-primary)',
+                    marginBottom: '6px'
+                  }}>
+                    <Award size={14} className="text-emerald-400" />
+                    <span>Active Role Profile (Defines Permissions & Modules) *</span>
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <select
+                      value={role}
+                      onChange={(e) => setRole(e.target.value as ActiveRole)}
+                      style={{
+                        width: '100%',
+                        padding: '11px 14px',
+                        borderRadius: '8px',
+                        background: '#111b27',
+                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                        color: '#fff',
+                        fontSize: '0.88rem',
+                        fontWeight: 600,
+                        outline: 'none',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {rolesList.map((r) => (
+                        <option key={r.role} value={r.role} style={{ background: '#111b27', color: '#fff' }}>
+                          {r.label} — [{r.badge}]
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Role Description Card */}
+                  {(() => {
+                    const currentDesc = rolesList.find(r => r.role === role);
+                    return (
+                      <div style={{
+                        marginTop: '8px',
+                        padding: '10px 14px',
+                        borderRadius: '8px',
+                        background: 'rgba(255, 255, 255, 0.03)',
+                        border: '1px solid rgba(255, 255, 255, 0.06)',
+                        fontSize: '0.76rem',
+                        color: 'var(--text-secondary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}>
+                        <span style={{ color: currentDesc?.color, fontWeight: 700 }}>
+                          {currentDesc?.badge}:
+                        </span>
+                        <span>{currentDesc?.desc}</span>
+                      </div>
+                    );
+                  })()}
+                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '6px 0 0 2px' }}>
+                    ℹ️ Per your active role profile choice, your access to modules and statutory permissions is strictly determined.
+                  </p>
+                </div>
+              )}
 
               {/* Field 4: Institutional Email Address */}
               <div>

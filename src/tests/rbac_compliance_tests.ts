@@ -189,6 +189,30 @@ forbiddenForPublic.forEach(mod => {
   );
 });
 
+// -----------------------------------------------------------------------------
+// TEST 9: First-Timer / New User Guided Track Test
+// -----------------------------------------------------------------------------
+console.log('--- 9. FIRST-TIMER / NEW USER GUIDED TRACK TEST ---');
+const firstTimerRole: ActiveRole = 'First-Timer / New User';
+
+// Allowed (Guidance & Upload only):
+assert(canAccessModule(firstTimerRole, 'documents'), 'First-Timer', 'Access: documents', 'Can access Document & OCR to upload required files');
+assert(canAccessModule(firstTimerRole, 'readiness'), 'First-Timer', 'Access: readiness', 'Can access AI Readiness assessment guide');
+assert(canAccessModule(firstTimerRole, 'governance'), 'First-Timer', 'Access: governance', 'Can access Governance & Ethics compliance guide');
+
+// Forbidden (All other 9 modules):
+const forbiddenForFirstTimer: AppModuleId[] = [
+  'dashboard', 'registry', 'gis', 'risk', 'dg_queue', 'finance', 'reports', 'audit', 'chat'
+];
+forbiddenForFirstTimer.forEach(mod => {
+  assert(
+    !canAccessModule(firstTimerRole, mod),
+    'First-Timer',
+    `Block: ${mod}`,
+    `STRICTLY FORBIDDEN from accessing non-guided module: ${mod}`
+  );
+});
+
 // Summary Report
 console.log('\n====================================================================');
 console.log(`TEST EXECUTION SUMMARY: ${results.filter(r => r.passed).length} / ${results.length} PASSED`);

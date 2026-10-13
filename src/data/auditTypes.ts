@@ -3,6 +3,7 @@ import { ActiveRole } from './authTypes';
 export type AuditEventType =
   | 'GATE_SUBMISSION'
   | 'ROLE_SWITCH'
+  | 'ROLE_ELEVATION'
   | 'LOGOUT'
   | 'VERIFICATION_SUCCESS'
   | 'VERIFICATION_FAILURE'

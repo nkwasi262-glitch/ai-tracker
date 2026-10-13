@@ -28,6 +28,9 @@ const ROLE_MODULE_PERMISSIONS = {
   ],
   'Public User': [
     'dashboard', 'gis', 'chat'
+  ],
+  'First-Timer / New User': [
+    'documents', 'readiness', 'governance'
   ]
 };
 
@@ -184,6 +187,33 @@ test('AI Manager can access registry and documents, but blocked from audit admin
   assert(canAccessModule('AI Manager', 'documents'), 'AI Manager should access documents');
   assert(!canAccessModule('AI Manager', 'audit'), 'AI Manager should NOT access audit');
   assert(!canAccessModule('AI Manager', 'dg_queue'), 'AI Manager should NOT access dg_queue');
+});
+
+console.log('\n7. Testing First-Timer / New User Permissions (Orientation Track):');
+test('First-Timer can access Document & OCR (where they can upload required files)', () => {
+  assert(canAccessModule('First-Timer / New User', 'documents'), 'First-Timer should access documents');
+});
+test('First-Timer can access AI Readiness assessment service as a guide', () => {
+  assert(canAccessModule('First-Timer / New User', 'readiness'), 'First-Timer should access readiness');
+});
+test('First-Timer can access Governance & Ethics compliance service as a guide', () => {
+  assert(canAccessModule('First-Timer / New User', 'governance'), 'First-Timer should access governance');
+});
+
+const blockedForFirstTimer = ['dashboard', 'registry', 'gis', 'risk', 'dg_queue', 'finance', 'reports', 'audit', 'chat'];
+blockedForFirstTimer.forEach(mod => {
+  test(`First-Timer is STRICTLY BLOCKED from unauthorized module: ${mod}`, () => {
+    assert(!canAccessModule('First-Timer / New User', mod), `First-Timer should NOT access ${mod}`);
+  });
+});
+
+test('After onboarding, selecting an Active Role Profile unlocks modules per that chosen role', () => {
+  // E.g. When transitioning from First-Timer to AI Manager:
+  assert(canAccessModule('AI Manager', 'registry'), 'Elevated AI Manager should access registry');
+  assert(canAccessModule('AI Manager', 'finance'), 'Elevated AI Manager should access finance');
+  // E.g. When transitioning from First-Timer to Director General:
+  assert(canAccessModule('Director General', 'dg_queue'), 'Elevated DG should access dg_queue');
+  assert(!canAccessModule('Director General', 'registry'), 'Elevated DG should still be isolated from registry CRUD');
 });
 
 const passed = tests.filter(t => t.passed).length;

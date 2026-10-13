@@ -183,6 +183,11 @@ const ROLE_MODULE_PERMISSIONS: Record<ActiveRole, AppModuleId[]> = {
     'dashboard',
     'gis',
     'chat'
+  ],
+  'First-Timer / New User': [
+    'documents',
+    'readiness',
+    'governance'
   ]
 };
 
@@ -283,6 +288,20 @@ const ROLE_ACTION_PERMISSIONS: Record<ActiveRole, Partial<Record<AppAction, bool
     CREATE_INTERNAL_REPORT: false,
     COMMENT_INTERNAL_REPORT: false,
     SIGN_DOCUMENT: false,
+    VIEW_AUDIT_LOG: false,
+    PURGE_AUDIT_LOG: false
+  },
+  'First-Timer / New User': {
+    VIEW: true,
+    CREATE: true, // Can upload required documents
+    EDIT: false,
+    DELETE: false,
+    RECOMMEND_TO_DG: false,
+    PASS_DG_VERDICT: false,
+    EXPORT_FINANCIALS: false,
+    CREATE_INTERNAL_REPORT: false,
+    COMMENT_INTERNAL_REPORT: false,
+    SIGN_DOCUMENT: true,
     VIEW_AUDIT_LOG: false,
     PURGE_AUDIT_LOG: false
   }

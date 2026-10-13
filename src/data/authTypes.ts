@@ -5,7 +5,8 @@ export type ActiveRole =
   | 'Technical Clearance Team'
   | 'AI Manager'
   | 'Finance Minister'
-  | 'Public User';
+  | 'Public User'
+  | 'First-Timer / New User';
 
 export type InstitutionCategory = 'MDA' | 'MMDA' | 'SOE' | 'Private Sector' | 'Other';
 
@@ -30,6 +31,8 @@ export interface UserSession {
   token: string;
   createdAt: string;
   lastActiveAt: string;
+  isFirstTimer?: boolean;
+  previousRole?: ActiveRole;
 }
 
 export const APPROVED_GOV_DOMAINS = [

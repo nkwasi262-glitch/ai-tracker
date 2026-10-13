@@ -13,7 +13,9 @@ import {
   DollarSign,
   FileCheck2,
   MessageSquare,
-  ShieldAlert
+  ShieldAlert,
+  Sparkles,
+  ArrowRight
 } from 'lucide-react';
 import { UserSession } from '../data/authTypes';
 import { HeaderProfile } from './HeaderProfile';
@@ -22,6 +24,7 @@ import { AppModuleId, canAccessModule } from '../services/rbacPolicy';
 interface LayoutProps {
   session: UserSession;
   onSwitchRole: () => void;
+  onOpenRoleSelector?: () => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
   children: React.ReactNode;
@@ -30,6 +33,7 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({ 
   session, 
   onSwitchRole, 
+  onOpenRoleSelector,
   activeTab, 
   setActiveTab, 
   children 
@@ -117,12 +121,77 @@ export const Layout: React.FC<LayoutProps> = ({
             <HeaderProfile 
               session={session} 
               onSwitchRole={onSwitchRole} 
+              onOpenRoleSelector={onOpenRoleSelector}
             />
           </div>
         </header>
 
         {/* Dynamic Component Canvas */}
         <main className="content-viewport animated-fade-in">
+          {session.role === 'First-Timer / New User' && (
+            <div style={{
+              margin: '0 0 20px 0',
+              padding: '14px 20px',
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.12), rgba(16, 185, 129, 0.1))',
+              border: '1px solid rgba(251, 191, 36, 0.35)',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '16px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '10px',
+                  background: 'rgba(251, 191, 36, 0.2)',
+                  border: '1px solid rgba(251, 191, 36, 0.4)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#fbbf24',
+                  flexShrink: 0
+                }}>
+                  <Sparkles size={18} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#fde68a' }}>
+                    First-Timer Onboarding Mode: Guided Services Active
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                    You have guided access to <strong>Documents & OCR</strong> (upload required files), <strong>AI Readiness</strong>, and <strong>Governance & Ethics</strong>. Once you are ready, select your Active Role Profile to unlock your assigned institutional modules.
+                  </div>
+                </div>
+              </div>
+
+              {onOpenRoleSelector && (
+                <button
+                  onClick={onOpenRoleSelector}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '9px 18px',
+                    borderRadius: '8px',
+                    background: 'linear-gradient(135deg, var(--ghana-emerald), #059669)',
+                    border: 'none',
+                    color: '#000',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+                  }}
+                >
+                  <span>Select Active Role Profile</span>
+                  <ArrowRight size={14} />
+                </button>
+              )}
+            </div>
+          )}
+
           {children}
         </main>
       </div>
