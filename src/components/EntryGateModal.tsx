@@ -8,11 +8,15 @@ import {
   AlertTriangle, 
   ArrowRight, 
   Award, 
-  KeyRound,
   FileCheck2,
   Search,
   Sparkles,
-  CheckCircle2
+  CheckCircle2,
+  X,
+  ShieldAlert,
+  UserCheck,
+  DollarSign,
+  Globe
 } from 'lucide-react';
 import { 
   ActiveRole, 
@@ -22,7 +26,6 @@ import {
 } from '../data/authTypes';
 import { 
   processGateSubmission, 
-  verifyPendingOtp, 
   GateResult,
   getLastSelectedRole 
 } from '../services/authService';
@@ -33,80 +36,115 @@ interface EntryGateModalProps {
 }
 
 export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => {
-  // First-Timer vs Returning Official status
-  const [isFirstTimer, setIsFirstTimer] = useState<boolean>(false);
-
-  // Form fields
+  // Form fields (Mandatory Gatekeeper Spaces)
+  // 1. FULL NAME
   const [fullName, setFullName] = useState('');
+  
+  // 2. MANAGING INSTITUTION
   const [selectedInstId, setSelectedInstId] = useState('inst-1'); // Default NITA
   const [customInstitution, setCustomInstitution] = useState('');
   const [instCategory, setInstCategory] = useState<InstitutionCategory>('MDA');
   const [instSearch, setInstSearch] = useState('');
   const [showInstDropdown, setShowInstDropdown] = useState(false);
 
-  const [role, setRole] = useState<ActiveRole>(() => getLastSelectedRole() || 'Super Admin');
+  // 3. EMAIL ADDRESS
   const [email, setEmail] = useState('');
+
+  // 4. DATE
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+
+  // 5. GHANA DATA PROTECTION ACT
   const [consentGiven, setConsentGiven] = useState(false);
 
-  // Verification & flow state
-  const [stage, setStage] = useState<'form' | 'otp_challenge'>('form');
-  const [otpCodeInput, setOtpCodeInput] = useState('');
-  const [simulatedOtp, setSimulatedOtp] = useState<string | null>(null);
+  // Small popup of (active role profile) state
+  const [showRolePopup, setShowRolePopup] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<ActiveRole>(() => getLastSelectedRole() || 'AI Manager');
+
+  // Feedback & submission state
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [warningNotice, setWarningNotice] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Available roles for selection
-  const rolesList: { role: ActiveRole; label: string; badge: string; color: string; desc: string }[] = [
+  // Roles available in the Active Role Profile popup
+  const rolesList: { 
+    role: ActiveRole; 
+    label: string; 
+    badge: string; 
+    color: string; 
+    desc: string;
+    modules: string;
+    icon: React.ReactNode;
+  }[] = [
     { 
       role: 'Super Admin', 
       label: 'Super Admin', 
-      badge: 'Tier-1 Security', 
+      badge: 'Tier-1 Security Oversight', 
       color: '#ef4444', 
-      desc: 'Complete system oversight, audit trails, and user management.' 
+      desc: 'Complete system oversight, audit trails, registry CRUD, and user configurations.',
+      modules: 'All 12 Modules Unlocked (Full Oversight)',
+      icon: <ShieldAlert size={16} className="text-red-400" />
     },
     { 
       role: 'Director General', 
       label: 'Director General', 
-      badge: 'Executive Clearance', 
+      badge: 'Executive Statutory Clearance', 
       color: '#fbbf24', 
-      desc: 'Passes final statutory verdicts on recommended AI projects.' 
+      desc: 'Passes final statutory verdicts, directives, or rejections on recommended AI projects.',
+      modules: 'DG Decision Queue, Dashboard, GIS, Finance, Reports, Audit',
+      icon: <Award size={16} className="text-amber-400" />
     },
     { 
       role: 'Technical Director', 
       label: 'Technical Director', 
       badge: 'Clearance Leadership', 
       color: '#6366f1', 
-      desc: 'Supervises technical audits, escalations, and recommendations.' 
+      desc: 'Supervises national technical evaluations, ethical rubrics, and project dossier recommendations.',
+      modules: 'Technical Reviews, Architecture Dossiers, Escalations, Dashboard, Registry, GIS',
+      icon: <Award size={16} className="text-indigo-400" />
     },
     { 
       role: 'Technical Clearance Team', 
       label: 'Technical Clearance Team', 
       badge: 'Technical Inspector', 
       color: '#10b981', 
-      desc: 'Evaluates architectural dossiers, OCR models, and ethics matrices.' 
+      desc: 'Evaluates architectural dossiers, OCR models, data pipelines, and ethics matrices.',
+      modules: 'Document Manager, Project Registry, Governance Rubrics, Readiness, Audit',
+      icon: <ShieldCheck size={16} className="text-emerald-400" />
     },
     { 
       role: 'AI Manager', 
-      label: 'AI Manager (newly registered)', 
+      label: 'AI Manager', 
       badge: 'Institutional Lead', 
       color: '#06b6d4', 
-      desc: 'Manages project registration portfolios and compliance dossiers.' 
+      desc: 'Registers and manages institutional project portfolios, milestone tracking, and readiness surveys.',
+      modules: 'Project Registry, AI Readiness, Governance Rubric, Documents, Reports',
+      icon: <UserCheck size={16} className="text-cyan-400" />
     },
     { 
       role: 'Finance Minister', 
       label: 'Finance Minister', 
       badge: 'Fiscal Authority', 
       color: '#f59e0b', 
-      desc: 'Accesses M&E dashboards, budgets, funding streams, and exports.' 
+      desc: 'Accesses M&E dashboards, national AI budget caps, disbursements, and financial exports.',
+      modules: 'Financial Suite & Exports, Fiscal Dashboard, AI Assistant',
+      icon: <DollarSign size={16} className="text-amber-400" />
     },
     { 
       role: 'Public User', 
       label: 'Public User', 
       badge: 'Open Citizen Access', 
       color: '#94a3b8', 
-      desc: 'General public overview of transparent AI initiatives and GIS map.' 
+      desc: 'General public overview of transparent AI initiatives, regional deployments, and GIS map.',
+      modules: 'Transparent Dashboard, GIS Map, Regulatory Assistant',
+      icon: <Globe size={16} className="text-slate-400" />
+    },
+    { 
+      role: 'First-Timer / New User', 
+      label: 'First-Timer / Guided Onboarding', 
+      badge: 'Orientation Track', 
+      color: '#eab308', 
+      desc: 'Guided onboarding with exclusive access to Document & OCR file uploads, AI Readiness guide, and Ethics.',
+      modules: 'Document & OCR (File Uploads), AI Readiness Guide, Governance & Ethics',
+      icon: <Sparkles size={16} className="text-amber-400" />
     }
   ];
 
@@ -140,86 +178,65 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
     setShowInstDropdown(false);
   };
 
-  // Submission handler
-  const handleSubmitForm = (e: React.FormEvent) => {
+  // Gatekeeper Form Submission Handler (Validates the 5 Mandatory Spaces)
+  const handleGatekeeperSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
-    setWarningNotice(null);
 
-    // Validation
+    // 1. FULL NAME validation
     if (!fullName.trim()) {
-      setErrorMessage('Full name is required to initialize session.');
-      return;
-    }
-    if (selectedInstId === 'other' && !customInstitution.trim()) {
-      setErrorMessage('Please specify the name of your managing institution.');
-      return;
-    }
-    if (!email.trim() || !email.includes('@') || !email.includes('.')) {
-      setErrorMessage('A valid email address is required for institutional logging.');
-      return;
-    }
-    if (!date) {
-      setErrorMessage('Access date is required.');
-      return;
-    }
-    if (!consentGiven) {
-      setErrorMessage('You must confirm statutory compliance under the Ghana Data Protection Act (Act 843).');
+      setErrorMessage('FULL NAME is mandatory to initialize statutory identity.');
       return;
     }
 
+    // 2. MANAGING INSTITUTION validation
+    if (selectedInstId === 'other' && !customInstitution.trim()) {
+      setErrorMessage('Please specify your MANAGING INSTITUTION name.');
+      return;
+    }
+
+    // 3. EMAIL ADDRESS validation
+    if (!email.trim() || !email.includes('@') || !email.includes('.')) {
+      setErrorMessage('A valid EMAIL ADDRESS is mandatory for institutional security records.');
+      return;
+    }
+
+    // 4. DATE validation
+    if (!date) {
+      setErrorMessage('Access DATE is mandatory.');
+      return;
+    }
+
+    // 5. GHANA DATA PROTECTION ACT validation
+    if (!consentGiven) {
+      setErrorMessage('You must confirm statutory compliance under the GHANA DATA PROTECTION ACT, 2012 (Act 843).');
+      return;
+    }
+
+    // All 5 spaces validated: Open the small pop up of the (active role profile) for selection
+    setShowRolePopup(true);
+  };
+
+  // Confirm Active Role Profile from Pop up and Enter System
+  const handleConfirmRoleProfile = () => {
     setIsSubmitting(true);
+    setErrorMessage(null);
 
     const institutionName = selectedInstId === 'other' ? customInstitution.trim() : getSelectedInstName();
-    const targetRole: ActiveRole = isFirstTimer ? 'First-Timer / New User' : role;
 
     const result: GateResult = processGateSubmission({
       fullName: fullName.trim(),
       institution: institutionName,
       institutionCategory: instCategory,
-      role: targetRole,
+      role: selectedRole,
       email: email.trim().toLowerCase(),
       submissionDate: date,
-      isFirstTimer
+      isFirstTimer: selectedRole === 'First-Timer / New User'
     });
 
     setIsSubmitting(false);
-
-    if (result.requiresOtp) {
-      setStage('otp_challenge');
-      setSimulatedOtp(result.otpCode || null);
-    } else {
-      // Direct access (either First-Timer, Public User, or unverified fallback)
-      if (!result.isDomainApproved && targetRole !== 'Public User' && targetRole !== 'First-Timer / New User') {
-        setWarningNotice(result.message);
-      }
-      onSuccess(result.session);
-    }
-  };
-
-  // Verify OTP handler
-  const handleVerifyOtp = (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage(null);
-
-    if (!otpCodeInput.trim() || otpCodeInput.trim().length !== 6) {
-      setErrorMessage('Please enter the 6-digit verification code.');
-      return;
-    }
-
-    const verifyRes = verifyPendingOtp(otpCodeInput.trim());
-    if (verifyRes.success && verifyRes.session) {
-      onSuccess(verifyRes.session);
-    } else {
-      setErrorMessage(verifyRes.error || 'Verification code failed. Please try again.');
-    }
-  };
-
-  // Quick fill helper for presentation / review convenience
-  const handleQuickFillOtp = () => {
-    if (simulatedOtp) {
-      setOtpCodeInput(simulatedOtp);
-    }
+    setShowRolePopup(false);
+    onSuccess(result.session);
   };
 
   return (
@@ -242,7 +259,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
         width: '100%',
         margin: '0 auto',
         background: 'linear-gradient(170deg, #111827 0%, #0d121f 100%)',
-        border: '1px solid rgba(16, 185, 129, 0.25)',
+        border: '1px solid rgba(16, 185, 129, 0.28)',
         boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 35px rgba(16, 185, 129, 0.12)',
         borderRadius: '20px',
         overflow: 'hidden',
@@ -294,7 +311,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
               National AI Projects Registry & Monitoring System
             </h1>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px', margin: 0 }}>
-              Mandatory Gatekeeper: Verify institutional identity and active role profile to enter.
+              Mandatory Gatekeeper: Verify institutional identity and statutory compliance to enter.
             </p>
           </div>
         </div>
@@ -318,263 +335,150 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
           </div>
         )}
 
-        {/* Warning Banner */}
-        {warningNotice && (
+        {/* Mandatory Gatekeeper Form (Space for FULL NAME, MANAGING INSTITUTION, EMAIL ADDRESS, DATE, & GHANA DATA PROTECTION ACT) */}
+        <form onSubmit={handleGatekeeperSubmit} style={{ padding: '24px 32px 32px 32px' }}>
+          
           <div style={{
-            margin: '16px 32px 0 32px',
-            padding: '12px 16px',
-            borderRadius: '10px',
-            background: 'rgba(245, 158, 11, 0.15)',
-            border: '1px solid rgba(245, 158, 11, 0.35)',
-            color: '#fde68a',
-            fontSize: '0.82rem',
+            marginBottom: '18px',
+            padding: '10px 14px',
+            borderRadius: '8px',
+            background: 'rgba(16, 185, 129, 0.05)',
+            border: '1px solid rgba(16, 185, 129, 0.15)',
             display: 'flex',
             alignItems: 'center',
-            gap: '10px'
+            gap: '8px',
+            fontSize: '0.78rem',
+            color: 'var(--text-secondary)'
           }}>
-            <AlertTriangle size={16} style={{ flexShrink: 0 }} />
-            <span>{warningNotice}</span>
+            <Sparkles size={14} className="text-emerald-400" style={{ flexShrink: 0 }} />
+            <span>
+              All personnel enter as first-timers through statutory logging. Complete the 5 spaces below to open the <strong>(active role profile)</strong> selector.
+            </span>
           </div>
-        )}
 
-        {/* Stage 1: Mandatory Entry Gate Form */}
-        {stage === 'form' && (
-          <form onSubmit={handleSubmitForm} style={{ padding: '24px 32px 32px 32px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-              
-              {/* Gatekeeper Question: First Timer / New User vs Existing Official */}
-              <div style={{
-                gridColumn: 'span 2',
-                padding: '16px 18px',
-                borderRadius: '12px',
-                background: 'rgba(255, 255, 255, 0.03)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                marginBottom: '4px'
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            
+            {/* Space 1: FULL NAME */}
+            <div style={{ gridColumn: 'span 2' }}>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                color: 'var(--text-primary)',
+                letterSpacing: '0.04em',
+                marginBottom: '6px'
               }}>
-                <div style={{
-                  fontSize: '0.84rem',
-                  fontWeight: 700,
+                <User size={14} className="text-emerald-400" />
+                <span>FULL NAME *</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="e.g. Dr. Kwaku Mensah or Hon. Abena Ofori"
+                style={{
+                  width: '100%',
+                  padding: '11px 14px',
+                  borderRadius: '8px',
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
                   color: '#fff',
-                  marginBottom: '12px',
+                  fontSize: '0.88rem',
+                  outline: 'none'
+                }}
+                onFocus={(e) => e.target.style.borderColor = 'var(--ghana-emerald)'}
+                onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.12)'}
+              />
+            </div>
+
+            {/* Space 2: MANAGING INSTITUTION (Searchable Selector) */}
+            <div style={{ gridColumn: 'span 2', position: 'relative' }}>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                color: 'var(--text-primary)',
+                letterSpacing: '0.04em',
+                marginBottom: '6px'
+              }}>
+                <Building2 size={14} className="text-emerald-400" />
+                <span>MANAGING INSTITUTION *</span>
+              </label>
+
+              <div
+                onClick={() => setShowInstDropdown(!showInstDropdown)}
+                style={{
+                  width: '100%',
+                  padding: '11px 14px',
+                  borderRadius: '8px',
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  color: '#fff',
+                  fontSize: '0.88rem',
+                  cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px'
+                  justifyContent: 'space-between'
+                }}
+              >
+                <span style={{ fontWeight: 500 }}>{getSelectedInstName()}</span>
+                <span style={{
+                  fontSize: '0.7rem',
+                  padding: '2px 8px',
+                  borderRadius: '9999px',
+                  background: 'rgba(16, 185, 129, 0.15)',
+                  color: 'var(--ghana-emerald)',
+                  fontWeight: 700
                 }}>
-                  <Sparkles size={16} className="text-amber-400" />
-                  <span>Are you a First-Timer or New to GNAPRMS? *</span>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  {/* Option A: Yes, First Timer */}
-                  <div
-                    onClick={() => setIsFirstTimer(true)}
-                    style={{
-                      padding: '14px 16px',
-                      borderRadius: '10px',
-                      cursor: 'pointer',
-                      background: isFirstTimer ? 'rgba(16, 185, 129, 0.14)' : 'rgba(255, 255, 255, 0.02)',
-                      border: isFirstTimer ? '1px solid var(--ghana-emerald)' : '1px solid rgba(255, 255, 255, 0.08)',
-                      boxShadow: isFirstTimer ? '0 0 16px rgba(16, 185, 129, 0.2)' : 'none',
-                      transition: 'all 0.18s ease'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                      <div style={{
-                        width: '16px',
-                        height: '16px',
-                        borderRadius: '50%',
-                        border: isFirstTimer ? '5px solid var(--ghana-emerald)' : '2px solid rgba(255, 255, 255, 0.3)',
-                        background: isFirstTimer ? '#fff' : 'transparent',
-                        flexShrink: 0
-                      }} />
-                      <span style={{ fontSize: '0.86rem', fontWeight: 700, color: '#fff' }}>
-                        Yes, First-Timer / New User
-                      </span>
-                    </div>
-                    <p style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', margin: '0 0 0 24px', lineHeight: 1.4 }}>
-                      Guided onboarding with access to <strong>Document & OCR</strong> (file uploads), <strong>AI Readiness</strong>, and <strong>Governance & Ethics</strong>. You can select your Active Role Profile afterwards.
-                    </p>
-                  </div>
-
-                  {/* Option B: No, Existing / Returning Official */}
-                  <div
-                    onClick={() => setIsFirstTimer(false)}
-                    style={{
-                      padding: '14px 16px',
-                      borderRadius: '10px',
-                      cursor: 'pointer',
-                      background: !isFirstTimer ? 'rgba(59, 130, 246, 0.14)' : 'rgba(255, 255, 255, 0.02)',
-                      border: !isFirstTimer ? '1px solid #3b82f6' : '1px solid rgba(255, 255, 255, 0.08)',
-                      boxShadow: !isFirstTimer ? '0 0 16px rgba(59, 130, 246, 0.2)' : 'none',
-                      transition: 'all 0.18s ease'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                      <div style={{
-                        width: '16px',
-                        height: '16px',
-                        borderRadius: '50%',
-                        border: !isFirstTimer ? '5px solid #3b82f6' : '2px solid rgba(255, 255, 255, 0.3)',
-                        background: !isFirstTimer ? '#fff' : 'transparent',
-                        flexShrink: 0
-                      }} />
-                      <span style={{ fontSize: '0.86rem', fontWeight: 700, color: '#fff' }}>
-                        No, Existing / Returning Official
-                      </span>
-                    </div>
-                    <p style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', margin: '0 0 0 24px', lineHeight: 1.4 }}>
-                      Direct access to your assigned <strong>Active Role Profile</strong>. Your chosen role determines your authorized modules and security clearance.
-                    </p>
-                  </div>
-                </div>
+                  {instCategory}
+                </span>
               </div>
 
-              {/* Field 1: Full Name */}
-              <div style={{ gridColumn: 'span 2' }}>
-                <label style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontSize: '0.78rem',
-                  fontWeight: 600,
-                  color: 'var(--text-primary)',
-                  marginBottom: '6px'
+              {/* Dropdown Menu */}
+              {showInstDropdown && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  marginTop: '6px',
+                  borderRadius: '10px',
+                  background: '#0f172a',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  boxShadow: '0 15px 35px rgba(0, 0, 0, 0.8)',
+                  zIndex: 100,
+                  maxHeight: '260px',
+                  overflowY: 'auto',
+                  padding: '8px'
                 }}>
-                  <User size={14} className="text-emerald-400" />
-                  <span>Full Name (as registered with Institution) *</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="e.g. Dr. Kwaku Mensah or Hon. Abena Ofori"
-                  style={{
-                    width: '100%',
-                    padding: '11px 14px',
-                    borderRadius: '8px',
-                    background: 'rgba(255, 255, 255, 0.04)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    color: '#fff',
-                    fontSize: '0.88rem',
-                    outline: 'none'
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = 'var(--ghana-emerald)'}
-                  onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.12)'}
-                />
-              </div>
+                  <div style={{ padding: '4px 6px 8px 6px', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                    <Search size={14} style={{ color: 'var(--text-muted)' }} />
+                    <input
+                      type="text"
+                      placeholder="Search MDA, MMDA, or SOE..."
+                      value={instSearch}
+                      onChange={(e) => setInstSearch(e.target.value)}
+                      style={{
+                        width: '100%',
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#fff',
+                        fontSize: '0.82rem',
+                        outline: 'none'
+                      }}
+                    />
+                  </div>
 
-              {/* Field 2: Managing Institution (Searchable Dropdown) */}
-              <div style={{ gridColumn: 'span 2', position: 'relative' }}>
-                <label style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontSize: '0.78rem',
-                  fontWeight: 600,
-                  color: 'var(--text-primary)',
-                  marginBottom: '6px'
-                }}>
-                  <Building2 size={14} className="text-emerald-400" />
-                  <span>Managing Institution (MDA / MMDA / SOE / Other) *</span>
-                </label>
-
-                <div
-                  onClick={() => setShowInstDropdown(!showInstDropdown)}
-                  style={{
-                    width: '100%',
-                    padding: '11px 14px',
-                    borderRadius: '8px',
-                    background: 'rgba(255, 255, 255, 0.04)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    color: '#fff',
-                    fontSize: '0.88rem',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between'
-                  }}
-                >
-                  <span style={{ fontWeight: 500 }}>{getSelectedInstName()}</span>
-                  <span style={{
-                    fontSize: '0.7rem',
-                    padding: '2px 8px',
-                    borderRadius: '9999px',
-                    background: 'rgba(16, 185, 129, 0.15)',
-                    color: 'var(--ghana-emerald)',
-                    fontWeight: 700
-                  }}>
-                    {instCategory}
-                  </span>
-                </div>
-
-                {/* Dropdown Menu */}
-                {showInstDropdown && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    right: 0,
-                    marginTop: '6px',
-                    borderRadius: '10px',
-                    background: '#0f172a',
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                    boxShadow: '0 15px 35px rgba(0, 0, 0, 0.8)',
-                    zIndex: 100,
-                    maxHeight: '260px',
-                    overflowY: 'auto',
-                    padding: '8px'
-                  }}>
-                    <div style={{ padding: '4px 6px 8px 6px', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                      <Search size={14} style={{ color: 'var(--text-muted)' }} />
-                      <input
-                        type="text"
-                        placeholder="Search MDA, MMDA, or SOE..."
-                        value={instSearch}
-                        onChange={(e) => setInstSearch(e.target.value)}
-                        style={{
-                          width: '100%',
-                          background: 'transparent',
-                          border: 'none',
-                          color: '#fff',
-                          fontSize: '0.82rem',
-                          outline: 'none'
-                        }}
-                      />
-                    </div>
-
-                    <div style={{ marginTop: '6px' }}>
-                      {filteredInstitutions.map((inst) => (
-                        <div
-                          key={inst.id}
-                          onClick={() => handleSelectInstitution(inst)}
-                          style={{
-                            padding: '8px 12px',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            fontSize: '0.82rem',
-                            color: selectedInstId === inst.id ? '#10b981' : '#e2e8f0',
-                            background: selectedInstId === inst.id ? 'rgba(16, 185, 129, 0.1)' : 'transparent'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = selectedInstId === inst.id ? 'rgba(16, 185, 129, 0.1)' : 'transparent'}
-                        >
-                          <div>
-                            <div style={{ fontWeight: 600 }}>{inst.name}</div>
-                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Code: {inst.code}</div>
-                          </div>
-                          <span style={{ fontSize: '0.68rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(255, 255, 255, 0.08)', color: '#94a3b8' }}>
-                            {inst.category}
-                          </span>
-                        </div>
-                      ))}
-
-                      {/* "Other" Option */}
+                  <div style={{ marginTop: '6px' }}>
+                    {filteredInstitutions.map((inst) => (
                       <div
-                        onClick={() => handleSelectInstitution('other')}
+                        key={inst.id}
+                        onClick={() => handleSelectInstitution(inst)}
                         style={{
                           padding: '8px 12px',
                           borderRadius: '6px',
@@ -583,514 +487,471 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
                           alignItems: 'center',
                           justifyContent: 'space-between',
                           fontSize: '0.82rem',
-                          color: selectedInstId === 'other' ? '#10b981' : '#e2e8f0',
-                          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-                          marginTop: '4px'
+                          color: selectedInstId === inst.id ? '#10b981' : '#e2e8f0',
+                          background: selectedInstId === inst.id ? 'rgba(16, 185, 129, 0.1)' : 'transparent'
                         }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = selectedInstId === inst.id ? 'rgba(16, 185, 129, 0.1)' : 'transparent'}
                       >
-                        <span style={{ fontWeight: 600 }}>Other Institution / Organization (Custom)</span>
+                        <div>
+                          <div style={{ fontWeight: 600 }}>{inst.name}</div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Code: {inst.code}</div>
+                        </div>
                         <span style={{ fontSize: '0.68rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(255, 255, 255, 0.08)', color: '#94a3b8' }}>
-                          Other
+                          {inst.category}
                         </span>
                       </div>
-                    </div>
-                  </div>
-                )}
+                    ))}
 
-                {/* Custom Institution Input if "Other" */}
-                {selectedInstId === 'other' && (
-                  <div style={{ marginTop: '10px' }}>
-                    <input
-                      type="text"
-                      required
-                      value={customInstitution}
-                      onChange={(e) => setCustomInstitution(e.target.value)}
-                      placeholder="Enter custom institution / entity name"
+                    {/* "Other" Option */}
+                    <div
+                      onClick={() => handleSelectInstitution('other')}
                       style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        borderRadius: '8px',
-                        background: 'rgba(255, 255, 255, 0.04)',
-                        border: '1px solid rgba(16, 185, 129, 0.3)',
-                        color: '#fff',
-                        fontSize: '0.85rem',
-                        outline: 'none'
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Field 3: First-Timer Guided Track vs Returning Active Role Profile */}
-              {isFirstTimer ? (
-                <div style={{
-                  gridColumn: 'span 2',
-                  padding: '16px 18px',
-                  borderRadius: '12px',
-                  background: 'rgba(251, 191, 36, 0.08)',
-                  border: '1px solid rgba(251, 191, 36, 0.3)',
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '14px'
-                }}>
-                  <div style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '10px',
-                    background: 'rgba(251, 191, 36, 0.15)',
-                    border: '1px solid rgba(251, 191, 36, 0.35)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#fbbf24',
-                    flexShrink: 0
-                  }}>
-                    <Sparkles size={18} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '0.86rem', fontWeight: 700, color: '#fbbf24' }}>
-                        First-Timer Guided Onboarding Track Active
-                      </span>
-                      <span style={{
-                        fontSize: '0.68rem',
-                        padding: '2px 8px',
-                        borderRadius: '9999px',
-                        background: 'rgba(16, 185, 129, 0.2)',
-                        color: 'var(--ghana-emerald)',
-                        fontWeight: 700
-                      }}>
-                        Orientation Mode
-                      </span>
-                    </div>
-                    <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: '0 0 10px 0', lineHeight: 1.45 }}>
-                      As a first-timer / new user, you will enter with exclusive guided access to:
-                    </p>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '10px' }}>
-                      <div style={{
-                        padding: '8px 10px',
-                        borderRadius: '8px',
-                        background: 'rgba(255, 255, 255, 0.04)',
-                        border: '1px solid rgba(255, 255, 255, 0.08)',
-                        fontSize: '0.74rem'
-                      }}>
-                        <div style={{ fontWeight: 700, color: '#fff' }}>📁 Documents & OCR</div>
-                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '2px' }}>Upload required project & ethics files</div>
-                      </div>
-                      <div style={{
-                        padding: '8px 10px',
-                        borderRadius: '8px',
-                        background: 'rgba(255, 255, 255, 0.04)',
-                        border: '1px solid rgba(255, 255, 255, 0.08)',
-                        fontSize: '0.74rem'
-                      }}>
-                        <div style={{ fontWeight: 700, color: '#fff' }}>📈 AI Readiness</div>
-                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '2px' }}>Institutional maturity guide</div>
-                      </div>
-                      <div style={{
-                        padding: '8px 10px',
-                        borderRadius: '8px',
-                        background: 'rgba(255, 255, 255, 0.04)',
-                        border: '1px solid rgba(255, 255, 255, 0.08)',
-                        fontSize: '0.74rem'
-                      }}>
-                        <div style={{ fontWeight: 700, color: '#fff' }}>⚖️ Governance & Ethics</div>
-                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '2px' }}>5-pillar compliance framework</div>
-                      </div>
-                    </div>
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      fontSize: '0.74rem',
-                      color: '#a7f3d0',
-                      fontWeight: 600
-                    }}>
-                      <CheckCircle2 size={13} className="text-emerald-400" />
-                      <span>After reviewing these services, you will have access to the Active Role Profile to select your permanent official option.</span>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                /* Field 3: Active Role Profile (Dropdown) for Returning / Existing Officials */
-                <div style={{ gridColumn: 'span 2' }}>
-                  <label style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    fontSize: '0.78rem',
-                    fontWeight: 600,
-                    color: 'var(--text-primary)',
-                    marginBottom: '6px'
-                  }}>
-                    <Award size={14} className="text-emerald-400" />
-                    <span>Active Role Profile (Defines Permissions & Modules) *</span>
-                  </label>
-                  <div style={{ position: 'relative' }}>
-                    <select
-                      value={role}
-                      onChange={(e) => setRole(e.target.value as ActiveRole)}
-                      style={{
-                        width: '100%',
-                        padding: '11px 14px',
-                        borderRadius: '8px',
-                        background: '#111b27',
-                        border: '1px solid rgba(255, 255, 255, 0.15)',
-                        color: '#fff',
-                        fontSize: '0.88rem',
-                        fontWeight: 600,
-                        outline: 'none',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {rolesList.map((r) => (
-                        <option key={r.role} value={r.role} style={{ background: '#111b27', color: '#fff' }}>
-                          {r.label} — [{r.badge}]
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Role Description Card */}
-                  {(() => {
-                    const currentDesc = rolesList.find(r => r.role === role);
-                    return (
-                      <div style={{
-                        marginTop: '8px',
-                        padding: '10px 14px',
-                        borderRadius: '8px',
-                        background: 'rgba(255, 255, 255, 0.03)',
-                        border: '1px solid rgba(255, 255, 255, 0.06)',
-                        fontSize: '0.76rem',
-                        color: 'var(--text-secondary)',
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '8px'
-                      }}>
-                        <span style={{ color: currentDesc?.color, fontWeight: 700 }}>
-                          {currentDesc?.badge}:
-                        </span>
-                        <span>{currentDesc?.desc}</span>
-                      </div>
-                    );
-                  })()}
-                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '6px 0 0 2px' }}>
-                    ℹ️ Per your active role profile choice, your access to modules and statutory permissions is strictly determined.
-                  </p>
+                        justifyContent: 'space-between',
+                        fontSize: '0.82rem',
+                        color: selectedInstId === 'other' ? '#10b981' : '#e2e8f0',
+                        borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                        marginTop: '4px'
+                      }}
+                    >
+                      <span style={{ fontWeight: 600 }}>Other Institution / Organization (Custom)</span>
+                      <span style={{ fontSize: '0.68rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(255, 255, 255, 0.08)', color: '#94a3b8' }}>
+                        Other
+                      </span>
+                    </div>
+                  </div>
                 </div>
               )}
 
-              {/* Field 4: Institutional Email Address */}
-              <div>
-                <label style={{
+              {/* Custom Institution Input if "Other" */}
+              {selectedInstId === 'other' && (
+                <div style={{ marginTop: '10px' }}>
+                  <input
+                    type="text"
+                    required
+                    value={customInstitution}
+                    onChange={(e) => setCustomInstitution(e.target.value)}
+                    placeholder="Enter custom institution / entity name"
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      background: 'rgba(255, 255, 255, 0.04)',
+                      border: '1px solid rgba(16, 185, 129, 0.3)',
+                      color: '#fff',
+                      fontSize: '0.85rem',
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Space 3: EMAIL ADDRESS */}
+            <div>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                color: 'var(--text-primary)',
+                letterSpacing: '0.04em',
+                marginBottom: '6px'
+              }}>
+                <Mail size={14} className="text-emerald-400" />
+                <span>EMAIL ADDRESS *</span>
+              </label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="e.g. officer@nita.gov.gh"
+                style={{
+                  width: '100%',
+                  padding: '11px 14px',
+                  borderRadius: '8px',
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  color: '#fff',
+                  fontSize: '0.88rem',
+                  outline: 'none'
+                }}
+                onFocus={(e) => e.target.style.borderColor = 'var(--ghana-emerald)'}
+                onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.12)'}
+              />
+              <div style={{ fontSize: '0.7rem', color: isGovEmail ? '#10b981' : 'var(--text-muted)', marginTop: '4px' }}>
+                {isGovEmail ? (
+                  <span>✓ Approved Ghana Gov Domain detected ({emailDomain})</span>
+                ) : (
+                  <span>Institutional or official communication email</span>
+                )}
+              </div>
+            </div>
+
+            {/* Space 4: DATE */}
+            <div>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                color: 'var(--text-primary)',
+                letterSpacing: '0.04em',
+                marginBottom: '6px'
+              }}>
+                <Calendar size={14} className="text-emerald-400" />
+                <span>DATE *</span>
+              </label>
+              <input
+                type="date"
+                required
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '11px 14px',
+                  borderRadius: '8px',
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  color: '#fff',
+                  fontSize: '0.88rem',
+                  outline: 'none'
+                }}
+                onFocus={(e) => e.target.style.borderColor = 'var(--ghana-emerald)'}
+                onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.12)'}
+              />
+            </div>
+
+          </div>
+
+          {/* Space 5: GHANA DATA PROTECTION ACT */}
+          <div style={{
+            marginTop: '22px',
+            padding: '16px',
+            borderRadius: '12px',
+            background: 'rgba(16, 185, 129, 0.08)',
+            border: '1px solid rgba(16, 185, 129, 0.3)',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '14px'
+          }}>
+            <input
+              type="checkbox"
+              id="act843-consent"
+              checked={consentGiven}
+              onChange={(e) => setConsentGiven(e.target.checked)}
+              style={{
+                marginTop: '4px',
+                width: '18px',
+                height: '18px',
+                accentColor: 'var(--ghana-emerald)',
+                cursor: 'pointer'
+              }}
+            />
+            <label htmlFor="act843-consent" style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.5, cursor: 'pointer' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                <ShieldCheck size={14} className="text-emerald-400" />
+                <strong style={{ color: '#fff', letterSpacing: '0.02em' }}>
+                  GHANA DATA PROTECTION ACT, 2012 (ACT 843) STATUTORY COMPLIANCE *
+                </strong>
+              </div>
+              I confirm statutory compliance under the <strong>Ghana Data Protection Act (Act 843)</strong>. I understand and acknowledge that my institutional credentials, access timestamps, and session actions will be cryptographically logged in an immutable statutory audit trail maintained by the National Information Technology Agency (NITA) with a mandatory 5-year retention period.
+            </label>
+          </div>
+
+          {/* Submit Button to trigger the (active role profile) pop up */}
+          <div style={{ marginTop: '26px', display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '13px 28px',
+                borderRadius: '10px',
+                background: 'linear-gradient(135deg, var(--ghana-emerald) 0%, #059669 100%)',
+                color: '#0b0f19',
+                fontWeight: 800,
+                fontSize: '0.92rem',
+                border: 'none',
+                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                boxShadow: '0 4px 15px rgba(16, 185, 129, 0.35)',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <span>Submit & Select Active Role Profile</span>
+              <ArrowRight size={18} />
+            </button>
+          </div>
+        </form>
+
+      </div>
+
+      {/* Small Pop Up of the (Active Role Profile) for Selection */}
+      {showRolePopup && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 100000, // Above gatekeeper
+          background: 'rgba(3, 7, 18, 0.88)',
+          backdropFilter: 'blur(16px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '24px 16px',
+          overflowY: 'auto'
+        }}>
+          <div style={{
+            maxWidth: '580px',
+            width: '100%',
+            margin: '0 auto',
+            background: 'linear-gradient(175deg, #111827 0%, #0c121e 100%)',
+            border: '1px solid rgba(16, 185, 129, 0.45)',
+            boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.95), 0 0 40px rgba(16, 185, 129, 0.18)',
+            borderRadius: '18px',
+            overflow: 'hidden',
+            position: 'relative'
+          }}>
+            {/* National Ribbon */}
+            <div style={{
+              height: '4px',
+              background: 'linear-gradient(90deg, #ef4444 0%, #ef4444 33.3%, #fbbf24 33.3%, #fbbf24 66.6%, #10b981 66.6%, #10b981 100%)'
+            }} />
+
+            {/* Pop up Header */}
+            <div style={{
+              padding: '22px 24px 16px 24px',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '10px',
+                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(251, 191, 36, 0.15))',
+                  border: '1px solid rgba(16, 185, 129, 0.4)',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px',
-                  fontSize: '0.78rem',
-                  fontWeight: 600,
-                  color: 'var(--text-primary)',
-                  marginBottom: '6px'
+                  justifyContent: 'center',
+                  fontSize: '1.3rem'
                 }}>
-                  <Mail size={14} className="text-emerald-400" />
-                  <span>Email Address *</span>
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="e.g. officer@nita.gov.gh"
-                  style={{
-                    width: '100%',
-                    padding: '11px 14px',
-                    borderRadius: '8px',
-                    background: 'rgba(255, 255, 255, 0.04)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    color: '#fff',
-                    fontSize: '0.88rem',
-                    outline: 'none'
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = 'var(--ghana-emerald)'}
-                  onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.12)'}
-                />
-                <div style={{ fontSize: '0.7rem', color: isGovEmail ? '#10b981' : 'var(--text-muted)', marginTop: '4px' }}>
-                  {isGovEmail ? (
-                    <span>✓ Approved Ghana Gov Domain detected ({emailDomain})</span>
-                  ) : role !== 'Public User' ? (
-                    <span>Notice: Privileged roles require institutional government domain (.gov.gh)</span>
-                  ) : (
-                    <span>Public users may use any valid email</span>
-                  )}
+                  🇬🇭
+                </div>
+                <div>
+                  <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    color: 'var(--ghana-emerald)',
+                    fontSize: '0.7rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase'
+                  }}>
+                    <Sparkles size={12} />
+                    <span>Credentials Verified • Mandatory Selection</span>
+                  </div>
+                  <h2 style={{ fontSize: '1.18rem', fontWeight: 700, color: '#fff', margin: '2px 0 0 0' }}>
+                    Active Role Profile Selection
+                  </h2>
                 </div>
               </div>
 
-              {/* Field 5: Date */}
-              <div>
-                <label style={{
+              <button
+                onClick={() => setShowRolePopup(false)}
+                title="Back to Gatekeeper Form"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.06)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  borderRadius: '8px',
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  padding: '6px',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px',
-                  fontSize: '0.78rem',
-                  fontWeight: 600,
-                  color: 'var(--text-primary)',
-                  marginBottom: '6px'
-                }}>
-                  <Calendar size={14} className="text-emerald-400" />
-                  <span>Date *</span>
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '11px 14px',
-                    borderRadius: '8px',
-                    background: 'rgba(255, 255, 255, 0.04)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    color: '#fff',
-                    fontSize: '0.88rem',
-                    outline: 'none'
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = 'var(--ghana-emerald)'}
-                  onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.12)'}
-                />
-              </div>
-
+                  justifyContent: 'center'
+                }}
+              >
+                <X size={16} />
+              </button>
             </div>
 
-            {/* Ghana Data Protection Act (Act 843) Consent */}
+            {/* Submitted Info Context Strip */}
             <div style={{
-              marginTop: '20px',
-              padding: '14px',
+              margin: '14px 24px 0 24px',
+              padding: '10px 14px',
               borderRadius: '10px',
-              background: 'rgba(16, 185, 129, 0.06)',
-              border: '1px solid rgba(16, 185, 129, 0.2)',
+              background: 'rgba(16, 185, 129, 0.08)',
+              border: '1px solid rgba(16, 185, 129, 0.22)',
+              fontSize: '0.76rem',
+              color: 'var(--text-secondary)',
+              lineHeight: 1.45
+            }}>
+              <div>
+                Official Identity: <strong style={{ color: '#fff' }}>{fullName}</strong> ({selectedInstId === 'other' ? customInstitution : getSelectedInstName()})
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '3px', fontSize: '0.72rem' }}>
+                <span>Email: <span style={{ color: '#94a3b8' }}>{email}</span></span>
+                <span>•</span>
+                <span>Date: <span style={{ color: '#94a3b8' }}>{date}</span></span>
+                <span>•</span>
+                <span style={{ color: '#a7f3d0', fontWeight: 600 }}>Act 843 Verified ✓</span>
+              </div>
+            </div>
+
+            {/* Instructions */}
+            <div style={{ padding: '12px 24px 4px 24px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              Select your (active role profile) to configure permissions and operational modules:
+            </div>
+
+            {/* Role Options Cards */}
+            <div style={{
+              padding: '10px 24px 16px 24px',
+              maxHeight: '340px',
+              overflowY: 'auto',
               display: 'flex',
-              alignItems: 'flex-start',
+              flexDirection: 'column',
+              gap: '9px'
+            }}>
+              {rolesList.map((r) => {
+                const isSelected = selectedRole === r.role;
+                return (
+                  <div
+                    key={r.role}
+                    onClick={() => setSelectedRole(r.role)}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: '10px',
+                      background: isSelected ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                      border: isSelected ? '1px solid rgba(16, 185, 129, 0.5)' : '1px solid rgba(255, 255, 255, 0.07)',
+                      cursor: 'pointer',
+                      transition: 'all 0.16s ease',
+                      boxShadow: isSelected ? '0 0 16px rgba(16, 185, 129, 0.15)' : 'none'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '3px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{
+                          width: '16px',
+                          height: '16px',
+                          borderRadius: '50%',
+                          border: isSelected ? '5px solid var(--ghana-emerald)' : '2px solid rgba(255, 255, 255, 0.3)',
+                          background: isSelected ? '#fff' : 'transparent',
+                          transition: 'all 0.15s ease',
+                          flexShrink: 0
+                        }} />
+                        <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {r.icon}
+                          {r.label}
+                        </span>
+                      </div>
+                      <span style={{
+                        fontSize: '0.66rem',
+                        padding: '2px 7px',
+                        borderRadius: '9999px',
+                        background: `${r.color}22`,
+                        border: `1px solid ${r.color}55`,
+                        color: r.color,
+                        fontWeight: 700
+                      }}>
+                        {r.badge}
+                      </span>
+                    </div>
+
+                    <p style={{
+                      fontSize: '0.74rem',
+                      color: 'var(--text-secondary)',
+                      margin: '3px 0 4px 24px',
+                      lineHeight: 1.35
+                    }}>
+                      {r.desc}
+                    </p>
+
+                    <div style={{
+                      fontSize: '0.68rem',
+                      color: isSelected ? 'var(--ghana-emerald)' : 'var(--text-muted)',
+                      marginLeft: '24px',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}>
+                      <CheckCircle2 size={11} className={isSelected ? 'text-emerald-400' : 'text-slate-500'} />
+                      <span>{r.modules}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Pop up Footer Actions */}
+            <div style={{
+              padding: '16px 24px',
+              borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+              background: 'rgba(0, 0, 0, 0.25)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
               gap: '12px'
             }}>
-              <input
-                type="checkbox"
-                id="act843-consent"
-                checked={consentGiven}
-                onChange={(e) => setConsentGiven(e.target.checked)}
+              <button
+                type="button"
+                onClick={() => setShowRolePopup(false)}
                 style={{
-                  marginTop: '3px',
-                  width: '16px',
-                  height: '16px',
-                  accentColor: 'var(--ghana-emerald)',
+                  padding: '9px 16px',
+                  borderRadius: '8px',
+                  background: 'transparent',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  color: 'var(--text-secondary)',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
                   cursor: 'pointer'
                 }}
-              />
-              <label htmlFor="act843-consent" style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', lineHeight: 1.4, cursor: 'pointer' }}>
-                <strong style={{ color: '#fff' }}>Ghana Data Protection Act, 2012 (Act 843) Compliance Notice:</strong> I understand that my institutional credentials and actions will be logged in an immutable statutory audit trail maintained by the National Information Technology Agency (NITA) with a 5-year retention period.
-              </label>
-            </div>
+              >
+                ← Back / Edit Info
+              </button>
 
-            {/* Submit Button */}
-            <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
               <button
-                type="submit"
+                type="button"
+                onClick={handleConfirmRoleProfile}
                 disabled={isSubmitting}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '10px',
-                  padding: '13px 28px',
-                  borderRadius: '10px',
-                  background: 'linear-gradient(135deg, var(--ghana-emerald) 0%, #059669 100%)',
-                  color: '#0b0f19',
-                  fontWeight: 800,
-                  fontSize: '0.92rem',
+                  gap: '8px',
+                  padding: '10px 22px',
+                  borderRadius: '8px',
+                  background: 'linear-gradient(135deg, var(--ghana-emerald), #059669)',
                   border: 'none',
+                  color: '#000',
+                  fontWeight: 800,
+                  fontSize: '0.86rem',
                   cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                  boxShadow: '0 4px 15px rgba(16, 185, 129, 0.35)',
-                  transition: 'transform 0.15s ease'
+                  boxShadow: '0 4px 15px rgba(16, 185, 129, 0.35)'
                 }}
               >
-                <span>{role === 'Public User' ? 'Enter Public Registry' : 'Proceed to Verification'}</span>
-                <ArrowRight size={18} />
+                <FileCheck2 size={16} />
+                <span>Confirm & Enter as {selectedRole}</span>
+                <ArrowRight size={15} />
               </button>
             </div>
-          </form>
-        )}
 
-        {/* Stage 2: OTP Verification Challenge for Privileged Roles */}
-        {stage === 'otp_challenge' && (
-          <form onSubmit={handleVerifyOtp} style={{ padding: '28px 32px 32px 32px' }}>
-            <div style={{
-              textAlign: 'center',
-              maxWidth: '500px',
-              margin: '0 auto',
-              paddingBottom: '20px'
-            }}>
-              <div style={{
-                width: '56px',
-                height: '56px',
-                borderRadius: '50%',
-                background: 'rgba(251, 191, 36, 0.15)',
-                border: '1px solid rgba(251, 191, 36, 0.3)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 16px auto',
-                color: '#fbbf24'
-              }}>
-                <KeyRound size={28} />
-              </div>
+          </div>
+        </div>
+      )}
 
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>
-                Institutional OTP Verification
-              </h2>
-              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
-                You have requested privileged clearance as <strong style={{ color: '#fbbf24' }}>{role}</strong>.
-                A statutory 6-digit verification code has been dispatched to{' '}
-                <strong style={{ color: '#fff' }}>{email}</strong>.
-              </p>
-
-              {/* Simulated OTP Display Helper (for seamless demo / evaluation) */}
-              {simulatedOtp && (
-                <div style={{
-                  marginTop: '16px',
-                  padding: '12px',
-                  borderRadius: '10px',
-                  background: 'rgba(16, 185, 129, 0.1)',
-                  border: '1px dashed rgba(16, 185, 129, 0.35)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '12px'
-                }}>
-                  <div style={{ textAlign: 'left' }}>
-                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
-                      Simulator Dispatch Code
-                    </div>
-                    <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#10b981', letterSpacing: '0.15em' }}>
-                      {simulatedOtp}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleQuickFillOtp}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      padding: '6px 12px',
-                      borderRadius: '6px',
-                      background: 'rgba(16, 185, 129, 0.2)',
-                      border: '1px solid rgba(16, 185, 129, 0.3)',
-                      color: '#a7f3d0',
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <Sparkles size={12} /> Auto-Fill Code
-                  </button>
-                </div>
-              )}
-
-              {/* Code Input */}
-              <div style={{ marginTop: '24px' }}>
-                <input
-                  type="text"
-                  maxLength={6}
-                  required
-                  autoFocus
-                  value={otpCodeInput}
-                  onChange={(e) => setOtpCodeInput(e.target.value.replace(/\D/g, ''))}
-                  placeholder="• • • • • •"
-                  style={{
-                    width: '240px',
-                    padding: '12px 16px',
-                    fontSize: '1.8rem',
-                    textAlign: 'center',
-                    fontWeight: 800,
-                    letterSpacing: '0.3em',
-                    borderRadius: '10px',
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                    color: '#fff',
-                    outline: 'none'
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = 'var(--ghana-gold)'}
-                  onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)'}
-                />
-              </div>
-
-              {/* Action Buttons */}
-              <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center', gap: '12px' }}>
-                <button
-                  type="button"
-                  onClick={() => setStage('form')}
-                  style={{
-                    padding: '10px 18px',
-                    borderRadius: '8px',
-                    background: 'transparent',
-                    border: '1px solid var(--border-color)',
-                    color: 'var(--text-secondary)',
-                    fontSize: '0.82rem',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                >
-                  Back to Form
-                </button>
-                <button
-                  type="submit"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '10px 24px',
-                    borderRadius: '8px',
-                    background: 'linear-gradient(135deg, var(--ghana-gold) 0%, #d97706 100%)',
-                    color: '#0b0f19',
-                    fontSize: '0.85rem',
-                    fontWeight: 800,
-                    border: 'none',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <FileCheck2 size={16} /> Verify & Authenticate
-                </button>
-              </div>
-
-              {/* Fallback to Public User */}
-              <div style={{ marginTop: '16px' }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const fallbackResult = processGateSubmission({
-                      fullName,
-                      institution: selectedInstId === 'other' ? customInstitution : getSelectedInstName(),
-                      institutionCategory: instCategory,
-                      role: 'Public User',
-                      email,
-                      submissionDate: date
-                    });
-                    onSuccess(fallbackResult.session);
-                  }}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--text-muted)',
-                    fontSize: '0.75rem',
-                    textDecoration: 'underline',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Continue without verifying (Access as Public User only)
-                </button>
-              </div>
-            </div>
-          </form>
-        )}
-
-      </div>
     </div>
   );
 };
