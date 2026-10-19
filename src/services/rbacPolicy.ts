@@ -338,17 +338,9 @@ export function isApprovedInstitutionalEmail(email: string): boolean {
   const domain = email.split('@')[1]?.toLowerCase().trim();
   if (!domain) return false;
   
-  // Exact match or subdomain of .gov.gh or .ghana.gov.gh
+  // Acceptable institutional email must end with .gov.gh
   return (
     domain.endsWith('.gov.gh') ||
-    domain === 'gov.gh' ||
-    domain === 'nita.gov.gh' ||
-    domain === 'mocd.gov.gh' ||
-    domain === 'mof.gov.gh' ||
-    domain === 'moh.gov.gh' ||
-    domain === 'moe.gov.gh' ||
-    domain === 'dpc.gov.gh' ||
-    domain === 'gra.gov.gh' ||
-    domain === 'cocobod.gh'
+    domain === 'gov.gh'
   );
 }

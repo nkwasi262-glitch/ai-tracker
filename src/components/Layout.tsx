@@ -15,7 +15,8 @@ import {
   MessageSquare,
   ShieldAlert,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  LogOut
 } from 'lucide-react';
 import { UserSession } from '../data/authTypes';
 import { HeaderProfile } from './HeaderProfile';
@@ -90,11 +91,11 @@ export const Layout: React.FC<LayoutProps> = ({
         </nav>
 
         <div style={{
-          padding: '20px',
+          padding: '16px 20px',
           borderTop: '1px solid var(--border-color)',
           display: 'flex',
           flexDirection: 'column',
-          gap: '8px'
+          gap: '10px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
             <Calendar className="w-3.5 h-3.5 text-emerald-400" />
@@ -104,6 +105,41 @@ export const Layout: React.FC<LayoutProps> = ({
             <Globe className="w-3.5 h-3.5 text-emerald-400" />
             <span>Security Gate: Act 843</span>
           </div>
+
+          {/* Visible Sign Out Action in Sidebar */}
+          <button
+            onClick={onSwitchRole}
+            title="Sign out of GNAPRMS and return to Mandatory Gatekeeper"
+            style={{
+              marginTop: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              padding: '8px 12px',
+              borderRadius: '8px',
+              background: 'rgba(239, 68, 68, 0.12)',
+              border: '1px solid rgba(239, 68, 68, 0.35)',
+              color: '#fca5a5',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.18s ease'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.25)';
+              e.currentTarget.style.color = '#fff';
+              e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.6)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.12)';
+              e.currentTarget.style.color = '#fca5a5';
+              e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.35)';
+            }}
+          >
+            <LogOut size={14} className="text-red-400" />
+            <span>Sign Out Session</span>
+          </button>
         </div>
       </aside>
 

@@ -21,8 +21,7 @@ import {
 import { 
   ActiveRole, 
   InstitutionCategory, 
-  STANDARD_INSTITUTIONS, 
-  APPROVED_GOV_DOMAINS 
+  STANDARD_INSTITUTIONS 
 } from '../data/authTypes';
 import { 
   processGateSubmission, 
@@ -163,9 +162,10 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
     inst.code.toLowerCase().includes(instSearch.toLowerCase())
   );
 
-  // Email domain check preview
-  const emailDomain = email.includes('@') ? email.split('@')[1]?.toLowerCase().trim() : '';
-  const isGovEmail = APPROVED_GOV_DOMAINS.some(d => emailDomain === d || emailDomain.endsWith('.' + d));
+  // Email domain check preview: acceptable email must end with .gov.gh
+  const cleanEmail = email.trim().toLowerCase();
+  const emailDomain = cleanEmail.includes('@') ? cleanEmail.split('@')[1] : '';
+  const isGovGhEmail = cleanEmail.endsWith('.gov.gh');
 
   const handleSelectInstitution = (inst: typeof STANDARD_INSTITUTIONS[0] | 'other') => {
     if (inst === 'other') {
@@ -195,9 +195,14 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
       return;
     }
 
-    // 3. EMAIL ADDRESS validation
-    if (!email.trim() || !email.includes('@') || !email.includes('.')) {
-      setErrorMessage('A valid EMAIL ADDRESS is mandatory for institutional security records.');
+    // 3. EMAIL ADDRESS validation (Must end with .gov.gh)
+    if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.includes('.')) {
+      setErrorMessage('A valid EMAIL ADDRESS is mandatory for statutory verification.');
+      return;
+    }
+
+    if (!cleanEmail.endsWith('.gov.gh')) {
+      setErrorMessage('Acceptable email address must end with .gov.gh (e.g. officer@nita.gov.gh, minister@mof.gov.gh).');
       return;
     }
 
@@ -552,7 +557,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
               )}
             </div>
 
-            {/* Space 3: EMAIL ADDRESS */}
+            {/* Space 3: EMAIL ADDRESS (.gov.gh only) */}
             <div>
               <label style={{
                 display: 'flex',
@@ -565,7 +570,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
                 marginBottom: '6px'
               }}>
                 <Mail size={14} className="text-emerald-400" />
-                <span>EMAIL ADDRESS *</span>
+                <span>EMAIL ADDRESS (.gov.gh only) *</span>
               </label>
               <input
                 type="email"
@@ -578,19 +583,33 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
                   padding: '11px 14px',
                   borderRadius: '8px',
                   background: 'rgba(255, 255, 255, 0.04)',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  border: cleanEmail === '' 
+                    ? '1px solid rgba(255, 255, 255, 0.12)' 
+                    : isGovGhEmail 
+                      ? '1px solid var(--ghana-emerald)' 
+                      : '1px solid rgba(239, 68, 68, 0.6)',
                   color: '#fff',
                   fontSize: '0.88rem',
                   outline: 'none'
                 }}
-                onFocus={(e) => e.target.style.borderColor = 'var(--ghana-emerald)'}
-                onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.12)'}
+                onFocus={(e) => e.target.style.borderColor = isGovGhEmail ? 'var(--ghana-emerald)' : 'var(--ghana-gold)'}
+                onBlur={(e) => e.target.style.borderColor = cleanEmail === '' ? 'rgba(255, 255, 255, 0.12)' : isGovGhEmail ? 'var(--ghana-emerald)' : 'rgba(239, 68, 68, 0.6)'}
               />
-              <div style={{ fontSize: '0.7rem', color: isGovEmail ? '#10b981' : 'var(--text-muted)', marginTop: '4px' }}>
-                {isGovEmail ? (
-                  <span>✓ Approved Ghana Gov Domain detected ({emailDomain})</span>
+              <div style={{ fontSize: '0.72rem', marginTop: '5px' }}>
+                {cleanEmail === '' ? (
+                  <span style={{ color: 'var(--text-muted)' }}>
+                    Mandatory requirement: Acceptable email must end with <strong>.gov.gh</strong>
+                  </span>
+                ) : isGovGhEmail ? (
+                  <span style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                    <CheckCircle2 size={13} />
+                    <span>✓ Approved Ghana Gov Domain detected ({emailDomain})</span>
+                  </span>
                 ) : (
-                  <span>Institutional or official communication email</span>
+                  <span style={{ color: '#f87171', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                    <AlertTriangle size={13} />
+                    <span>Invalid domain: Acceptable email must end with <strong>.gov.gh</strong></span>
+                  </span>
                 )}
               </div>
             </div>
