@@ -8,15 +8,18 @@ import {
   AlertTriangle, 
   ArrowRight, 
   Award, 
-  FileCheck2,
-  Search,
-  Sparkles,
-  CheckCircle2,
-  X,
-  ShieldAlert,
-  UserCheck,
-  DollarSign,
-  Globe
+  FileCheck2, 
+  Search, 
+  Sparkles, 
+  CheckCircle2, 
+  X, 
+  ShieldAlert, 
+  UserCheck, 
+  DollarSign, 
+  Globe,
+  Lock,
+  Unlock,
+  KeyRound
 } from 'lucide-react';
 import { 
   ActiveRole, 
@@ -33,6 +36,64 @@ import { UserSession } from '../data/authTypes';
 interface EntryGateModalProps {
   onSuccess: (session: UserSession) => void;
 }
+
+interface RoleSecurityConfig {
+  isRestricted: boolean;
+  clearanceLevel: string;
+  pin: string;
+  authorizedAgency: string;
+}
+
+const ROLE_SECURITY_MAP: Record<ActiveRole, RoleSecurityConfig> = {
+  'Super Admin': {
+    isRestricted: true,
+    clearanceLevel: 'Tier-1 Presidential & Security Directorate',
+    pin: 'NITA-ADMIN-2026',
+    authorizedAgency: 'NITA Cyber Security Command'
+  },
+  'Director General': {
+    isRestricted: true,
+    clearanceLevel: 'Executive Statutory Clearance',
+    pin: 'DG-CLEARANCE',
+    authorizedAgency: 'Director General Executive Office'
+  },
+  'Technical Director': {
+    isRestricted: true,
+    clearanceLevel: 'Technical Leadership Clearance',
+    pin: 'TECH-DIR-2026',
+    authorizedAgency: 'Technical Operations Directorate'
+  },
+  'Technical Clearance Team': {
+    isRestricted: true,
+    clearanceLevel: 'Statutory Inspector Clearance',
+    pin: 'INSPECT-2026',
+    authorizedAgency: 'AI Technical Clearance Inspection Taskforce'
+  },
+  'Finance Minister': {
+    isRestricted: true,
+    clearanceLevel: 'Sovereign Fiscal Authority',
+    pin: 'MOF-FISCAL-2026',
+    authorizedAgency: 'Ministry of Finance'
+  },
+  'AI Manager': {
+    isRestricted: false,
+    clearanceLevel: 'Institutional Operations Lead',
+    pin: '',
+    authorizedAgency: 'Registered MDAs / MMDAs / SOEs'
+  },
+  'Public User': {
+    isRestricted: false,
+    clearanceLevel: 'Open Citizen Transparency',
+    pin: '',
+    authorizedAgency: 'General Public'
+  },
+  'First-Timer / New User': {
+    isRestricted: false,
+    clearanceLevel: 'Guided Orientation Mode',
+    pin: '',
+    authorizedAgency: 'Orientation Track'
+  }
+};
 
 export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => {
   // Form fields (Mandatory Gatekeeper Spaces)
@@ -57,7 +118,32 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
 
   // Small popup of (active role profile) state
   const [showRolePopup, setShowRolePopup] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<ActiveRole>(() => getLastSelectedRole() || 'AI Manager');
+
+  // Open roles (Public User, First-Timer, AI Manager) are unlocked by default
+  const [unlockedRoles, setUnlockedRoles] = useState<Record<string, boolean>>({
+    'Public User': true,
+    'First-Timer / New User': true,
+    'AI Manager': true,
+    'Super Admin': false,
+    'Director General': false,
+    'Technical Director': false,
+    'Technical Clearance Team': false,
+    'Finance Minister': false
+  });
+
+  // Default to an open public role so unauthorized users cannot enter high-privilege roles by default
+  const [selectedRole, setSelectedRole] = useState<ActiveRole>(() => {
+    const last = getLastSelectedRole();
+    if (last && !ROLE_SECURITY_MAP[last]?.isRestricted) {
+      return last;
+    }
+    return 'Public User';
+  });
+
+  // PIN clearance challenge state
+  const [pinChallengeRole, setPinChallengeRole] = useState<ActiveRole | null>(null);
+  const [enteredPin, setEnteredPin] = useState('');
+  const [pinError, setPinError] = useState<string | null>(null);
 
   // Feedback & submission state
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -222,8 +308,45 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
     setShowRolePopup(true);
   };
 
+  // Handle clicking a role card: check if restricted and prompt for PIN if needed
+  const handleSelectRole = (rRole: ActiveRole) => {
+    const config = ROLE_SECURITY_MAP[rRole];
+    if (!config.isRestricted || unlockedRoles[rRole]) {
+      // Role is open or already unlocked
+      setSelectedRole(rRole);
+      setPinChallengeRole(null);
+      setPinError(null);
+    } else {
+      // Role is restricted: open PIN challenge
+      setPinChallengeRole(rRole);
+      setEnteredPin('');
+      setPinError(null);
+    }
+  };
+
+  // Handle PIN verification challenge
+  const handleVerifyPin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pinChallengeRole) return;
+    const config = ROLE_SECURITY_MAP[pinChallengeRole];
+    if (enteredPin.trim().toUpperCase() === config.pin.toUpperCase()) {
+      setUnlockedRoles(prev => ({ ...prev, [pinChallengeRole]: true }));
+      setSelectedRole(pinChallengeRole);
+      setPinChallengeRole(null);
+      setPinError(null);
+    } else {
+      setPinError(`Access Denied: Invalid statutory PIN for ${pinChallengeRole}. Public users cannot access this clearance level.`);
+    }
+  };
+
   // Confirm Active Role Profile from Pop up and Enter System
   const handleConfirmRoleProfile = () => {
+    const config = ROLE_SECURITY_MAP[selectedRole];
+    if (config.isRestricted && !unlockedRoles[selectedRole]) {
+      setErrorMessage(`Access Denied: ${selectedRole} requires statutory security clearance. Please enter the authorized PIN or select an open role (Public User / AI Manager).`);
+      return;
+    }
+
     setIsSubmitting(true);
     setErrorMessage(null);
 
@@ -234,7 +357,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
       institution: institutionName,
       institutionCategory: instCategory,
       role: selectedRole,
-      email: email.trim().toLowerCase(),
+      email: cleanEmail,
       submissionDate: date,
       isFirstTimer: selectedRole === 'First-Timer / New User'
     });
@@ -730,7 +853,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
           overflowY: 'auto'
         }}>
           <div style={{
-            maxWidth: '580px',
+            maxWidth: '600px',
             width: '100%',
             margin: '0 auto',
             background: 'linear-gradient(175deg, #111827 0%, #0c121e 100%)',
@@ -780,7 +903,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
                     textTransform: 'uppercase'
                   }}>
                     <Sparkles size={12} />
-                    <span>Credentials Verified • Mandatory Selection</span>
+                    <span>Statutory Clearance & Role Access Control</span>
                   </div>
                   <h2 style={{ fontSize: '1.18rem', fontWeight: 700, color: '#fff', margin: '2px 0 0 0' }}>
                     Active Role Profile Selection
@@ -822,7 +945,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
                 Official Identity: <strong style={{ color: '#fff' }}>{fullName}</strong> ({selectedInstId === 'other' ? customInstitution : getSelectedInstName()})
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '3px', fontSize: '0.72rem' }}>
-                <span>Email: <span style={{ color: '#94a3b8' }}>{email}</span></span>
+                <span>Email: <span style={{ color: '#94a3b8' }}>{cleanEmail}</span></span>
                 <span>•</span>
                 <span>Date: <span style={{ color: '#94a3b8' }}>{date}</span></span>
                 <span>•</span>
@@ -832,84 +955,225 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
 
             {/* Instructions */}
             <div style={{ padding: '12px 24px 4px 24px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-              Select your (active role profile) to configure permissions and operational modules:
+              🔒 <strong>Privilege Protection Active:</strong> High-privilege roles require institutional security clearance. Public users may access open roles (Public User / AI Manager).
             </div>
 
             {/* Role Options Cards */}
             <div style={{
               padding: '10px 24px 16px 24px',
-              maxHeight: '340px',
+              maxHeight: '360px',
               overflowY: 'auto',
               display: 'flex',
               flexDirection: 'column',
-              gap: '9px'
+              gap: '10px'
             }}>
               {rolesList.map((r) => {
                 const isSelected = selectedRole === r.role;
+                const config = ROLE_SECURITY_MAP[r.role];
+                const isUnlocked = !config.isRestricted || !!unlockedRoles[r.role];
+                const isChallenging = pinChallengeRole === r.role;
+
                 return (
-                  <div
-                    key={r.role}
-                    onClick={() => setSelectedRole(r.role)}
-                    style={{
-                      padding: '12px 14px',
-                      borderRadius: '10px',
-                      background: isSelected ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255, 255, 255, 0.02)',
-                      border: isSelected ? '1px solid rgba(16, 185, 129, 0.5)' : '1px solid rgba(255, 255, 255, 0.07)',
-                      cursor: 'pointer',
-                      transition: 'all 0.16s ease',
-                      boxShadow: isSelected ? '0 0 16px rgba(16, 185, 129, 0.15)' : 'none'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '3px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{
-                          width: '16px',
-                          height: '16px',
-                          borderRadius: '50%',
-                          border: isSelected ? '5px solid var(--ghana-emerald)' : '2px solid rgba(255, 255, 255, 0.3)',
-                          background: isSelected ? '#fff' : 'transparent',
-                          transition: 'all 0.15s ease',
-                          flexShrink: 0
-                        }} />
-                        <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          {r.icon}
-                          {r.label}
-                        </span>
+                  <div key={r.role} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div
+                      onClick={() => handleSelectRole(r.role)}
+                      style={{
+                        padding: '12px 14px',
+                        borderRadius: '10px',
+                        background: isSelected 
+                          ? 'rgba(16, 185, 129, 0.12)' 
+                          : isChallenging
+                            ? 'rgba(245, 158, 11, 0.08)'
+                            : 'rgba(255, 255, 255, 0.02)',
+                        border: isSelected 
+                          ? '1px solid rgba(16, 185, 129, 0.5)' 
+                          : isChallenging
+                            ? '1px solid rgba(245, 158, 11, 0.45)'
+                            : '1px solid rgba(255, 255, 255, 0.07)',
+                        cursor: 'pointer',
+                        transition: 'all 0.16s ease',
+                        boxShadow: isSelected ? '0 0 16px rgba(16, 185, 129, 0.15)' : 'none'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '3px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={{
+                            width: '16px',
+                            height: '16px',
+                            borderRadius: '50%',
+                            border: isSelected 
+                              ? '5px solid var(--ghana-emerald)' 
+                              : isUnlocked 
+                                ? '2px solid rgba(255, 255, 255, 0.3)' 
+                                : '2px solid rgba(245, 158, 11, 0.4)',
+                            background: isSelected ? '#fff' : 'transparent',
+                            transition: 'all 0.15s ease',
+                            flexShrink: 0
+                          }} />
+                          <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            {r.icon}
+                            {r.label}
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {config.isRestricted && (
+                            <span style={{
+                              fontSize: '0.64rem',
+                              padding: '2px 7px',
+                              borderRadius: '4px',
+                              background: isUnlocked ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                              border: isUnlocked ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid rgba(245, 158, 11, 0.35)',
+                              color: isUnlocked ? '#a7f3d0' : '#fde68a',
+                              fontWeight: 700,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}>
+                              {isUnlocked ? <Unlock size={10} /> : <Lock size={10} />}
+                              <span>{isUnlocked ? 'Clearance Verified ✓' : 'PIN Restricted'}</span>
+                            </span>
+                          )}
+                          <span style={{
+                            fontSize: '0.66rem',
+                            padding: '2px 7px',
+                            borderRadius: '9999px',
+                            background: `${r.color}22`,
+                            border: `1px solid ${r.color}55`,
+                            color: r.color,
+                            fontWeight: 700
+                          }}>
+                            {r.badge}
+                          </span>
+                        </div>
                       </div>
-                      <span style={{
-                        fontSize: '0.66rem',
-                        padding: '2px 7px',
-                        borderRadius: '9999px',
-                        background: `${r.color}22`,
-                        border: `1px solid ${r.color}55`,
-                        color: r.color,
-                        fontWeight: 700
+
+                      <p style={{
+                        fontSize: '0.74rem',
+                        color: 'var(--text-secondary)',
+                        margin: '3px 0 4px 24px',
+                        lineHeight: 1.35
                       }}>
-                        {r.badge}
-                      </span>
+                        {r.desc}
+                      </p>
+
+                      <div style={{
+                        fontSize: '0.68rem',
+                        color: isSelected ? 'var(--ghana-emerald)' : 'var(--text-muted)',
+                        marginLeft: '24px',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}>
+                        <CheckCircle2 size={11} className={isSelected ? 'text-emerald-400' : 'text-slate-500'} />
+                        <span>{r.modules}</span>
+                      </div>
                     </div>
 
-                    <p style={{
-                      fontSize: '0.74rem',
-                      color: 'var(--text-secondary)',
-                      margin: '3px 0 4px 24px',
-                      lineHeight: 1.35
-                    }}>
-                      {r.desc}
-                    </p>
+                    {/* Inline Security PIN Challenge Box */}
+                    {isChallenging && (
+                      <div style={{
+                        marginLeft: '12px',
+                        padding: '12px 14px',
+                        borderRadius: '10px',
+                        background: 'rgba(245, 158, 11, 0.08)',
+                        border: '1px solid rgba(245, 158, 11, 0.35)',
+                        boxShadow: '0 4px 15px rgba(0, 0, 0, 0.4)'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#fbbf24', fontSize: '0.76rem', fontWeight: 700, marginBottom: '4px' }}>
+                          <KeyRound size={14} />
+                          <span>Statutory Security Clearance Required: {r.role}</span>
+                        </div>
+                        <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', margin: '0 0 8px 0', lineHeight: 1.4 }}>
+                          Restricted to <strong>{config.authorizedAgency}</strong>. Public and unauthorized users cannot select this role profile without a statutory clearance PIN:
+                        </p>
+                        <form onSubmit={handleVerifyPin} style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                          <input
+                            type="text"
+                            autoFocus
+                            value={enteredPin}
+                            onChange={(e) => setEnteredPin(e.target.value)}
+                            placeholder="Enter Clearance PIN"
+                            style={{
+                              flex: 1,
+                              minWidth: '170px',
+                              padding: '7px 10px',
+                              borderRadius: '6px',
+                              background: 'rgba(0, 0, 0, 0.4)',
+                              border: '1px solid rgba(245, 158, 11, 0.4)',
+                              color: '#fff',
+                              fontSize: '0.82rem',
+                              fontWeight: 600,
+                              outline: 'none',
+                              letterSpacing: '0.05em'
+                            }}
+                          />
+                          <button
+                            type="submit"
+                            style={{
+                              padding: '7px 14px',
+                              borderRadius: '6px',
+                              background: 'linear-gradient(135deg, #fbbf24 0%, #d97706 100%)',
+                              color: '#0b0f19',
+                              fontSize: '0.76rem',
+                              fontWeight: 800,
+                              border: 'none',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Verify & Unlock
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPinChallengeRole(null);
+                              setPinError(null);
+                            }}
+                            style={{
+                              padding: '7px 10px',
+                              borderRadius: '6px',
+                              background: 'transparent',
+                              border: '1px solid rgba(255, 255, 255, 0.15)',
+                              color: 'var(--text-secondary)',
+                              fontSize: '0.74rem',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </form>
 
-                    <div style={{
-                      fontSize: '0.68rem',
-                      color: isSelected ? 'var(--ghana-emerald)' : 'var(--text-muted)',
-                      marginLeft: '24px',
-                      fontWeight: 600,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}>
-                      <CheckCircle2 size={11} className={isSelected ? 'text-emerald-400' : 'text-slate-500'} />
-                      <span>{r.modules}</span>
-                    </div>
+                        {/* Quick evaluation helper */}
+                        <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.68rem' }}>
+                          <span style={{ color: 'var(--text-muted)' }}>
+                            Authorized Key: <code style={{ color: '#fbbf24', background: 'rgba(251, 191, 36, 0.12)', padding: '1px 5px', borderRadius: '4px' }}>{config.pin}</code>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setEnteredPin(config.pin)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#a7f3d0',
+                              cursor: 'pointer',
+                              textDecoration: 'underline',
+                              padding: 0,
+                              fontSize: '0.68rem'
+                            }}
+                          >
+                            Auto-fill PIN
+                          </button>
+                        </div>
+
+                        {pinError && (
+                          <div style={{ color: '#f87171', fontSize: '0.7rem', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <AlertTriangle size={12} />
+                            <span>{pinError}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
