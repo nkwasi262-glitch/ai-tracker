@@ -3,12 +3,17 @@ import {
   Award, Compass, Cpu, GraduationCap, Coins, 
   ShieldCheck, FileText, Layers, Users, ShoppingBag, 
   Workflow, AlertTriangle, Server, Activity, TrendingUp, Info,
-  CheckCircle2, AlertCircle, XCircle
+  CheckCircle2, AlertCircle, XCircle, Sparkles, FolderOpen
 } from 'lucide-react';
 import { UserRole } from './RoleSwitcher';
+import { AIProject } from '../data/sampleProjects';
+import { UserSession } from '../data/authTypes';
 
 interface AIReadinessProps {
-  currentRole: UserRole;
+  currentRole: UserRole | string;
+  projects?: AIProject[];
+  onUpdateReadinessScore?: (projectId: string, newScore: number) => void;
+  session?: UserSession;
 }
 
 interface SubParameter {
@@ -279,12 +284,21 @@ const tooltipStyles = `
   }
 `;
 
-export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
+export const AIReadiness: React.FC<AIReadinessProps> = ({ 
+  currentRole,
+  projects = [],
+  onUpdateReadinessScore,
+  session
+}) => {
   const [activeThickboxParam, setActiveThickboxParam] = useState<ReadinessParameter | null>(null);
 
-  // Initialize checklist answer states dynamically
-  const [answers, setAnswers] = useState<Record<string, 'yes' | 'no'>>(() => {
-    const initial: Record<string, 'yes' | 'no'> = {};
+  // Default to project with uploaded documents or first project
+  const initialProjectId = projects.find(p => (p.documents?.length || 0) > 0)?.id || projects[0]?.id || '';
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(initialProjectId);
+  const activeProject = projects.find(p => p.id === selectedProjectId);
+
+  // Helper to construct dynamic answers aligning with auto-assessment
+  const buildAnswersForProject = (proj?: AIProject): Record<string, 'yes' | 'no'> => {
     const keys = [
       'i1_sub1', 'i1_sub2', 'i2_sub1', 'i2_sub2', 'i3_sub1', 'i3_sub2',
       'i4_sub1', 'i4_sub2', 'i5_sub1', 'i5_sub2', 'i6_sub1', 'i6_sub2',
@@ -295,20 +309,102 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
       'm7_sub1', 'm7_sub2', 'm8_sub1', 'm8_sub2', 'm9_sub1', 'm9_sub2',
       'm10_sub1', 'm10_sub2'
     ];
+    const initial: Record<string, 'yes' | 'no'> = {};
+
+    if (proj?.autoAssessment?.readinessPillars) {
+      const p = proj.autoAssessment.readinessPillars;
+      initial['i1_sub1'] = p.policyLeadership >= 60 ? 'yes' : 'no';
+      initial['i1_sub2'] = p.policyLeadership >= 75 ? 'yes' : 'no';
+      initial['i2_sub1'] = (proj.documents?.length || 0) > 0 ? 'yes' : 'no';
+      initial['i2_sub2'] = p.dataGovernance >= 70 ? 'yes' : 'no';
+      initial['i3_sub1'] = p.policyLeadership >= 70 ? 'yes' : 'no';
+      initial['i3_sub2'] = p.policyLeadership >= 85 ? 'yes' : 'no';
+      initial['i4_sub1'] = p.technicalStaff >= 60 ? 'yes' : 'no';
+      initial['i4_sub2'] = p.technicalStaff >= 75 ? 'yes' : 'no';
+      initial['i5_sub1'] = p.dataGovernance >= 65 ? 'yes' : 'no';
+      initial['i5_sub2'] = p.dataGovernance >= 80 ? 'yes' : 'no';
+      initial['i6_sub1'] = p.infrastructure >= 65 ? 'yes' : 'no';
+      initial['i6_sub2'] = p.infrastructure >= 80 ? 'yes' : 'no';
+      initial['i7_sub1'] = p.technicalStaff >= 70 ? 'yes' : 'no';
+      initial['i7_sub2'] = p.policyLeadership >= 80 ? 'yes' : 'no';
+      initial['i8_sub1'] = p.infrastructure >= 70 ? 'yes' : 'no';
+      initial['i8_sub2'] = p.dataGovernance >= 75 ? 'yes' : 'no';
+      initial['i9_sub1'] = p.infrastructure >= 75 ? 'yes' : 'no';
+      initial['i9_sub2'] = p.technicalStaff >= 85 ? 'yes' : 'no';
+      initial['i10_sub1'] = p.policyLeadership >= 70 ? 'yes' : 'no';
+      initial['i10_sub2'] = p.infrastructure >= 85 ? 'yes' : 'no';
+
+      initial['m1_sub1'] = proj.readinessScore >= 50 ? 'yes' : 'no';
+      initial['m1_sub2'] = proj.readinessScore >= 65 ? 'yes' : 'no';
+      initial['m2_sub1'] = proj.readinessScore >= 60 ? 'yes' : 'no';
+      initial['m2_sub2'] = proj.readinessScore >= 75 ? 'yes' : 'no';
+      initial['m3_sub1'] = proj.readinessScore >= 55 ? 'yes' : 'no';
+      initial['m3_sub2'] = proj.readinessScore >= 70 ? 'yes' : 'no';
+      initial['m4_sub1'] = proj.readinessScore >= 65 ? 'yes' : 'no';
+      initial['m4_sub2'] = proj.readinessScore >= 80 ? 'yes' : 'no';
+      initial['m5_sub1'] = proj.readinessScore >= 70 ? 'yes' : 'no';
+      initial['m5_sub2'] = proj.readinessScore >= 85 ? 'yes' : 'no';
+      initial['m6_sub1'] = p.infrastructure >= 70 ? 'yes' : 'no';
+      initial['m6_sub2'] = p.infrastructure >= 85 ? 'yes' : 'no';
+      initial['m7_sub1'] = proj.readinessScore >= 70 ? 'yes' : 'no';
+      initial['m7_sub2'] = proj.readinessScore >= 85 ? 'yes' : 'no';
+      initial['m8_sub1'] = proj.readinessScore >= 75 ? 'yes' : 'no';
+      initial['m8_sub2'] = proj.readinessScore >= 88 ? 'yes' : 'no';
+      initial['m9_sub1'] = p.dataGovernance >= 70 ? 'yes' : 'no';
+      initial['m9_sub2'] = p.policyLeadership >= 75 ? 'yes' : 'no';
+      initial['m10_sub1'] = proj.readinessScore >= 80 ? 'yes' : 'no';
+      initial['m10_sub2'] = proj.readinessScore >= 90 ? 'yes' : 'no';
+      return initial;
+    }
+
     keys.forEach((k, idx) => {
       initial[k] = idx % 4 === 0 ? 'no' : 'yes';
     });
     return initial;
-  });
+  };
 
-  const canEdit = ['Super Administrator', 'National AI Authority', 'Government Administrator', 'Auditor'].includes(currentRole);
+  // Initialize checklist answer states dynamically
+  const [answers, setAnswers] = useState<Record<string, 'yes' | 'no'>>(() => buildAnswersForProject(activeProject));
+
+  // Sync answers when selected project changes or updates from document upload
+  React.useEffect(() => {
+    if (activeProject) {
+      setAnswers(buildAnswersForProject(activeProject));
+    }
+  }, [selectedProjectId, activeProject?.documents?.length, activeProject?.readinessScore]);
+
+  const canEdit = ['Super Administrator', 'National AI Authority', 'Government Administrator', 'Auditor', 'Super Admin'].includes(currentRole as string);
 
   const handleAnswerChange = (subId: string, val: 'yes' | 'no') => {
     if (!canEdit) return;
-    setAnswers(prev => ({
-      ...prev,
+    const newAnswers = {
+      ...answers,
       [subId]: val
-    }));
+    };
+    setAnswers(newAnswers);
+
+    const prefixInst = 'i';
+    const subInst = [];
+    for (let p = 1; p <= 10; p++) {
+      subInst.push(`${prefixInst}${p}_sub1`);
+      subInst.push(`${prefixInst}${p}_sub2`);
+    }
+    const yesInst = subInst.filter(id => newAnswers[id] === 'yes').length;
+    const inst = Math.round((yesInst / 20) * 100);
+
+    const prefixMkt = 'm';
+    const subMkt = [];
+    for (let p = 1; p <= 10; p++) {
+      subMkt.push(`${prefixMkt}${p}_sub1`);
+      subMkt.push(`${prefixMkt}${p}_sub2`);
+    }
+    const yesMkt = subMkt.filter(id => newAnswers[id] === 'yes').length;
+    const mkt = Math.round((yesMkt / 20) * 100);
+
+    const newScore = Math.round((inst + mkt) / 2);
+    if (activeProject && onUpdateReadinessScore) {
+      onUpdateReadinessScore(activeProject.id, newScore);
+    }
   };
 
   const getBranchScore = (branch: 'institutional' | 'market') => {
@@ -324,7 +420,8 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
 
   const instScore = getBranchScore('institutional');
   const marketScore = getBranchScore('market');
-  const overallScore = Math.round((instScore + marketScore) / 2);
+  const computedOverall = Math.round((instScore + marketScore) / 2);
+  const overallScore = activeProject?.readinessScore ?? computedOverall;
 
   const getMaturityLevel = (score: number) => {
     if (score >= 76) return { level: 'Level 4: Optimized', class: 'badge-success', desc: 'Sovereign automated code pipelines, active ethical monitoring, and ISO 42001 standardization.' };
@@ -505,24 +602,210 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({ currentRole }) => {
     <div>
       <style>{tooltipStyles}</style>
 
-      {/* Header Panel */}
+      {/* Header Panel with Project Selector */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: '24px',
+        flexWrap: 'wrap',
+        gap: '16px',
+        marginBottom: '20px',
         background: 'rgba(255,255,255,0.02)',
         padding: '16px 24px',
         borderRadius: '12px',
         border: '1px solid var(--border-color)'
       }}>
         <div>
-          <h2 style={{ fontSize: '1.2rem', fontWeight: 700 }}>AI Readiness Assessment Checklist</h2>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-            Evaluate and audit capability levels for Institutional and Market AI deployments
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--ghana-emerald)', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px' }}>
+            <Sparkles size={13} />
+            <span>Document-Driven Diagnostic Suite</span>
+          </div>
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>AI Readiness Assessment & Capability Matrix</h2>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '2px 0 0 0' }}>
+            System automatically synchronizes readiness pillars with all uploaded project dossiers and First-Timer filings.
           </p>
         </div>
+
+        {projects.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>Project:</span>
+            <select
+              value={selectedProjectId}
+              onChange={(e) => setSelectedProjectId(e.target.value)}
+              className="form-select"
+              style={{ width: '250px', padding: '6px 12px', fontSize: '0.8rem', height: '36px' }}
+            >
+              {projects.map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.projectCode} - {p.name.slice(0, 24)}... {(p.documents?.length || 0) > 0 ? `(${p.documents.length} docs)` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
+
+      {/* Automated Document AI Assessment Card */}
+      {activeProject && (
+        <div style={{
+          marginBottom: '24px',
+          padding: '18px 22px',
+          borderRadius: '14px',
+          background: activeProject.autoAssessment 
+            ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(6, 78, 59, 0.22))' 
+            : 'rgba(255, 255, 255, 0.02)',
+          border: activeProject.autoAssessment 
+            ? '1px solid rgba(16, 185, 129, 0.35)' 
+            : '1px solid var(--border-color)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '14px',
+          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.2)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '3px 10px',
+                  borderRadius: '6px',
+                  fontSize: '0.72rem',
+                  fontWeight: 800,
+                  background: activeProject.autoAssessment ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.06)',
+                  color: activeProject.autoAssessment ? '#34d399' : 'var(--text-muted)',
+                  border: '1px solid currentColor'
+                }}>
+                  <Sparkles size={12} />
+                  <span>{activeProject.autoAssessment ? '⚡ Automated Document AI Assessment' : 'Pending Document Upload'}</span>
+                </span>
+
+                {(activeProject.hasFirstTimerUpload || activeProject.autoAssessment?.submittedByFirstTimer) && (
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '3px 10px',
+                    borderRadius: '6px',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    background: 'rgba(251, 191, 36, 0.18)',
+                    color: '#fbbf24',
+                    border: '1px solid rgba(251, 191, 36, 0.35)'
+                  }}>
+                    <FolderOpen size={12} />
+                    <span>First-Timer Submission ({activeProject.autoAssessment?.firstTimerOfficerName || session?.fullName || 'Orientation Officer'})</span>
+                  </span>
+                )}
+
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                  Evaluated from {activeProject.documents?.length || 0} uploaded document(s)
+                </span>
+              </div>
+
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: '8px 0 2px 0', color: '#fff' }}>
+                {activeProject.projectCode} • {activeProject.name}
+              </h3>
+              <p style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', margin: 0 }}>
+                Managing Institution: <strong>{activeProject.mda}</strong> ({activeProject.mdaCode})
+              </p>
+            </div>
+
+            <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+              <div style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--ghana-emerald)' }}>
+                {overallScore}%
+              </div>
+              <span className={`badge ${maturity.class}`} style={{ fontSize: '0.72rem' }}>
+                {maturity.level}
+              </span>
+            </div>
+          </div>
+
+          {activeProject.autoAssessment?.readinessPillars && (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gap: '10px',
+              padding: '12px 14px',
+              borderRadius: '10px',
+              background: 'rgba(0, 0, 0, 0.25)',
+              border: '1px solid rgba(255, 255, 255, 0.05)'
+            }}>
+              <div>
+                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                  🖥️ Infrastructure & Compute
+                </div>
+                <div style={{ fontSize: '0.98rem', fontWeight: 700, color: '#38bdf8', marginTop: '2px' }}>
+                  {activeProject.autoAssessment.readinessPillars.infrastructure}%
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                  📊 Data Governance & Provenance
+                </div>
+                <div style={{ fontSize: '0.98rem', fontWeight: 700, color: '#a7f3d0', marginTop: '2px' }}>
+                  {activeProject.autoAssessment.readinessPillars.dataGovernance}%
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                  👥 Technical Staffing Capacity
+                </div>
+                <div style={{ fontSize: '0.98rem', fontWeight: 700, color: '#fbbf24', marginTop: '2px' }}>
+                  {activeProject.autoAssessment.readinessPillars.technicalStaff}%
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                  📜 Policy & Leadership
+                </div>
+                <div style={{ fontSize: '0.98rem', fontWeight: 700, color: '#c084fc', marginTop: '2px' }}>
+                  {activeProject.autoAssessment.readinessPillars.policyLeadership}%
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeProject.autoAssessment && (
+            <div style={{ fontSize: '0.78rem', color: '#e2e8f0', lineHeight: 1.45, background: 'rgba(0, 0, 0, 0.15)', padding: '10px 12px', borderRadius: '8px' }}>
+              <strong>AI Diagnostic Finding:</strong> {activeProject.autoAssessment.readinessSummary}
+            </div>
+          )}
+
+          {activeProject.autoAssessment?.keySignals && activeProject.autoAssessment.keySignals.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>Extracted Evidence Signals:</span>
+              {activeProject.autoAssessment.keySignals.map((sig, i) => (
+                <span 
+                  key={i}
+                  style={{
+                    fontSize: '0.68rem',
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    background: 'rgba(16, 185, 129, 0.15)',
+                    color: '#6ee7b7',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    fontWeight: 600
+                  }}
+                >
+                  ✓ {sig}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {!activeProject.autoAssessment && (
+            <div style={{ fontSize: '0.75rem', color: '#fde68a', background: 'rgba(245, 158, 11, 0.08)', padding: '10px 12px', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+              ℹ️ No compliance documents or technical specs uploaded for this project yet. Capability is currently estimated at baseline {overallScore}%. 
+              Upload files in the Document Vault to activate automatic evidence-based assessment.
+            </div>
+          )}
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.45fr 1fr', gap: '24px', alignItems: 'stretch' }}>
         

@@ -12,12 +12,30 @@ export const MASTER_MOCK_OCR_TEXTS: Record<string, string> = {
   'doc-5-1': 'GRA Revenue Fraud Engine Security Specs & Model Governance. Supervised XGBoost pipeline with SHAP explainability summaries generated for automated tax audits. Enforces TLS 1.3 encryption, RBAC role bindings, and zero external cross-border data replication.'
 };
 
+const OCR_STORAGE_KEY = 'gnaprms_ocr_texts_v1';
+
+function getStoredOcrTexts(): Record<string, string> {
+  if (typeof window === 'undefined' || !window.localStorage) {
+    return MASTER_MOCK_OCR_TEXTS;
+  }
+  try {
+    const raw = localStorage.getItem(OCR_STORAGE_KEY);
+    if (raw) {
+      return { ...MASTER_MOCK_OCR_TEXTS, ...JSON.parse(raw) };
+    }
+  } catch (e) {
+    console.error('Failed to parse stored OCR texts', e);
+  }
+  return MASTER_MOCK_OCR_TEXTS;
+}
+
 /**
  * Returns stored OCR text or dynamically simulates realistic text based on file name and project context.
  */
 export function getDocumentOcrText(docId: string, fileName?: string, projectName?: string): string {
-  if (MASTER_MOCK_OCR_TEXTS[docId]) {
-    return MASTER_MOCK_OCR_TEXTS[docId];
+  const current = getStoredOcrTexts();
+  if (current[docId]) {
+    return current[docId];
   }
 
   const nameLower = (fileName || '').toLowerCase();
@@ -46,6 +64,15 @@ export function getDocumentOcrText(docId: string, fileName?: string, projectName
  */
 export function registerUploadedDocumentOcr(docId: string, text: string): void {
   MASTER_MOCK_OCR_TEXTS[docId] = text;
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const current = getStoredOcrTexts();
+      current[docId] = text;
+      localStorage.setItem(OCR_STORAGE_KEY, JSON.stringify(current));
+    } catch (e) {
+      console.error('Failed to persist OCR text', e);
+    }
+  }
 }
 
 /**
@@ -256,7 +283,10 @@ export function generateAssessmentFromDocuments(
       dataGovernance: pillarData,
       technicalStaff: pillarStaff,
       policyLeadership: pillarPolicy
-    }
+    },
+    submittedByFirstTimer: session?.role === 'First-Timer / New User' || !!session?.isFirstTimer,
+    firstTimerOfficerName: (session?.role === 'First-Timer / New User' || !!session?.isFirstTimer) ? session?.fullName : undefined,
+    firstTimerOfficerEmail: (session?.role === 'First-Timer / New User' || !!session?.isFirstTimer) ? session?.email : undefined
   };
 
   if (session) {

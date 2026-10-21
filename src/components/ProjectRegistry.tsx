@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Search, Calendar, Landmark, MapPin, DollarSign, AlertCircle, Activity, ShieldCheck, ShieldAlert, Stamp } from 'lucide-react';
+import { Plus, Search, Calendar, Landmark, MapPin, DollarSign, AlertCircle, Activity, ShieldCheck, ShieldAlert, Stamp, Sparkles, FolderOpen } from 'lucide-react';
 import { AIProject, formatNumberToWords } from '../data/sampleProjects';
 import { UserRole } from './RoleSwitcher';
 const standardMDAs = [
@@ -449,6 +449,38 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                         {p.reviewStatus}
                       </span>
                     )}
+                    {(p.hasFirstTimerUpload || p.autoAssessment?.submittedByFirstTimer) && (
+                      <span style={{
+                        fontSize: '0.62rem',
+                        fontWeight: 700,
+                        padding: '1px 6px',
+                        borderRadius: '4px',
+                        background: 'rgba(251, 191, 36, 0.18)',
+                        color: '#fbbf24',
+                        border: '1px solid rgba(251, 191, 36, 0.35)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '3px'
+                      }}>
+                        <Sparkles size={10} /> First-Timer Submission
+                      </span>
+                    )}
+                    {p.autoAssessment && !(p.hasFirstTimerUpload || p.autoAssessment?.submittedByFirstTimer) && (
+                      <span style={{
+                        fontSize: '0.62rem',
+                        fontWeight: 700,
+                        padding: '1px 6px',
+                        borderRadius: '4px',
+                        background: 'rgba(16, 185, 129, 0.15)',
+                        color: '#34d399',
+                        border: '1px solid rgba(16, 185, 129, 0.3)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '3px'
+                      }}>
+                        <Sparkles size={10} /> Document AI ({p.documents?.length || 0} files)
+                      </span>
+                    )}
                   </div>
                 </div>
               ))
@@ -643,6 +675,52 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                         <li key={i}>{warn}</li>
                       ))}
                     </ul>
+                  </div>
+                )}
+
+                {/* Document AI & First-Timer Provenance */}
+                {selectedProject.autoAssessment && (
+                  <div style={{
+                    fontSize: '0.74rem',
+                    color: '#d1fae5',
+                    background: 'rgba(6, 78, 59, 0.25)',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    lineHeight: 1.45,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
+                      <strong style={{ color: '#34d399', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Sparkles size={12} /> Automated Document AI Evaluation
+                      </strong>
+                      <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                        {selectedProject.documents?.length || 0} files analyzed
+                      </span>
+                    </div>
+
+                    {(selectedProject.hasFirstTimerUpload || selectedProject.autoAssessment.submittedByFirstTimer) && (
+                      <div style={{ color: '#fbbf24', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <FolderOpen size={11} />
+                        <span>Submitted by First-Timer Officer: <strong>{selectedProject.autoAssessment.firstTimerOfficerName || 'New User'}</strong> ({selectedProject.autoAssessment.firstTimerOfficerEmail || 'gov.gh'})</span>
+                      </div>
+                    )}
+
+                    <div style={{ fontSize: '0.72rem', color: '#e2e8f0' }}>
+                      {selectedProject.autoAssessment.readinessSummary}
+                    </div>
+
+                    {selectedProject.autoAssessment.keySignals && (
+                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '2px' }}>
+                        {selectedProject.autoAssessment.keySignals.map((sig, i) => (
+                          <span key={i} style={{ fontSize: '0.64rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(16,185,129,0.2)', color: '#a7f3d0' }}>
+                            ✓ {sig}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

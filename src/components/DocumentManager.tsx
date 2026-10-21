@@ -19,7 +19,7 @@ import {
   X,
   FolderOpen
 } from 'lucide-react';
-import { AIProject, DocumentAsset, ReviewWorkflowStatus, ComplianceScore, AutoAssessmentDetails } from '../data/sampleProjects';
+import { AIProject, DocumentAsset, ReviewWorkflowStatus, ComplianceScore, AutoAssessmentDetails, ZeroAssumptionAudit } from '../data/sampleProjects';
 import { UserRole } from './RoleSwitcher';
 import { UserSession } from '../data/authTypes';
 import { recordAuditEvent } from '../services/auditService';
@@ -40,7 +40,8 @@ interface DocumentManagerProps {
     projectId: string, 
     compliance: ComplianceScore, 
     readinessScore: number, 
-    details: AutoAssessmentDetails
+    details: AutoAssessmentDetails,
+    zeroAssumptionAudit?: ZeroAssumptionAudit
   ) => void;
 }
 
@@ -184,12 +185,26 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                   activeProject.id,
                   auto.compliance,
                   auto.readinessScore,
-                  auto.details
+                  auto.details,
+                  auto.zeroAssumptionAudit
                 );
               }
 
-              setAssessmentFeedback(`✓ Document parsed. Governance & Ethics (${auto.compliance.overallGrade}) and AI Readiness (${auto.readinessScore}%) automatically generated.`);
-              setTimeout(() => setAssessmentFeedback(null), 6000);
+              if (session) {
+                recordAuditEvent({
+                  eventType: 'DOCUMENT_UPLOAD',
+                  actorName: session.fullName,
+                  actorEmail: session.email,
+                  actorRole: session.role,
+                  actorInstitution: session.institution,
+                  targetModule: 'documents',
+                  targetEntityId: activeProject.id,
+                  actionDetails: `Document "${file.name}" uploaded by ${session.role} for project ${activeProject.projectCode}. Triggered immediate automated regulatory assessment & system-wide synchronization.`
+                });
+              }
+
+              setAssessmentFeedback(`✓ Document "${file.name}" parsed. System synchronized: AI Readiness (${auto.readinessScore}%), Governance & Ethics (${auto.compliance.overallGrade}), Zero-Assumption Provenance (${auto.zeroAssumptionAudit.evidenceBackingScore}%), and National Registry updated.`);
+              setTimeout(() => setAssessmentFeedback(null), 7000);
             }, 1600);
 
             return 100;

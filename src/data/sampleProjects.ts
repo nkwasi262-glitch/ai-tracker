@@ -35,6 +35,9 @@ export interface Budget {
   auditNotes?: string;
   hasAssumptionsFlag?: boolean;
   assumptionWarnings?: string[];
+  financeMinisterComments?: string;
+  financeMinisterCommentDate?: string;
+  financeMinisterCommentAuthor?: string;
 }
 
 export interface ComplianceScore {
@@ -96,6 +99,9 @@ export interface AutoAssessmentDetails {
     technicalStaff: number;
     policyLeadership: number;
   };
+  submittedByFirstTimer?: boolean;
+  firstTimerOfficerEmail?: string;
+  firstTimerOfficerName?: string;
 }
 
 export interface TechnicalReviewDetails {
@@ -136,6 +142,7 @@ export interface AIProject {
   autoAssessment?: AutoAssessmentDetails;
   dpcCertificateNumber?: string;
   zeroAssumptionAudit?: ZeroAssumptionAudit;
+  hasFirstTimerUpload?: boolean;
 }
 
 export const sampleProjects: AIProject[] = [
@@ -170,7 +177,10 @@ export const sampleProjects: AIProject[] = [
       auditedBy: 'MoF National AI Expenditure Taskforce',
       auditNotes: 'Statutory treasury warrant verified under Act 921. Assumption eliminated.',
       hasAssumptionsFlag: false,
-      assumptionWarnings: []
+      assumptionWarnings: [],
+      financeMinisterComments: "Tranche 2 disbursement fully verified against MoF Treasury Warrant. Proceed with emergency dispatch caching expansion in Q4.",
+      financeMinisterCommentDate: "2026-09-18",
+      financeMinisterCommentAuthor: "Hon. Dr. Mohammed Amin Adam (Finance Minister)"
     },
     compliance: {
       fairness: 80,
@@ -264,7 +274,10 @@ export const sampleProjects: AIProject[] = [
       auditedBy: 'Auditor-General & MoF AI Review Board',
       auditNotes: 'Verified against Bank of Ghana treasury disbursements.',
       hasAssumptionsFlag: false,
-      assumptionWarnings: []
+      assumptionWarnings: [],
+      financeMinisterComments: "BoG treasury disbursement audit reconciled. Mandating biometric hardware integrity checks before final release.",
+      financeMinisterCommentDate: "2026-10-02",
+      financeMinisterCommentAuthor: "Hon. Dr. Mohammed Amin Adam (Finance Minister)"
     },
     compliance: {
       fairness: 85,

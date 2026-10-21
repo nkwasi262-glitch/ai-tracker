@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Award, AlertTriangle, Info, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
+import { ShieldCheck, Award, AlertTriangle, Info, CheckCircle2, AlertCircle, XCircle, Sparkles, FolderOpen } from 'lucide-react';
 import { AIProject, ComplianceScore } from '../data/sampleProjects';
 import { UserRole } from './RoleSwitcher';
+import { UserSession } from '../data/authTypes';
 
 interface GovernanceComplianceProps {
   projects: AIProject[];
   onUpdateCompliance: (projectId: string, newScore: ComplianceScore) => void;
-  currentRole: UserRole;
+  currentRole: UserRole | string;
+  session?: UserSession;
 }
 
 interface SubParameter {
@@ -916,9 +918,11 @@ const frameworkQuestions: Record<string, AuditQuestion[]> = {
 export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
   projects,
   onUpdateCompliance,
-  currentRole
+  currentRole,
+  session
 }) => {
-  const [selectedProjectId, setSelectedProjectId] = useState<string>('general');
+  const defaultProjId = projects.find(p => (p.documents?.length || 0) > 0)?.id || projects[0]?.id || 'general';
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(defaultProjId);
   const activeProject = projects.find(p => p.id === selectedProjectId);
 
   const [generalCompliance, setGeneralCompliance] = useState<ComplianceScore>({
@@ -1279,15 +1283,163 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
             value={selectedProjectId}
             onChange={(e) => setSelectedProjectId(e.target.value)}
             className="form-select"
-            style={{ width: '260px', padding: '8px 12px' }}
+            style={{ width: '280px', padding: '8px 12px' }}
           >
             <option value="general">📁 General AI System Audit (Standalone)</option>
             {projects.map(p => (
-              <option key={p.id} value={p.id}>{p.name}</option>
+              <option key={p.id} value={p.id}>
+                {p.projectCode} - {p.name.slice(0, 26)}... {(p.documents?.length || 0) > 0 ? `(${p.documents.length} docs)` : ''}
+              </option>
             ))}
           </select>
         </div>
       </div>
+
+      {/* Automated Regulatory Assessment Banner */}
+      {activeProject && (
+        <div style={{
+          marginBottom: '24px',
+          padding: '18px 22px',
+          borderRadius: '14px',
+          background: activeProject.autoAssessment 
+            ? 'linear-gradient(135deg, rgba(6, 182, 212, 0.12), rgba(16, 185, 129, 0.15))' 
+            : 'rgba(255, 255, 255, 0.02)',
+          border: activeProject.autoAssessment 
+            ? '1px solid rgba(16, 185, 129, 0.35)' 
+            : '1px solid var(--border-color)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '14px',
+          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.2)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '3px 10px',
+                  borderRadius: '6px',
+                  fontSize: '0.72rem',
+                  fontWeight: 800,
+                  background: activeProject.autoAssessment ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.06)',
+                  color: activeProject.autoAssessment ? '#34d399' : 'var(--text-muted)',
+                  border: '1px solid currentColor'
+                }}>
+                  <Sparkles size={12} />
+                  <span>{activeProject.autoAssessment ? '⚡ Automated Document Regulatory Assessment' : 'Standard Assessment'}</span>
+                </span>
+
+                {(activeProject.hasFirstTimerUpload || activeProject.autoAssessment?.submittedByFirstTimer) && (
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '3px 10px',
+                    borderRadius: '6px',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    background: 'rgba(251, 191, 36, 0.18)',
+                    color: '#fbbf24',
+                    border: '1px solid rgba(251, 191, 36, 0.35)'
+                  }}>
+                    <FolderOpen size={12} />
+                    <span>First-Timer Officer Submission ({activeProject.autoAssessment?.firstTimerOfficerName || session?.fullName || 'Orientation Officer'})</span>
+                  </span>
+                )}
+
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                  Evaluated from {activeProject.documents?.length || 0} compliance document(s)
+                </span>
+              </div>
+
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: '8px 0 2px 0', color: '#fff' }}>
+                {activeProject.projectCode} • {activeProject.name}
+              </h3>
+              <p style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', margin: 0 }}>
+                Managing Institution: <strong>{activeProject.mda}</strong> ({activeProject.mdaCode})
+              </p>
+            </div>
+
+            <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+              <div style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--ghana-emerald)' }}>
+                {Math.round(calculatedScore)}% NGS
+              </div>
+              <span className={`badge ${getGradeClass(activeScore.overallGrade)}`} style={{ fontSize: '0.72rem' }}>
+                Grade: {activeScore.overallGrade}
+              </span>
+            </div>
+          </div>
+
+          {activeProject.autoAssessment && (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+              gap: '10px',
+              padding: '12px 14px',
+              borderRadius: '10px',
+              background: 'rgba(0, 0, 0, 0.25)',
+              border: '1px solid rgba(255, 255, 255, 0.05)'
+            }}>
+              <div>
+                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>⚖️ Fairness</div>
+                <div style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--ghana-emerald)', marginTop: '2px' }}>{activeProject.compliance.fairness}%</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>🔍 Transparency</div>
+                <div style={{ fontSize: '0.98rem', fontWeight: 700, color: '#38bdf8', marginTop: '2px' }}>{activeProject.compliance.transparency}%</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>🛡️ Accountability</div>
+                <div style={{ fontSize: '0.98rem', fontWeight: 700, color: '#fbbf24', marginTop: '2px' }}>{activeProject.compliance.accountability}%</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>🔒 Privacy (Act 843)</div>
+                <div style={{ fontSize: '0.98rem', fontWeight: 700, color: '#fb7185', marginTop: '2px' }}>{activeProject.compliance.privacy}%</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>🛡️ Security (Act 1038)</div>
+                <div style={{ fontSize: '0.98rem', fontWeight: 700, color: '#f43f5e', marginTop: '2px' }}>{activeProject.compliance.security}%</div>
+              </div>
+            </div>
+          )}
+
+          {activeProject.autoAssessment && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.78rem', color: '#e2e8f0', background: 'rgba(0, 0, 0, 0.15)', padding: '10px 14px', borderRadius: '8px' }}>
+              <div><strong>Regulatory Synthesis:</strong> {activeProject.autoAssessment.ethicsSummary}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '4px', fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
+                {activeProject.autoAssessment.fairnessRationale && <div>• <strong>Fairness:</strong> {activeProject.autoAssessment.fairnessRationale}</div>}
+                {activeProject.autoAssessment.privacyRationale && <div>• <strong>Privacy:</strong> {activeProject.autoAssessment.privacyRationale}</div>}
+                {activeProject.autoAssessment.transparencyRationale && <div>• <strong>Transparency:</strong> {activeProject.autoAssessment.transparencyRationale}</div>}
+                {activeProject.autoAssessment.securityRationale && <div>• <strong>Security:</strong> {activeProject.autoAssessment.securityRationale}</div>}
+              </div>
+            </div>
+          )}
+
+          {activeProject.autoAssessment?.keySignals && activeProject.autoAssessment.keySignals.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>Validated Compliance Signals:</span>
+              {activeProject.autoAssessment.keySignals.map((sig, i) => (
+                <span 
+                  key={i}
+                  style={{
+                    fontSize: '0.68rem',
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    background: 'rgba(16, 185, 129, 0.15)',
+                    color: '#6ee7b7',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    fontWeight: 600
+                  }}
+                >
+                  ✓ {sig}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {(selectedProjectId === 'general' || activeProject) && (
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.1fr', gap: '24px', alignItems: 'start' }}>

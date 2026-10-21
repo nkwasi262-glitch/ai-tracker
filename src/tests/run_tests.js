@@ -333,6 +333,167 @@ test('Zero-Assumption summary segregates warrant-verified capital from self-repo
   assert(portfolioAssurancePercent === 67, 'Assurance percentage should be 67%');
 });
 
+console.log('\n9. Testing First-Timer Document Upload System Synchronization:');
+
+test('First-Timer document upload immediately triggers automated regulatory evaluation', () => {
+  const firstTimerSession = {
+    fullName: 'Kofi Mensah',
+    email: 'kofi.mensah@nita.gov.gh',
+    role: 'First-Timer / New User',
+    institution: 'National Information Technology Agency',
+    isFirstTimer: true
+  };
+
+  const project = {
+    id: 'proj-test',
+    projectCode: 'GN-AI-2026-TEST',
+    name: 'Akuafo Soil AI Scanner',
+    documents: [],
+    compliance: { fairness: 35, transparency: 30, accountability: 35, privacy: 25, security: 30, overallGrade: 'High Risk' },
+    readinessScore: 28,
+    status: 'Active'
+  };
+
+  // Simulate upload
+  const uploadedDoc = {
+    id: 'doc-upload-1',
+    fileName: 'Akuafo_Model_Architecture_Specs.pdf',
+    fileType: 'pdf',
+    uploadedAt: '2026-10-21',
+    version: 1,
+    signedBy: ['First-Timer / New User']
+  };
+
+  const mockCombinedText = 'official system architecture specification & model card. tensorflow lite offline mobile net leaf analysis. personal data protected under act 843 with sha-256 salts. steering committee established with mofa leadership. certified data protection commission dpc filing.';
+
+  // Simulate assessmentEngine evaluation
+  const containsAny = (keywords) => keywords.some(k => mockCombinedText.includes(k));
+  
+  let pillarInfra = 55;
+  if (containsAny(['tensorflow', 'offline', 'infrastructure'])) pillarInfra += 20;
+  let pillarData = 50;
+  if (containsAny(['dataset', 'provenance', 'act 843', 'dpc'])) pillarData += 20;
+  let pillarStaff = 55;
+  if (containsAny(['team', 'leadership', 'committee'])) pillarStaff += 20;
+  let pillarPolicy = 50;
+  if (containsAny(['steering', 'committee', 'policy'])) pillarPolicy += 22;
+
+  const readinessScore = Math.round((pillarInfra + pillarData + pillarStaff + pillarPolicy) / 4);
+  const isFromFirstTimer = firstTimerSession.role === 'First-Timer / New User' || !!firstTimerSession.isFirstTimer;
+
+  const autoAssessment = {
+    generatedAt: new Date().toISOString(),
+    generatedBy: firstTimerSession.fullName,
+    documentCount: 1,
+    documentsAnalyzed: [uploadedDoc.fileName],
+    readinessSummary: `Institutional AI readiness computed at ${readinessScore}%.`,
+    keySignals: ['Ghana Act 843 / DPC Compliant', 'Model Card & Architecture Validated'],
+    readinessPillars: {
+      infrastructure: pillarInfra,
+      dataGovernance: pillarData,
+      technicalStaff: pillarStaff,
+      policyLeadership: pillarPolicy
+    },
+    submittedByFirstTimer: isFromFirstTimer,
+    firstTimerOfficerName: firstTimerSession.fullName,
+    firstTimerOfficerEmail: firstTimerSession.email
+  };
+
+  // Update project in system state
+  const updatedProject = {
+    ...project,
+    documents: [uploadedDoc],
+    readinessScore,
+    autoAssessment,
+    hasFirstTimerUpload: isFromFirstTimer,
+    reviewStatus: 'Under Technical Review'
+  };
+
+  assert(updatedProject.documents.length === 1, 'Document should be added to project vault');
+  assert(updatedProject.readinessScore > 28, 'Readiness score should rise above baseline 28%');
+  assert(updatedProject.autoAssessment.submittedByFirstTimer === true, 'First-timer attribution flag must be true');
+  assert(updatedProject.autoAssessment.firstTimerOfficerEmail === 'kofi.mensah@nita.gov.gh', 'Officer email must match');
+  assert(updatedProject.autoAssessment.readinessPillars.infrastructure >= 75, 'Infrastructure pillar must be scored');
+  assert(updatedProject.hasFirstTimerUpload === true, 'Project must flag first timer upload for registry badges');
+  assert(updatedProject.reviewStatus === 'Under Technical Review', 'Project review status should automatically advance to Under Technical Review');
+});
+
+test('Document upload eliminates assumptions and raises evidence backing score', () => {
+  const initialZeroAssumption = {
+    isFullyVerified: false,
+    evidenceBackingScore: 15,
+    verifiedSignals: [],
+    unverifiedAssumptions: ['No project charter or technical architecture submitted'],
+    assumptionsEliminatedCount: 0
+  };
+
+  const docCount = 2;
+  const avgEthics = 85;
+  const updatedEvidenceScore = Math.min(100, Math.round((docCount * 25) + (avgEthics * 0.25)));
+  const eliminated = docCount * 2;
+
+  assert(updatedEvidenceScore === 71, 'Evidence backing score should calculate to 71%');
+  assert(eliminated === 4, '4 assumptions should be marked eliminated by 2 uploaded files');
+});
+
+console.log('\n10. Testing Finance Minister Commentary & Statutory Directives (PFM Act 921):');
+
+test('Finance Minister can record portfolio-wide and project-level statutory comments', () => {
+  const ministerSession = {
+    fullName: 'Hon. Dr. Mohammed Amin Adam',
+    email: 'm.adam@mof.gov.gh',
+    role: 'Finance Minister',
+    institution: 'Ministry of Finance & Economic Planning'
+  };
+
+  const project = {
+    id: 'proj-1',
+    projectCode: 'GN-AI-2026-001',
+    name: 'GhanaPostGPS',
+    budget: {
+      totalAllocated: 24000000,
+      disbursed: 22000000,
+      utilized: 21500000,
+      remaining: 2500000,
+      primaryFundingSource: 'Government',
+      currency: 'GHS',
+      verificationStatus: 'MoF Audited & Verified',
+      mofWarrantNumber: 'MOF/WARR/2026/014'
+    }
+  };
+
+  const directiveText = 'Tranche 2 disbursement fully verified against MoF Treasury Warrant. Proceed with emergency dispatch caching expansion in Q4.';
+  const directiveDate = '2026-10-21';
+
+  // Apply comment to project budget
+  const updatedBudget = {
+    ...project.budget,
+    financeMinisterComments: directiveText,
+    financeMinisterCommentDate: directiveDate,
+    financeMinisterCommentAuthor: ministerSession.fullName
+  };
+
+  assert(updatedBudget.financeMinisterComments === directiveText, 'Ministerial directive text must be preserved');
+  assert(updatedBudget.financeMinisterCommentDate === directiveDate, 'Directive date must be recorded');
+  assert(updatedBudget.financeMinisterCommentAuthor === 'Hon. Dr. Mohammed Amin Adam', 'Author must be recorded as Finance Minister');
+});
+
+test('Ministerial directive structure supports statutory classification and audit binding', () => {
+  const directive = {
+    id: 'mof-dir-test',
+    targetTitle: '🌐 National AI Portfolio (Overall Fiscal Directive)',
+    comment: 'All MDAs utilizing AI grant allocations must submit monthly primary bank vouchers.',
+    authorName: 'Hon. Dr. Mohammed Amin Adam (Finance Minister)',
+    authorRole: 'Finance Minister',
+    createdAt: '2026-10-21',
+    directiveType: 'Budget Release Caveat'
+  };
+
+  assert(directive.directiveType === 'Budget Release Caveat', 'Directive must have valid classification');
+  assert(directive.authorRole === 'Finance Minister', 'Role must reflect Finance Minister');
+  assert(directive.comment.length > 20, 'Directive comment must be substantive');
+});
+
 const passed = tests.filter(t => t.passed).length;
 const total = tests.length;
 

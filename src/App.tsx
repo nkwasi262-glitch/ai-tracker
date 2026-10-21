@@ -15,18 +15,24 @@ import { AuditLogViewer } from './components/AuditLogViewer';
 import { EntryGateModal } from './components/EntryGateModal';
 import { AccessDenied } from './components/AccessDenied';
 import { ActiveRoleSelectorModal } from './components/ActiveRoleSelectorModal';
-import { sampleProjects, AIProject, ComplianceScore, DocumentAsset, ReviewWorkflowStatus, AutoAssessmentDetails } from './data/sampleProjects';
+import { AIProject, ComplianceScore, DocumentAsset, ReviewWorkflowStatus, AutoAssessmentDetails, ZeroAssumptionAudit } from './data/sampleProjects';
 import { UserSession, ActiveRole } from './data/authTypes';
 import { getStoredSession, clearSession, elevateFromFirstTimer } from './services/authService';
 import { AppModuleId, canAccessModule } from './services/rbacPolicy';
 import { generateAssessmentFromDocuments } from './services/assessmentEngine';
+import { loadStoredProjects, saveStoredProjects, resetProjectsStorage } from './services/projectStorage';
 
 function App() {
   // 1. Session State from Mandatory Entry Gate
   const [session, setSession] = useState<UserSession | null>(() => getStoredSession());
 
-  // 2. Central Registry & Navigation States
-  const [projects, setProjects] = useState<AIProject[]>(sampleProjects);
+  // 2. Central Registry & Navigation States (Persistent across reloads)
+  const [projects, setProjects] = useState<AIProject[]>(() => loadStoredProjects());
+
+  // Sync projects changes to persistent storage
+  useEffect(() => {
+    saveStoredProjects(projects);
+  }, [projects]);
   const [activeTab, setActiveTab] = useState<string>(() => {
     const s = getStoredSession();
     return s?.role === 'First-Timer / New User' ? 'documents' : 'dashboard';
@@ -77,9 +83,10 @@ function App() {
     setProjects(prev => prev.filter(p => p.id !== projectId));
   };
 
-  // Clears all projects from state
+  // Clears all projects from state or resets to defaults
   const handleClearAllProjects = () => {
-    setProjects([]);
+    const defaultData = resetProjectsStorage();
+    setProjects(defaultData);
   };
 
   // Re-evaluates ethical indices and grades instantly
@@ -89,6 +96,19 @@ function App() {
         return {
           ...p,
           compliance: newScore
+        };
+      }
+      return p;
+    }));
+  };
+
+  // Updates readiness score directly from wizard checklist
+  const handleUpdateReadinessScore = (projectId: string, newScore: number) => {
+    setProjects(prev => prev.map(p => {
+      if (p.id === projectId) {
+        return {
+          ...p,
+          readinessScore: newScore
         };
       }
       return p;
@@ -115,22 +135,31 @@ function App() {
 
   // Appends uploaded PDF metadata inside MinIO simulation and auto-generates Governance & Readiness
   const handleAddDocument = (projectId: string, newDoc: DocumentAsset) => {
-    setProjects(prev => prev.map(p => {
-      if (p.id === projectId) {
-        const updatedDocs = [newDoc, ...p.documents];
-        const tempProject = { ...p, documents: updatedDocs };
-        const auto = generateAssessmentFromDocuments(tempProject, session || undefined);
-        return {
-          ...p,
-          documents: updatedDocs,
-          compliance: auto.compliance,
-          readinessScore: auto.readinessScore,
-          autoAssessment: auto.details,
-          zeroAssumptionAudit: auto.zeroAssumptionAudit
-        };
-      }
-      return p;
-    }));
+    setProjects(prev => {
+      const isFromFirstTimer = session?.role === 'First-Timer / New User' || !!session?.isFirstTimer;
+      const updated = prev.map(p => {
+        if (p.id === projectId) {
+          const updatedDocs = [newDoc, ...p.documents];
+          const tempProject = { ...p, documents: updatedDocs };
+          const auto = generateAssessmentFromDocuments(tempProject, session || undefined);
+          const newReviewStatus: ReviewWorkflowStatus = p.reviewStatus === 'Approved' ? 'Approved' : 'Under Technical Review';
+          const updatedProj: AIProject = {
+            ...p,
+            documents: updatedDocs,
+            compliance: auto.compliance,
+            readinessScore: auto.readinessScore,
+            autoAssessment: auto.details,
+            zeroAssumptionAudit: auto.zeroAssumptionAudit,
+            hasFirstTimerUpload: isFromFirstTimer || p.hasFirstTimerUpload,
+            reviewStatus: newReviewStatus
+          };
+          return updatedProj;
+        }
+        return p;
+      });
+      saveStoredProjects(updated);
+      return updated;
+    });
   };
 
   // Updates project budget and zero-assumption audit status (e.g. from Finance Minister verification)
@@ -139,16 +168,20 @@ function App() {
     updatedBudget: AIProject['budget'], 
     zeroAssumption?: AIProject['zeroAssumptionAudit']
   ) => {
-    setProjects(prev => prev.map(p => {
-      if (p.id === projectId) {
-        return {
-          ...p,
-          budget: updatedBudget,
-          zeroAssumptionAudit: zeroAssumption || p.zeroAssumptionAudit
-        };
-      }
-      return p;
-    }));
+    setProjects(prev => {
+      const updated = prev.map(p => {
+        if (p.id === projectId) {
+          return {
+            ...p,
+            budget: updatedBudget,
+            zeroAssumptionAudit: zeroAssumption || p.zeroAssumptionAudit
+          };
+        }
+        return p;
+      });
+      saveStoredProjects(updated);
+      return updated;
+    });
   };
 
   // Adds secure digital signatures
@@ -172,24 +205,30 @@ function App() {
     }));
   };
 
-  // Updates automatically generated assessments (Governance & Ethics, AI Readiness)
+  // Updates automatically generated assessments (Governance & Ethics, AI Readiness, Zero-Assumption)
   const handleUpdateProjectAssessment = (
     projectId: string,
     newCompliance: ComplianceScore,
     newReadinessScore: number,
-    details: AutoAssessmentDetails
+    details: AutoAssessmentDetails,
+    zeroAssumptionAudit?: ZeroAssumptionAudit
   ) => {
-    setProjects(prev => prev.map(p => {
-      if (p.id === projectId) {
-        return {
-          ...p,
-          compliance: newCompliance,
-          readinessScore: newReadinessScore,
-          autoAssessment: details
-        };
-      }
-      return p;
-    }));
+    setProjects(prev => {
+      const updated = prev.map(p => {
+        if (p.id === projectId) {
+          return {
+            ...p,
+            compliance: newCompliance,
+            readinessScore: newReadinessScore,
+            autoAssessment: details,
+            zeroAssumptionAudit: zeroAssumptionAudit || p.zeroAssumptionAudit
+          };
+        }
+        return p;
+      });
+      saveStoredProjects(updated);
+      return updated;
+    });
   };
 
   // Updates project review lifecycle status (Technical review / Super Admin clearance / DG clearance)
@@ -270,11 +309,19 @@ function App() {
           <GovernanceCompliance 
             projects={projects} 
             onUpdateCompliance={handleUpdateCompliance} 
-            currentRole={session.role as any} 
+            currentRole={session.role as any}
+            session={session} 
           />
         );
       case 'readiness':
-        return <AIReadiness currentRole={session.role as any} />;
+        return (
+          <AIReadiness 
+            currentRole={session.role as any} 
+            projects={projects}
+            onUpdateReadinessScore={handleUpdateReadinessScore}
+            session={session}
+          />
+        );
       case 'risk':
         return (
           <RiskManagement 
