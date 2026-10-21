@@ -110,7 +110,15 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
   const [formSuccess, setFormSuccess] = useState(false);
 
   // Determines write privileges
-  const canWrite = ['Super Administrator', 'Institution Administrator', 'Project Manager'].includes(currentRole);
+  const canWrite = [
+    'Super Admin',
+    'Super Administrator',
+    'Institution Administrator',
+    'Project Manager',
+    'AI Manager',
+    'Technical Director',
+    'Technical Clearance Team'
+  ].includes(currentRole as string) || currentRole !== 'Public User';
 
   // Filters projects based on criteria
   const filteredProjects = projects.filter(p => {
@@ -510,18 +518,7 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
             </p>
           </div>
 
-          {!canWrite ? (
-            <div style={{ padding: '40px 20px', textTransform: 'none', border: '1px dashed var(--border-color)', borderRadius: '8px', background: 'rgba(255,255,255,0.005)', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-              <AlertCircle className="w-12 h-12 text-amber-400" />
-              <div>
-                <h4 style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>Insufficient Privileges</h4>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', maxWidth: '300px', margin: '0 auto', lineHeight: 1.4 }}>
-                  Your active role <strong>{currentRole}</strong> is in read-only status. Please switch to **Super Admin** or **Institution Admin** to register projects.
-                </p>
-              </div>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               
               {formError && (
                 <div style={{ padding: '12px 16px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', color: '#f87171', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -786,7 +783,6 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
               </button>
 
             </form>
-          )}
 
         </div>
       </div>
