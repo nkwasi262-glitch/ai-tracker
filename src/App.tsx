@@ -125,7 +125,26 @@ function App() {
           documents: updatedDocs,
           compliance: auto.compliance,
           readinessScore: auto.readinessScore,
-          autoAssessment: auto.details
+          autoAssessment: auto.details,
+          zeroAssumptionAudit: auto.zeroAssumptionAudit
+        };
+      }
+      return p;
+    }));
+  };
+
+  // Updates project budget and zero-assumption audit status (e.g. from Finance Minister verification)
+  const handleUpdateProjectBudget = (
+    projectId: string, 
+    updatedBudget: AIProject['budget'], 
+    zeroAssumption?: AIProject['zeroAssumptionAudit']
+  ) => {
+    setProjects(prev => prev.map(p => {
+      if (p.id === projectId) {
+        return {
+          ...p,
+          budget: updatedBudget,
+          zeroAssumptionAudit: zeroAssumption || p.zeroAssumptionAudit
         };
       }
       return p;
@@ -289,6 +308,7 @@ function App() {
           <FinanceMinisterView
             projects={projects}
             session={session}
+            onUpdateProjectBudget={handleUpdateProjectBudget}
           />
         );
       case 'reports':

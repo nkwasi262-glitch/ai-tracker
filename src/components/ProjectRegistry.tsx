@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Search, Calendar, Landmark, MapPin, DollarSign, AlertCircle, Activity } from 'lucide-react';
+import { Plus, Search, Calendar, Landmark, MapPin, DollarSign, AlertCircle, Activity, ShieldCheck, ShieldAlert, Stamp } from 'lucide-react';
 import { AIProject, formatNumberToWords } from '../data/sampleProjects';
 import { UserRole } from './RoleSwitcher';
 const standardMDAs = [
@@ -77,6 +77,8 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
   const [isCustomMda, setIsCustomMda] = useState(false);
   const [regionSelect, setRegionSelect] = useState('Greater Accra');
   const [dpcStatus, setDpcStatus] = useState<'Registered' | 'Pending' | 'Exempt'>('Registered');
+  const [dpcCertInput, setDpcCertInput] = useState('');
+  const [warrantNumberInput, setWarrantNumberInput] = useState('');
   const [isSovereignHosting, setIsSovereignHosting] = useState(true);
 
   const handleRegionSelectChange = (newRegion: string) => {
@@ -118,7 +120,12 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
     'AI Manager',
     'Technical Director',
     'Technical Clearance Team'
-  ].includes(currentRole as string) || currentRole !== 'Public User';
+  ].includes(currentRole as string) || (
+    (currentRole as string) !== 'Public User' &&
+    (currentRole as string) !== 'First-Timer / New User' &&
+    (currentRole as string) !== 'Finance Minister' &&
+    (currentRole as string) !== 'Director General'
+  );
 
   // Filters projects based on criteria
   const filteredProjects = projects.filter(p => {
@@ -172,38 +179,65 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
       district: district || 'Accra Metropolitan',
       budget: {
         totalAllocated: parseFloat(budget),
-        disbursed: parseFloat(budget) * 0.1, // Initial 10% mobilization disbursal simulation
+        disbursed: warrantNumberInput.trim() ? parseFloat(budget) * 0.1 : 0, // Zero-assumption: 0 disbursed unless verified by warrant
         utilized: 0,
         remaining: parseFloat(budget),
         primaryFundingSource: funding,
-        currency: 'GHS'
+        currency: 'GHS',
+        verificationStatus: warrantNumberInput.trim() ? 'MoF Audited & Verified' : 'Self-Reported (Unverified)',
+        mofWarrantNumber: warrantNumberInput.trim() || undefined,
+        lastAuditedDate: warrantNumberInput.trim() ? new Date().toISOString().split('T')[0] : undefined,
+        hasAssumptionsFlag: !warrantNumberInput.trim(),
+        assumptionWarnings: warrantNumberInput.trim() 
+          ? [] 
+          : ['Disbursement is 0 GHS. Budget allocation is self-reported; MoF Treasury Warrant required to verify statutory disbursal.']
       },
       compliance: {
-        fairness: dpcStatus === 'Registered' ? 80 : 40,
-        transparency: 70,
-        accountability: 75,
-        privacy: dpcStatus === 'Registered' ? 85 : 40,
-        security: isSovereignHosting ? 80 : 50,
-        overallGrade: dpcStatus === 'Registered' && isSovereignHosting ? 'Good' : 'Moderate'
+        fairness: dpcCertInput.trim() ? 65 : 35,
+        transparency: 40,
+        accountability: 45,
+        privacy: dpcCertInput.trim() ? 75 : 25,
+        security: isSovereignHosting ? 70 : 30,
+        overallGrade: dpcCertInput.trim() && isSovereignHosting ? 'Moderate' : 'High Risk'
       },
-      readinessScore: 60,
+      readinessScore: 28, // Zero-assumption baseline pending document AI assessment
       milestones: [
-        { id: `m${nextIdVal}-1`, title: 'Initial technical proposal drafting', dueDate: startDate, progressPercent: 100, status: 'Completed' },
-        { id: `m${nextIdVal}-2`, title: 'Ethics & DPC regulatory alignment routing', dueDate: endDate, progressPercent: 10, status: 'Pending' }
+        { id: `m${nextIdVal}-1`, title: 'Initial technical proposal drafting', dueDate: startDate, progressPercent: 0, status: 'Pending' },
+        { id: `m${nextIdVal}-2`, title: 'Ethics & DPC regulatory alignment routing', dueDate: endDate, progressPercent: 0, status: 'Pending' }
       ],
       risks: [
         {
           id: `r${nextIdVal}-1`,
           category: 'Compliance & Audit Risk',
-          severity: dpcStatus !== 'Registered' ? 'High' : 'Low',
-          likelihood: dpcStatus !== 'Registered' ? 4 : 1,
-          impact: dpcStatus !== 'Registered' ? 4 : 2,
-          description: dpcStatus !== 'Registered' ? 'Mandatory DPC certificate registration pending under Ghana DPA Act 1038.' : 'Compliance monitoring setup with DPC.',
-          mitigationPlan: 'Coordinate compliance checklist review steps with national audit officers.',
+          severity: !dpcCertInput.trim() ? 'High' : 'Low',
+          likelihood: !dpcCertInput.trim() ? 4 : 1,
+          impact: !dpcCertInput.trim() ? 4 : 2,
+          description: !dpcCertInput.trim() 
+            ? 'Mandatory DPC certificate registration unverified under Ghana DPA Act 1038.' 
+            : 'Compliance monitoring setup with DPC.',
+          mitigationPlan: 'Upload official DPC certificate and MoF Treasury Warrant to eliminate remaining assumptions.',
           status: 'Open'
         }
       ],
-      documents: []
+      documents: [],
+      reviewStatus: 'Submitted',
+      dpcCertificateNumber: dpcCertInput.trim() || undefined,
+      zeroAssumptionAudit: {
+        isFullyVerified: false,
+        evidenceBackingScore: warrantNumberInput.trim() && dpcCertInput.trim() ? 50 : dpcCertInput.trim() ? 30 : warrantNumberInput.trim() ? 30 : 15,
+        verifiedSignals: [
+          ...(warrantNumberInput.trim() ? [`MoF Warrant #${warrantNumberInput.trim()}`] : []),
+          ...(dpcCertInput.trim() ? [`DPC Filing #${dpcCertInput.trim()}`] : []),
+          ...(isSovereignHosting ? ['Sovereign In-Country Hosting Declared'] : [])
+        ],
+        unverifiedAssumptions: [
+          ...(!warrantNumberInput.trim() ? ['Initial capital expenditure lacks verified MoF Treasury Warrant'] : []),
+          ...(!dpcCertInput.trim() ? ['Data protection compliance is unverified; DPC filing required'] : []),
+          'AI Readiness and algorithmic ethics require primary architectural blueprints'
+        ],
+        lastAuditedDate: new Date().toISOString(),
+        assumptionsEliminatedCount: (warrantNumberInput.trim() ? 1 : 0) + (dpcCertInput.trim() ? 1 : 0)
+      }
     };
 
     onAddProject(newProjectItem);
@@ -226,6 +260,8 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
     setStartDate('');
     setEndDate('');
     setDpcStatus('Registered');
+    setDpcCertInput('');
+    setWarrantNumberInput('');
     setIsSovereignHosting(true);
   };
 
@@ -349,6 +385,52 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
                     {getStageBadge(p.stage)}
+                    {p.budget?.verificationStatus === 'MoF Audited & Verified' ? (
+                      <span style={{
+                        fontSize: '0.62rem',
+                        fontWeight: 700,
+                        padding: '1px 6px',
+                        borderRadius: '4px',
+                        background: 'rgba(16, 185, 129, 0.15)',
+                        color: '#10b981',
+                        border: '1px solid rgba(16, 185, 129, 0.3)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '3px'
+                      }}>
+                        <ShieldCheck size={10} /> MoF Verified
+                      </span>
+                    ) : p.budget?.verificationStatus === 'Flagged Discrepancy' ? (
+                      <span style={{
+                        fontSize: '0.62rem',
+                        fontWeight: 700,
+                        padding: '1px 6px',
+                        borderRadius: '4px',
+                        background: 'rgba(239, 68, 68, 0.15)',
+                        color: '#ef4444',
+                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '3px'
+                      }}>
+                        <ShieldAlert size={10} /> Discrepancy
+                      </span>
+                    ) : (
+                      <span style={{
+                        fontSize: '0.62rem',
+                        fontWeight: 700,
+                        padding: '1px 6px',
+                        borderRadius: '4px',
+                        background: 'rgba(245, 158, 11, 0.15)',
+                        color: '#f59e0b',
+                        border: '1px solid rgba(245, 158, 11, 0.3)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '3px'
+                      }}>
+                        <ShieldAlert size={10} /> Unverified Claim
+                      </span>
+                    )}
                     {p.reviewStatus && (
                       <span style={{
                         fontSize: '0.62rem',
@@ -483,6 +565,86 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                     <span style={{ fontWeight: 600 }}>{selectedProject.region}</span>
                   </div>
                 </div>
+              </div>
+
+              {/* Zero-Assumption Evidence Provenance & Audit Panel */}
+              <div style={{
+                marginBottom: '16px',
+                padding: '14px 16px',
+                borderRadius: '10px',
+                background: selectedProject.budget?.hasAssumptionsFlag 
+                  ? 'rgba(245, 158, 11, 0.08)' 
+                  : 'rgba(16, 185, 129, 0.08)',
+                border: selectedProject.budget?.hasAssumptionsFlag 
+                  ? '1px solid rgba(245, 158, 11, 0.3)' 
+                  : '1px solid rgba(16, 185, 129, 0.3)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {selectedProject.budget?.hasAssumptionsFlag ? (
+                      <ShieldAlert size={16} className="text-amber-400" />
+                    ) : (
+                      <ShieldCheck size={16} className="text-emerald-400" />
+                    )}
+                    <span style={{ 
+                      fontSize: '0.78rem', 
+                      fontWeight: 800, 
+                      color: selectedProject.budget?.hasAssumptionsFlag ? '#fbbf24' : '#a7f3d0' 
+                    }}>
+                      Zero-Assumption Status: {selectedProject.budget?.verificationStatus || 'Self-Reported (Unverified)'}
+                    </span>
+                  </div>
+                  <span style={{
+                    fontSize: '0.7rem',
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                    background: selectedProject.zeroAssumptionAudit?.isFullyVerified ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)',
+                    color: selectedProject.zeroAssumptionAudit?.isFullyVerified ? '#10b981' : '#f59e0b'
+                  }}>
+                    {selectedProject.zeroAssumptionAudit?.evidenceBackingScore ?? 40}% Proven
+                  </span>
+                </div>
+
+                {/* Warrant & DPC badges */}
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', fontSize: '0.74rem' }}>
+                  {selectedProject.budget?.mofWarrantNumber ? (
+                    <span style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Stamp size={12} /> MoF Warrant: <strong>{selectedProject.budget.mofWarrantNumber}</strong>
+                    </span>
+                  ) : (
+                    <span style={{ color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <ShieldAlert size={12} /> MoF Warrant: <em>None (Self-Reported Disbursement Claim)</em>
+                    </span>
+                  )}
+                  {selectedProject.dpcCertificateNumber && (
+                    <span style={{ color: '#38bdf8', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '8px' }}>
+                      DPC Reg: <strong>{selectedProject.dpcCertificateNumber}</strong>
+                    </span>
+                  )}
+                </div>
+
+                {/* Active assumption warnings if any */}
+                {selectedProject.budget?.assumptionWarnings && selectedProject.budget.assumptionWarnings.length > 0 && (
+                  <div style={{
+                    fontSize: '0.72rem',
+                    color: '#fde68a',
+                    background: 'rgba(0,0,0,0.25)',
+                    padding: '8px 10px',
+                    borderRadius: '6px',
+                    lineHeight: 1.4
+                  }}>
+                    <strong>Active Unverified Assumptions:</strong>
+                    <ul style={{ margin: '4px 0 0 16px', padding: 0 }}>
+                      {selectedProject.budget.assumptionWarnings.map((warn, i) => (
+                        <li key={i}>{warn}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
 
               {/* Milestones status */}
@@ -761,6 +923,33 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                       <option value="Pending">Pending</option>
                       <option value="Exempt">Exempt</option>
                     </select>
+                  </div>
+                  {dpcStatus === 'Registered' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>DPC Certificate Registration Number *</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. GH-DPC-2026-881"
+                        value={dpcCertInput}
+                        onChange={(e) => setDpcCertInput(e.target.value)}
+                        className="form-input"
+                        style={{ height: '32px', fontSize: '0.75rem' }}
+                      />
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '8px' }}>
+                    <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>MoF Treasury Warrant Number (If issued)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. MOF/WARR/2026/049 (Leave blank if unverified)"
+                      value={warrantNumberInput}
+                      onChange={(e) => setWarrantNumberInput(e.target.value)}
+                      className="form-input"
+                      style={{ height: '32px', fontSize: '0.75rem' }}
+                    />
+                    <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>
+                      Note: Initial disbursements start at 0 GHS to eliminate assumptions until Treasury Warrant is verified.
+                    </span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '0.8rem', color: 'var(--text-primary)' }}>Sovereign Data Residency</span>

@@ -12,9 +12,10 @@ import {
   AlertTriangle,
   FolderOpen,
   CheckCircle2,
-  HelpCircle
+  HelpCircle,
+  ShieldCheck
 } from 'lucide-react';
-import { AIProject, formatNumberToWords } from '../data/sampleProjects';
+import { AIProject, formatNumberToWords, computeZeroAssumptionSummary } from '../data/sampleProjects';
 import { UserRole } from './RoleSwitcher';
 
 const CustomTooltip = ({ active, payload }: any) => {
@@ -94,6 +95,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
         return acc + weightedScore;
       }, 0) / totalProjectsCount
     : 0;
+
+  // Zero-Assumption Summary
+  const zeroSummary = computeZeroAssumptionSummary(projects);
 
   // Filter projects by sector for drilldowns
   const filteredProjects = selectedSector === 'All' 
@@ -198,6 +202,89 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
             <option value="Justice">Justice</option>
             <option value="Environment">Environment</option>
           </select>
+        </div>
+      </div>
+
+      {/* Zero-Assumption Statutory Portfolio Assurance Banner */}
+      <div style={{
+        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(15, 23, 42, 0.95) 100%)',
+        border: '1px solid rgba(16, 185, 129, 0.3)',
+        borderRadius: '14px',
+        padding: '18px 22px',
+        marginBottom: '24px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <ShieldCheck size={20} className="text-emerald-400" />
+            <div>
+              <span style={{ fontSize: '0.88rem', fontWeight: 800, color: '#fff' }}>
+                Zero-Assumption Portfolio Assurance Index
+              </span>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginLeft: '10px' }}>
+                Under Act 921 & Act 843 Statutory Evidence Mandate
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{
+              fontSize: '0.74rem',
+              fontWeight: 800,
+              padding: '3px 10px',
+              borderRadius: '9999px',
+              background: 'rgba(16, 185, 129, 0.2)',
+              color: '#10b981',
+              border: '1px solid rgba(16, 185, 129, 0.4)'
+            }}>
+              {zeroSummary.portfolioAssurancePercent}% Statutorily Warrant-Backed
+            </span>
+          </div>
+        </div>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '12px',
+          fontSize: '0.78rem'
+        }}>
+          <div style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.68rem', textTransform: 'uppercase', fontWeight: 700 }}>
+              Verified Warrant Capital
+            </div>
+            <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#10b981', marginTop: '2px' }}>
+              GHS {(zeroSummary.verifiedDisbursed / 1000000).toFixed(1)}M
+            </div>
+            <div style={{ fontSize: '0.68rem', color: '#a7f3d0' }}>
+              {zeroSummary.verifiedCount} projects backed by MoF Treasury Warrants
+            </div>
+          </div>
+
+          <div style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.68rem', textTransform: 'uppercase', fontWeight: 700 }}>
+              Self-Reported / Unverified
+            </div>
+            <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fbbf24', marginTop: '2px' }}>
+              GHS {(zeroSummary.unverifiedDisbursed / 1000000).toFixed(1)}M
+            </div>
+            <div style={{ fontSize: '0.68rem', color: '#fde68a' }}>
+              {zeroSummary.unverifiedCount} projects pending statutory warrant audit
+            </div>
+          </div>
+
+          <div style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.68rem', textTransform: 'uppercase', fontWeight: 700 }}>
+              Flagged Discrepancies
+            </div>
+            <div style={{ fontSize: '1.15rem', fontWeight: 800, color: zeroSummary.flaggedCount > 0 ? '#ef4444' : '#94a3b8', marginTop: '2px' }}>
+              {zeroSummary.flaggedCount} Projects
+            </div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)' }}>
+              Disbursements frozen pending audit resolution
+            </div>
+          </div>
         </div>
       </div>
 

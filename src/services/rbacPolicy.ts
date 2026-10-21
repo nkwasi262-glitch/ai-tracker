@@ -26,7 +26,8 @@ export type AppAction =
   | 'COMMENT_INTERNAL_REPORT'
   | 'SIGN_DOCUMENT'
   | 'VIEW_AUDIT_LOG'
-  | 'PURGE_AUDIT_LOG';
+  | 'PURGE_AUDIT_LOG'
+  | 'VERIFY_FINANCIAL_EXPENDITURE';
 
 export interface ModuleDefinition {
   id: AppModuleId;
@@ -205,7 +206,8 @@ const ROLE_ACTION_PERMISSIONS: Record<ActiveRole, Partial<Record<AppAction, bool
     COMMENT_INTERNAL_REPORT: true,
     SIGN_DOCUMENT: true,
     VIEW_AUDIT_LOG: true,
-    PURGE_AUDIT_LOG: false // Tamper-evident: even super admin cannot purge immutable logs
+    PURGE_AUDIT_LOG: false, // Tamper-evident: even super admin cannot purge immutable logs
+    VERIFY_FINANCIAL_EXPENDITURE: true
   },
   'Technical Director': {
     VIEW: true,
@@ -275,7 +277,8 @@ const ROLE_ACTION_PERMISSIONS: Record<ActiveRole, Partial<Record<AppAction, bool
     COMMENT_INTERNAL_REPORT: false,
     SIGN_DOCUMENT: false,
     VIEW_AUDIT_LOG: false,
-    PURGE_AUDIT_LOG: false
+    PURGE_AUDIT_LOG: false,
+    VERIFY_FINANCIAL_EXPENDITURE: true
   },
   'Public User': {
     VIEW: true,

@@ -1,4 +1,4 @@
-import { AIProject, ComplianceScore, AutoAssessmentDetails } from '../data/sampleProjects';
+import { AIProject, ComplianceScore, AutoAssessmentDetails, ZeroAssumptionAudit } from '../data/sampleProjects';
 import { recordAuditEvent } from './auditService';
 import { UserSession } from '../data/authTypes';
 
@@ -58,6 +58,7 @@ export function generateAssessmentFromDocuments(
   compliance: ComplianceScore;
   readinessScore: number;
   details: AutoAssessmentDetails;
+  zeroAssumptionAudit: ZeroAssumptionAudit;
 } {
   const docs = project.documents || [];
   const docCount = docs.length;
@@ -107,7 +108,21 @@ export function generateAssessmentFromDocuments(
       });
     }
 
-    return { compliance, readinessScore, details };
+    const zeroAssumptionAudit: ZeroAssumptionAudit = {
+      isFullyVerified: false,
+      evidenceBackingScore: 15,
+      verifiedSignals: [],
+      unverifiedAssumptions: [
+        'No project charter or technical architecture submitted; readiness is at baseline assumption',
+        'No Data Protection Commission filing found in repository',
+        'Ethical governance parameters unverified by documentary evidence'
+      ],
+      lastAuditedDate: new Date().toISOString(),
+      auditedBy: session?.fullName || 'GNAPRMS Document AI Engine',
+      assumptionsEliminatedCount: 0
+    };
+
+    return { compliance, readinessScore, details, zeroAssumptionAudit };
   }
 
   // Aggregate all document texts
@@ -257,5 +272,17 @@ export function generateAssessmentFromDocuments(
     });
   }
 
-  return { compliance, readinessScore, details };
+  const zeroAssumptionAudit: ZeroAssumptionAudit = {
+    isFullyVerified: docCount >= 3 && avgEthics >= 80,
+    evidenceBackingScore: Math.min(100, Math.round((docCount * 25) + (avgEthics * 0.25))),
+    verifiedSignals: keySignals,
+    unverifiedAssumptions: docCount < 3 
+      ? ['Partial documentary coverage: additional penetration test and fiscal reconciliation required to eliminate remaining assumptions.'] 
+      : [],
+    lastAuditedDate: new Date().toISOString(),
+    auditedBy: session?.fullName || 'GNAPRMS Document AI Engine',
+    assumptionsEliminatedCount: docCount * 2
+  };
+
+  return { compliance, readinessScore, details, zeroAssumptionAudit };
 }

@@ -3,20 +3,32 @@ import {
   DollarSign, 
   Download, 
   FileSpreadsheet, 
-  CheckCircle2
+  CheckCircle2,
+  ShieldCheck,
+  ShieldAlert
 } from 'lucide-react';
-import { AIProject, formatNumberToWords } from '../data/sampleProjects';
+import { AIProject, formatNumberToWords, computeZeroAssumptionSummary } from '../data/sampleProjects';
 import { UserSession } from '../data/authTypes';
 import { recordAuditEvent } from '../services/auditService';
+import { canPerformAction } from '../services/rbacPolicy';
 
 interface FinanceMinisterViewProps {
   projects: AIProject[];
   session: UserSession;
+  onUpdateProjectBudget?: (projectId: string, updatedBudget: AIProject['budget'], zeroAssumption?: AIProject['zeroAssumptionAudit']) => void;
 }
 
-export const FinanceMinisterView: React.FC<FinanceMinisterViewProps> = ({ projects, session }) => {
+export const FinanceMinisterView: React.FC<FinanceMinisterViewProps> = ({ projects, session, onUpdateProjectBudget }) => {
   const [selectedFundingSource, setSelectedFundingSource] = useState<string>('All');
   const [exportFeedback, setExportFeedback] = useState<string | null>(null);
+
+  // Verification modal state
+  const [verifyingProject, setVerifyingProject] = useState<AIProject | null>(null);
+  const [auditWarrantInput, setAuditWarrantInput] = useState('');
+  const [auditNotesInput, setAuditNotesInput] = useState('');
+
+  const canVerifyExpenditure = canPerformAction(session.role, 'VERIFY_FINANCIAL_EXPENDITURE');
+  const zeroMetrics = computeZeroAssumptionSummary(projects);
 
   // Financial calculations
   const totalAllocated = projects.reduce((acc, p) => acc + p.budget.totalAllocated, 0);
@@ -48,7 +60,20 @@ export const FinanceMinisterView: React.FC<FinanceMinisterViewProps> = ({ projec
 
   // Export handlers
   const handleExportCSV = () => {
-    const headers = ['Project Code', 'Project Name', 'Sector', 'MDA', 'Funding Source', 'Allocated (GHS)', 'Disbursed (GHS)', 'Utilized (GHS)', 'Remaining (GHS)', 'Stage'];
+    const headers = [
+      'Project Code', 
+      'Project Name', 
+      'Sector', 
+      'MDA', 
+      'Funding Source', 
+      'Allocated (GHS)', 
+      'Disbursed (GHS)', 
+      'Utilized (GHS)', 
+      'Remaining (GHS)', 
+      'Verification Status',
+      'MoF Treasury Warrant Number',
+      'Stage'
+    ];
     const rows = filteredProjects.map(p => [
       p.projectCode,
       `"${p.name.replace(/"/g, '""')}"`,
@@ -59,6 +84,8 @@ export const FinanceMinisterView: React.FC<FinanceMinisterViewProps> = ({ projec
       p.budget.disbursed,
       p.budget.utilized,
       p.budget.remaining,
+      p.budget.verificationStatus || 'Self-Reported (Unverified)',
+      p.budget.mofWarrantNumber || 'None',
       p.stage
     ]);
 
@@ -81,14 +108,21 @@ export const FinanceMinisterView: React.FC<FinanceMinisterViewProps> = ({ projec
       actionDetails: `Exported comprehensive National AI financial CSV ledger (${filteredProjects.length} projects).`
     });
 
-    setExportFeedback('CSV financial ledger successfully generated and exported.');
+    setExportFeedback('CSV statutory financial ledger with verification provenance successfully exported.');
   };
 
   const handleExportJSON = () => {
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(filteredProjects, null, 2));
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify({
+      title: 'Republic of Ghana National AI Fiscal & Zero-Assumption Dossier',
+      authority: 'Ministry of Finance & Economic Planning (MoF)',
+      exportTimestamp: new Date().toISOString(),
+      officer: session.fullName,
+      zeroAssumptionSummary: zeroMetrics,
+      projects: filteredProjects
+    }, null, 2));
     const link = document.createElement('a');
     link.setAttribute('href', dataStr);
-    link.setAttribute('download', `Ghana_National_AI_Fiscal_Dossier_${new Date().toISOString().split('T')[0]}.json`);
+    link.setAttribute('download', `Ghana_National_AI_Fiscal_ZeroAssumption_Dossier_${new Date().toISOString().split('T')[0]}.json`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -103,7 +137,54 @@ export const FinanceMinisterView: React.FC<FinanceMinisterViewProps> = ({ projec
       actionDetails: `Exported statutory fiscal JSON dossier (${filteredProjects.length} projects).`
     });
 
-    setExportFeedback('JSON fiscal data exported with complete audit signatures.');
+    setExportFeedback('JSON statutory fiscal dossier exported with complete audit signatures.');
+  };
+
+  const handleConfirmVerification = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!verifyingProject) return;
+    if (!auditWarrantInput.trim()) {
+      alert('A valid statutory MoF Treasury Warrant Number is required to eliminate assumptions.');
+      return;
+    }
+
+    const updatedBudget: AIProject['budget'] = {
+      ...verifyingProject.budget,
+      verificationStatus: 'MoF Audited & Verified',
+      mofWarrantNumber: auditWarrantInput.trim(),
+      lastAuditedDate: new Date().toISOString().split('T')[0],
+      auditedBy: `${session.fullName} (Ministry of Finance)`,
+      auditNotes: auditNotesInput.trim() || 'MoF Treasury Warrant verified under Act 921. Assumption eliminated.',
+      hasAssumptionsFlag: false,
+      assumptionWarnings: []
+    };
+
+    if (onUpdateProjectBudget) {
+      onUpdateProjectBudget(verifyingProject.id, updatedBudget, {
+        isFullyVerified: true,
+        evidenceBackingScore: 95,
+        verifiedSignals: [`MoF Warrant #${auditWarrantInput.trim()} verified`, 'Treasury payment vouchers confirmed'],
+        unverifiedAssumptions: [],
+        lastAuditedDate: new Date().toISOString().split('T')[0],
+        assumptionsEliminatedCount: (verifyingProject.zeroAssumptionAudit?.assumptionsEliminatedCount || 0) + 1
+      });
+    }
+
+    recordAuditEvent({
+      eventType: 'FINANCIAL_VERIFICATION_UPDATE',
+      actorName: session.fullName,
+      actorEmail: session.email,
+      actorRole: session.role,
+      actorInstitution: session.institution,
+      targetModule: 'finance',
+      targetEntityId: verifyingProject.id,
+      actionDetails: `Attached MoF Treasury Warrant #${auditWarrantInput.trim()} for ${verifyingProject.projectCode}. Assumption eliminated.`
+    });
+
+    setExportFeedback(`Project ${verifyingProject.projectCode} successfully verified under MoF Treasury Warrant #${auditWarrantInput.trim()}. Assumption eliminated.`);
+    setVerifyingProject(null);
+    setAuditWarrantInput('');
+    setAuditNotesInput('');
   };
 
   return (
@@ -402,6 +483,10 @@ export const FinanceMinisterView: React.FC<FinanceMinisterViewProps> = ({ projec
                 <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontWeight: 700, textAlign: 'right' }}>Disbursed (GHS)</th>
                 <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontWeight: 700, textAlign: 'right' }}>Utilized (GHS)</th>
                 <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontWeight: 700, textAlign: 'center' }}>Absorption</th>
+                <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontWeight: 700 }}>Zero-Assumption Status</th>
+                {canVerifyExpenditure && (
+                  <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontWeight: 700, textAlign: 'center' }}>Audit Action</th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -447,6 +532,94 @@ export const FinanceMinisterView: React.FC<FinanceMinisterViewProps> = ({ projec
                         {rate.toFixed(0)}%
                       </span>
                     </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      {proj.budget.verificationStatus === 'MoF Audited & Verified' ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span style={{
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            background: 'rgba(16, 185, 129, 0.2)',
+                            color: '#10b981',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            width: 'fit-content'
+                          }}>
+                            <ShieldCheck size={12} /> MoF Verified
+                          </span>
+                          {proj.budget.mofWarrantNumber && (
+                            <span style={{ fontSize: '0.66rem', color: '#a7f3d0' }}>
+                              Warrant: {proj.budget.mofWarrantNumber}
+                            </span>
+                          )}
+                        </div>
+                      ) : proj.budget.verificationStatus === 'Flagged Discrepancy' ? (
+                        <span style={{
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          background: 'rgba(239, 68, 68, 0.2)',
+                          color: '#ef4444',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}>
+                          <ShieldAlert size={12} /> Discrepancy Hold
+                        </span>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span style={{
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            background: 'rgba(245, 158, 11, 0.2)',
+                            color: '#f59e0b',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            width: 'fit-content'
+                          }}>
+                            <ShieldAlert size={12} /> Unverified Claim
+                          </span>
+                          <span style={{ fontSize: '0.66rem', color: '#fde68a' }}>
+                            No Warrant Attached
+                          </span>
+                        </div>
+                      )}
+                    </td>
+                    {canVerifyExpenditure && (
+                      <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                        {proj.budget.hasAssumptionsFlag ? (
+                          <button
+                            onClick={() => {
+                              setVerifyingProject(proj);
+                              setAuditWarrantInput('');
+                              setAuditNotesInput('');
+                            }}
+                            style={{
+                              padding: '4px 10px',
+                              borderRadius: '6px',
+                              background: 'rgba(16, 185, 129, 0.2)',
+                              border: '1px solid rgba(16, 185, 129, 0.4)',
+                              color: '#a7f3d0',
+                              fontSize: '0.74rem',
+                              fontWeight: 700,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Verify Warrant
+                          </button>
+                        ) : (
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                            Certified ✓
+                          </span>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 );
               })}
@@ -454,6 +627,133 @@ export const FinanceMinisterView: React.FC<FinanceMinisterViewProps> = ({ projec
           </table>
         </div>
       </div>
+
+      {/* VERIFICATION MODAL */}
+      {verifyingProject && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.8)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: '20px'
+        }}>
+          <div style={{
+            background: '#0d1520',
+            border: '1px solid var(--ghana-emerald)',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '540px',
+            padding: '28px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '18px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.85)'
+          }}>
+            <div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--ghana-emerald)', fontWeight: 700, textTransform: 'uppercase' }}>
+                Zero-Assumption Statutory Control
+              </div>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#fff', margin: 0, marginTop: '2px' }}>
+                Verify Expenditure & Attach Treasury Warrant
+              </h3>
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: 0, marginTop: '4px' }}>
+                Project: <strong>{verifyingProject.projectCode}</strong> — {verifyingProject.name} ({verifyingProject.mdaCode})
+              </p>
+            </div>
+
+            <form onSubmit={handleConfirmVerification} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '6px' }}>
+                  OFFICIAL MOF TREASURY WARRANT NUMBER *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. MOF/WARR/2026/049"
+                  value={auditWarrantInput}
+                  onChange={(e) => setAuditWarrantInput(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    background: '#162232',
+                    border: '1px solid var(--border-color)',
+                    color: '#fff',
+                    fontSize: '0.82rem',
+                    outline: 'none'
+                  }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '6px' }}>
+                  STATUTORY RECONCILIATION NOTES
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Confirming that all payment vouchers and bank transfers were reconciled under Act 921..."
+                  value={auditNotesInput}
+                  onChange={(e) => setAuditNotesInput(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    background: '#162232',
+                    border: '1px solid var(--border-color)',
+                    color: '#fff',
+                    fontSize: '0.82rem',
+                    outline: 'none',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setVerifyingProject(null)}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#cbd5e1',
+                    fontSize: '0.8rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 18px',
+                    borderRadius: '8px',
+                    background: 'var(--ghana-emerald)',
+                    border: 'none',
+                    color: '#0f172a',
+                    fontWeight: 800,
+                    fontSize: '0.82rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <ShieldCheck size={16} /> Confirm Statutory Verification
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -8,7 +8,8 @@ import {
   ShieldCheck, 
   Clock, 
   FileCheck2,
-  Stamp
+  Stamp,
+  AlertTriangle
 } from 'lucide-react';
 import { AIProject, ReviewWorkflowStatus } from '../data/sampleProjects';
 import { UserSession } from '../data/authTypes';
@@ -404,6 +405,103 @@ export const DGDecisionQueue: React.FC<DGDecisionQueueProps> = ({
                         </div>
                       ))}
                     </div>
+                  </div>
+
+                  {/* Zero-Assumption Pre-Clearance Audit Gate */}
+                  <div style={{
+                    padding: '16px 18px',
+                    borderRadius: '12px',
+                    background: selectedProject.budget?.hasAssumptionsFlag 
+                      ? 'rgba(239, 68, 68, 0.08)' 
+                      : 'rgba(16, 185, 129, 0.08)',
+                    border: selectedProject.budget?.hasAssumptionsFlag 
+                      ? '1px solid rgba(239, 68, 68, 0.35)' 
+                      : '1px solid rgba(16, 185, 129, 0.35)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {selectedProject.budget?.hasAssumptionsFlag ? (
+                          <AlertTriangle size={18} className="text-red-400" />
+                        ) : (
+                          <ShieldCheck size={18} className="text-emerald-400" />
+                        )}
+                        <span style={{ 
+                          fontSize: '0.82rem', 
+                          fontWeight: 800, 
+                          color: selectedProject.budget?.hasAssumptionsFlag ? '#fca5a5' : '#a7f3d0' 
+                        }}>
+                          {selectedProject.budget?.hasAssumptionsFlag 
+                            ? '⚠️ Zero-Assumption Pre-Clearance Warning: Unverified Assumptions Present'
+                            : '✓ Zero-Assumption Verified: All Statutory Evidence Confirmed'}
+                        </span>
+                      </div>
+                      <span style={{
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: '6px',
+                        background: selectedProject.zeroAssumptionAudit?.isFullyVerified ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)',
+                        color: selectedProject.zeroAssumptionAudit?.isFullyVerified ? '#10b981' : '#f87171'
+                      }}>
+                        {selectedProject.zeroAssumptionAudit?.evidenceBackingScore ?? 45}% Primary Proof Ratio
+                      </span>
+                    </div>
+
+                    <div style={{ fontSize: '0.76rem', color: '#cbd5e1', lineHeight: 1.45 }}>
+                      {selectedProject.budget?.hasAssumptionsFlag ? (
+                        <>
+                          <strong>Statutory Compliance Warning:</strong> This project contains self-reported financial disbursements or compliance metrics not yet validated by a Ministry of Finance Treasury Warrant or external audit. 
+                          Under Ghana Public Financial Management Act (Act 921), unconditional approval without primary proof carries institutional liability.
+                        </>
+                      ) : (
+                        <>
+                          <strong>Statutory Certification:</strong> All capital expenditures are confirmed against MoF Treasury Warrant <code>{selectedProject.budget?.mofWarrantNumber}</code> and certified under Act 843. No self-reported assumptions remain.
+                        </>
+                      )}
+                    </div>
+
+                    {selectedProject.budget?.assumptionWarnings && selectedProject.budget.assumptionWarnings.length > 0 && (
+                      <div style={{
+                        fontSize: '0.72rem',
+                        color: '#fca5a5',
+                        background: 'rgba(0, 0, 0, 0.25)',
+                        padding: '8px 12px',
+                        borderRadius: '6px'
+                      }}>
+                        <strong>Unverified Claims to Resolve:</strong>
+                        <ul style={{ margin: '4px 0 0 16px', padding: 0 }}>
+                          {selectedProject.budget.assumptionWarnings.map((warn, i) => (
+                            <li key={i}>{warn}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {selectedProject.budget?.hasAssumptionsFlag && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setVerdict('Return for Further Review');
+                          setMandatoryComments(`Statutory clearance suspended under Act 921 / Act 843. Unverified assumptions detected: ${selectedProject.budget?.assumptionWarnings?.join('; ') || 'Disbursement claims and data protection filings lack primary documentary verification.'} Submitting MDA must provide official MoF Treasury Warrants and independent audit before final national registration.`);
+                        }}
+                        style={{
+                          alignSelf: 'flex-start',
+                          padding: '6px 12px',
+                          borderRadius: '6px',
+                          background: 'rgba(239, 68, 68, 0.2)',
+                          border: '1px solid rgba(239, 68, 68, 0.4)',
+                          color: '#fca5a5',
+                          fontSize: '0.74rem',
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Draft Return Directive: Demand MoF Warrant & Proof
+                      </button>
+                    )}
                   </div>
 
                   {/* Formal Decision Form */}

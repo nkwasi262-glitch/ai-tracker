@@ -6,6 +6,21 @@ export interface Milestone {
   status: 'Pending' | 'Completed' | 'Delayed';
 }
 
+export type FinancialVerificationStatus = 
+  | 'MoF Audited & Verified'
+  | 'Self-Reported (Unverified)'
+  | 'Flagged Discrepancy';
+
+export interface ZeroAssumptionAudit {
+  isFullyVerified: boolean;
+  evidenceBackingScore: number; // 0-100% of data claims backed by primary documentary proof
+  verifiedSignals: string[];
+  unverifiedAssumptions: string[];
+  lastAuditedDate?: string;
+  auditedBy?: string;
+  assumptionsEliminatedCount: number;
+}
+
 export interface Budget {
   totalAllocated: number;
   disbursed: number;
@@ -13,6 +28,13 @@ export interface Budget {
   remaining: number;
   primaryFundingSource: 'Government' | 'Development Partners' | 'Donors' | 'Private Sector' | 'Research Grants';
   currency: 'GHS' | 'USD';
+  verificationStatus?: FinancialVerificationStatus;
+  mofWarrantNumber?: string;
+  lastAuditedDate?: string;
+  auditedBy?: string;
+  auditNotes?: string;
+  hasAssumptionsFlag?: boolean;
+  assumptionWarnings?: string[];
 }
 
 export interface ComplianceScore {
@@ -112,6 +134,8 @@ export interface AIProject {
   reviewStatus?: ReviewWorkflowStatus;
   technicalReview?: TechnicalReviewDetails;
   autoAssessment?: AutoAssessmentDetails;
+  dpcCertificateNumber?: string;
+  zeroAssumptionAudit?: ZeroAssumptionAudit;
 }
 
 export const sampleProjects: AIProject[] = [
@@ -139,7 +163,14 @@ export const sampleProjects: AIProject[] = [
       utilized: 21500000,
       remaining: 2500000,
       primaryFundingSource: "Government",
-      currency: "GHS"
+      currency: "GHS",
+      verificationStatus: 'MoF Audited & Verified',
+      mofWarrantNumber: 'MOF/WARR/2026/014',
+      lastAuditedDate: '2026-09-15',
+      auditedBy: 'MoF National AI Expenditure Taskforce',
+      auditNotes: 'Statutory treasury warrant verified under Act 921. Assumption eliminated.',
+      hasAssumptionsFlag: false,
+      assumptionWarnings: []
     },
     compliance: {
       fairness: 80,
@@ -187,6 +218,19 @@ export const sampleProjects: AIProject[] = [
       reviewerEmail: "e.darko@mocd.gov.gh",
       reviewedAt: "2026-09-28T10:00:00Z",
       recommendationNotes: "Full architectural conformance verified. Deployed nationally under MoCD supervision."
+    },
+    dpcCertificateNumber: "GH-DPC-2026-092",
+    zeroAssumptionAudit: {
+      isFullyVerified: true,
+      evidenceBackingScore: 94,
+      verifiedSignals: [
+        'MoF Treasury Warrant MOF/WARR/2026/014 confirmed',
+        'DPC Certificate GH-DPC-2026-092 on file',
+        'NITA Sovereign Data Center hosting verified'
+      ],
+      unverifiedAssumptions: [],
+      lastAuditedDate: '2026-09-15',
+      assumptionsEliminatedCount: 4
     }
   },
   {
@@ -213,7 +257,14 @@ export const sampleProjects: AIProject[] = [
       utilized: 47000000,
       remaining: 2000000,
       primaryFundingSource: "Government",
-      currency: "GHS"
+      currency: "GHS",
+      verificationStatus: 'MoF Audited & Verified',
+      mofWarrantNumber: 'MOF/WARR/2026/088',
+      lastAuditedDate: '2026-10-01',
+      auditedBy: 'Auditor-General & MoF AI Review Board',
+      auditNotes: 'Verified against Bank of Ghana treasury disbursements.',
+      hasAssumptionsFlag: false,
+      assumptionWarnings: []
     },
     compliance: {
       fairness: 85,
@@ -251,6 +302,19 @@ export const sampleProjects: AIProject[] = [
       reviewerEmail: "a.osei@nita.gov.gh",
       reviewedAt: "2026-10-01T14:30:00Z",
       recommendationNotes: "Biometric security protocols tested and validated. HSM operational. Recommended for Director General final statutory verdict."
+    },
+    dpcCertificateNumber: "GH-DPC-2026-118",
+    zeroAssumptionAudit: {
+      isFullyVerified: true,
+      evidenceBackingScore: 96,
+      verifiedSignals: [
+        'Treasury Warrant MOF/WARR/2026/088 verified',
+        'DPC Biometric Class 1 Certificate confirmed',
+        'Hardware Security Module (HSM) FIPS 140-2 Level 3 audit verified'
+      ],
+      unverifiedAssumptions: [],
+      lastAuditedDate: '2026-10-01',
+      assumptionsEliminatedCount: 5
     }
   },
   {
@@ -277,7 +341,14 @@ export const sampleProjects: AIProject[] = [
       utilized: 12000000,
       remaining: 1500000,
       primaryFundingSource: "Development Partners",
-      currency: "GHS"
+      currency: "GHS",
+      verificationStatus: 'Self-Reported (Unverified)',
+      lastAuditedDate: '2026-08-10',
+      hasAssumptionsFlag: true,
+      assumptionWarnings: [
+        'MDA self-reported GHS 13.5M disbursement; pending MoF Treasury Warrant reconciliation.',
+        'Final contractor payment milestone unverified by physical audit.'
+      ]
     },
     compliance: {
       fairness: 90,
@@ -315,6 +386,21 @@ export const sampleProjects: AIProject[] = [
       reviewerEmail: "k.annan@nita.gov.gh",
       reviewedAt: "2026-10-02T11:20:00Z",
       recommendationNotes: "Cocoa farm boundary telemetry audited. 90% fairness score. Recommended for Director General final statutory verdict."
+    },
+    dpcCertificateNumber: "PENDING-FILING",
+    zeroAssumptionAudit: {
+      isFullyVerified: false,
+      evidenceBackingScore: 48,
+      verifiedSignals: [
+        'Cocoa farm satellite boundary survey dataset confirmed'
+      ],
+      unverifiedAssumptions: [
+        'Disbursement claims lack verified MoF Treasury Warrant',
+        'Data Protection Commission registration pending receipt of certificate',
+        'Field sensor calibration claims unverified by Ghana Standards Authority'
+      ],
+      lastAuditedDate: '2026-08-10',
+      assumptionsEliminatedCount: 1
     }
   },
   {
@@ -341,7 +427,16 @@ export const sampleProjects: AIProject[] = [
       utilized: 5500000,
       remaining: 700000,
       primaryFundingSource: "Development Partners",
-      currency: "GHS"
+      currency: "GHS",
+      verificationStatus: 'Flagged Discrepancy',
+      lastAuditedDate: '2026-10-05',
+      auditedBy: 'MoF Internal Audit Directorate',
+      auditNotes: 'Variance detected between reported software expenditure and Bank of Ghana foreign exchange transfer receipts. Disbursements frozen.',
+      hasAssumptionsFlag: true,
+      assumptionWarnings: [
+        'Audit Discrepancy: Unreconciled variance of GHS 850,000 in judicial cloud licensing receipts.',
+        'Funds hold enforced under Public Financial Management Act (Act 921).'
+      ]
     },
     compliance: {
       fairness: 75,
@@ -371,7 +466,21 @@ export const sampleProjects: AIProject[] = [
     ],
     documents: [
       { id: "doc-4-1", fileName: "E-Justice_Audit_Report.pdf", fileType: "pdf", uploadedAt: "2023-11-05", version: 1, signedBy: ["Judicial Secretary", "Lead Auditor"] }
-    ]
+    ],
+    dpcCertificateNumber: "GH-DPC-2026-015",
+    zeroAssumptionAudit: {
+      isFullyVerified: false,
+      evidenceBackingScore: 32,
+      verifiedSignals: [
+        'High Court speech corpus architecture documented'
+      ],
+      unverifiedAssumptions: [
+        'Expenditure claims disputed by Internal Audit Directorate',
+        'Self-reported compliance with Act 843 judicial privacy uncertified'
+      ],
+      lastAuditedDate: '2026-10-05',
+      assumptionsEliminatedCount: 0
+    }
   },
   {
     id: "proj-5",
@@ -397,7 +506,13 @@ export const sampleProjects: AIProject[] = [
       utilized: 4000000,
       remaining: 500000,
       primaryFundingSource: "Government",
-      currency: "GHS"
+      currency: "GHS",
+      verificationStatus: 'Self-Reported (Unverified)',
+      hasAssumptionsFlag: true,
+      assumptionWarnings: [
+        'Disbursement claimed without matching Treasury Warrant voucher.',
+        'Patient claims OCR processing speed self-reported; independent stress test pending.'
+      ]
     },
     compliance: {
       fairness: 80,
@@ -427,7 +542,21 @@ export const sampleProjects: AIProject[] = [
     ],
     documents: [
       { id: "doc-5-1", fileName: "NHIA_DPIA_Audit_Signoff.pdf", fileType: "pdf", uploadedAt: "2023-09-22", version: 1, signedBy: ["NHIA DPO", "External Auditor"] }
-    ]
+    ],
+    dpcCertificateNumber: "GH-DPC-2025-077",
+    zeroAssumptionAudit: {
+      isFullyVerified: false,
+      evidenceBackingScore: 55,
+      verifiedSignals: [
+        'DPC Health Registry Certificate GH-DPC-2025-077 verified',
+        'NHIA DPIA Audit Signoff document signed'
+      ],
+      unverifiedAssumptions: [
+        'Capital expenditure disbursement is self-reported and unverified by MoF warrant'
+      ],
+      lastAuditedDate: '2026-09-22',
+      assumptionsEliminatedCount: 2
+    }
   },
   {
     id: "proj-6",
@@ -453,7 +582,14 @@ export const sampleProjects: AIProject[] = [
       utilized: 10800000,
       remaining: 200000,
       primaryFundingSource: "Development Partners",
-      currency: "GHS"
+      currency: "GHS",
+      verificationStatus: 'MoF Audited & Verified',
+      mofWarrantNumber: 'MOF/WARR/2026/041',
+      lastAuditedDate: '2026-09-30',
+      auditedBy: 'MoF & World Bank Social Protection Joint Audit',
+      auditNotes: 'All social grant payment logs reconciled against Bank of Ghana treasury accounts.',
+      hasAssumptionsFlag: false,
+      assumptionWarnings: []
     },
     compliance: {
       fairness: 85,
@@ -483,7 +619,20 @@ export const sampleProjects: AIProject[] = [
     ],
     documents: [
       { id: "doc-6-1", fileName: "LEAP_Social_Inclusivity_Charter.pdf", fileType: "pdf", uploadedAt: "2021-03-12", version: 1, signedBy: ["Minister of Gender", "Director of Social Welfare"] }
-    ]
+    ],
+    dpcCertificateNumber: "GH-DPC-2026-440",
+    zeroAssumptionAudit: {
+      isFullyVerified: true,
+      evidenceBackingScore: 92,
+      verifiedSignals: [
+        'MoF Treasury Warrant MOF/WARR/2026/041 confirmed',
+        'DPC Social Protection Data Certificate active',
+        'Biometric match accuracy audited by independent university lab'
+      ],
+      unverifiedAssumptions: [],
+      lastAuditedDate: '2026-09-30',
+      assumptionsEliminatedCount: 4
+    }
   },
   {
     id: "proj-7",
@@ -891,4 +1040,34 @@ export function formatNumberToWords(num: number): string {
   }
   
   return wordResult.trim();
+}
+
+export function computeZeroAssumptionSummary(projects: AIProject[]) {
+  const total = projects.length;
+  const verifiedCount = projects.filter(p => p.budget?.verificationStatus === 'MoF Audited & Verified' && !p.budget?.hasAssumptionsFlag).length;
+  const unverifiedCount = projects.filter(p => p.budget?.verificationStatus === 'Self-Reported (Unverified)' || p.budget?.hasAssumptionsFlag).length;
+  const flaggedCount = projects.filter(p => p.budget?.verificationStatus === 'Flagged Discrepancy').length;
+
+  const totalAllocated = projects.reduce((acc, p) => acc + (p.budget?.totalAllocated || 0), 0);
+  const verifiedDisbursed = projects
+    .filter(p => p.budget?.verificationStatus === 'MoF Audited & Verified')
+    .reduce((acc, p) => acc + (p.budget?.disbursed || 0), 0);
+  const unverifiedDisbursed = projects
+    .filter(p => p.budget?.verificationStatus !== 'MoF Audited & Verified')
+    .reduce((acc, p) => acc + (p.budget?.disbursed || 0), 0);
+
+  const portfolioAssurancePercent = totalAllocated > 0 
+    ? Math.round((verifiedDisbursed / (verifiedDisbursed + unverifiedDisbursed || 1)) * 100) 
+    : 0;
+
+  return {
+    total,
+    verifiedCount,
+    unverifiedCount,
+    flaggedCount,
+    totalAllocated,
+    verifiedDisbursed,
+    unverifiedDisbursed,
+    portfolioAssurancePercent
+  };
 }

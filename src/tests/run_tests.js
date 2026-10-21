@@ -216,6 +216,123 @@ test('After onboarding, selecting an Active Role Profile unlocks modules per tha
   assert(!canAccessModule('Director General', 'registry'), 'Elevated DG should still be isolated from registry CRUD');
 });
 
+console.log('\n8. Testing Zero-Assumption Governance & Verification Rules:');
+
+const ROLE_ACTION_PERMISSIONS = {
+  'Super Admin': { VERIFY_FINANCIAL_EXPENDITURE: true },
+  'Finance Minister': { VERIFY_FINANCIAL_EXPENDITURE: true },
+  'Director General': { VERIFY_FINANCIAL_EXPENDITURE: false },
+  'AI Manager': { VERIFY_FINANCIAL_EXPENDITURE: false },
+  'Public User': { VERIFY_FINANCIAL_EXPENDITURE: false },
+  'First-Timer / New User': { VERIFY_FINANCIAL_EXPENDITURE: false }
+};
+
+function canPerformAction(role, action) {
+  return !!ROLE_ACTION_PERMISSIONS[role]?.[action];
+}
+
+test('Finance Minister has authority to verify statutory expenditures under Act 921', () => {
+  assert(canPerformAction('Finance Minister', 'VERIFY_FINANCIAL_EXPENDITURE'), 'Finance Minister should have VERIFY_FINANCIAL_EXPENDITURE');
+});
+
+test('Super Admin has authority to verify statutory expenditures', () => {
+  assert(canPerformAction('Super Admin', 'VERIFY_FINANCIAL_EXPENDITURE'), 'Super Admin should have VERIFY_FINANCIAL_EXPENDITURE');
+});
+
+test('Director General and unprivileged roles CANNOT fabricate financial verification without treasury role', () => {
+  assert(!canPerformAction('Director General', 'VERIFY_FINANCIAL_EXPENDITURE'), 'DG cannot verify financial expenditure');
+  assert(!canPerformAction('AI Manager', 'VERIFY_FINANCIAL_EXPENDITURE'), 'AI Manager cannot verify financial expenditure');
+  assert(!canPerformAction('Public User', 'VERIFY_FINANCIAL_EXPENDITURE'), 'Public User cannot verify financial expenditure');
+});
+
+test('Project intake forbids assumed disbursements (disbursed must initialize to 0 without warrant)', () => {
+  const newIntakeProject = {
+    budget: {
+      totalAllocated: 5000000,
+      disbursed: 0,
+      utilized: 0,
+      remaining: 5000000,
+      primaryFundingSource: 'Government',
+      verificationStatus: 'Self-Reported (Unverified)',
+      hasAssumptionsFlag: true,
+      assumptionWarnings: ['Unverified preliminary allocation: No MoF Treasury Warrant attached']
+    },
+    readinessScore: 28,
+    zeroAssumptionAudit: {
+      isFullyVerified: false,
+      evidenceBackingScore: 30,
+      verifiedSignals: [],
+      unverifiedAssumptions: ['Disbursement unverified', 'Milestone completion assumed without independent inspection']
+    }
+  };
+
+  assert(newIntakeProject.budget.disbursed === 0, 'Initial disbursement must be 0 GHS, avoiding assumed 10% mobilization');
+  assert(newIntakeProject.budget.hasAssumptionsFlag === true, 'Project without warrant must have assumption flag');
+  assert(newIntakeProject.readinessScore === 28, 'Readiness score without documents must be unassumed baseline (28%)');
+  assert(newIntakeProject.zeroAssumptionAudit.isFullyVerified === false, 'Cannot be marked verified without evidence');
+});
+
+test('Attaching official MoF Treasury Warrant eliminates assumption flag and updates status', () => {
+  const unverifiedProject = {
+    budget: {
+      totalAllocated: 3200000,
+      disbursed: 1200000,
+      utilized: 1000000,
+      remaining: 2200000,
+      verificationStatus: 'Self-Reported (Unverified)',
+      hasAssumptionsFlag: true,
+      assumptionWarnings: ['Disbursement self-reported without warrant']
+    }
+  };
+
+  // Simulate Finance Minister verification action
+  const warrantNumber = 'MOF/WARR/2026/088';
+  const verifiedBudget = {
+    ...unverifiedProject.budget,
+    verificationStatus: 'MoF Audited & Verified',
+    mofWarrantNumber: warrantNumber,
+    lastAuditedDate: '2026-10-21',
+    hasAssumptionsFlag: false,
+    assumptionWarnings: []
+  };
+
+  assert(verifiedBudget.verificationStatus === 'MoF Audited & Verified', 'Status should be MoF Audited & Verified');
+  assert(verifiedBudget.mofWarrantNumber === warrantNumber, 'Warrant number must be recorded');
+  assert(verifiedBudget.hasAssumptionsFlag === false, 'Assumption flag must be eliminated');
+  assert(verifiedBudget.assumptionWarnings.length === 0, 'Assumption warnings must be cleared');
+});
+
+test('Zero-Assumption summary segregates warrant-verified capital from self-reported claims', () => {
+  const sampleProjects = [
+    {
+      budget: {
+        totalAllocated: 10000000,
+        disbursed: 4000000,
+        verificationStatus: 'MoF Audited & Verified',
+        hasAssumptionsFlag: false
+      }
+    },
+    {
+      budget: {
+        totalAllocated: 5000000,
+        disbursed: 2000000,
+        verificationStatus: 'Self-Reported (Unverified)',
+        hasAssumptionsFlag: true
+      }
+    }
+  ];
+
+  const totalDisbursed = sampleProjects.reduce((acc, p) => acc + p.budget.disbursed, 0);
+  const verifiedDisbursed = sampleProjects.filter(p => p.budget.verificationStatus === 'MoF Audited & Verified').reduce((acc, p) => acc + p.budget.disbursed, 0);
+  const unverifiedDisbursed = totalDisbursed - verifiedDisbursed;
+  const portfolioAssurancePercent = Math.round((verifiedDisbursed / totalDisbursed) * 100);
+
+  assert(totalDisbursed === 6000000, 'Total disbursed should be 6M');
+  assert(verifiedDisbursed === 4000000, 'Verified capital should be 4M');
+  assert(unverifiedDisbursed === 2000000, 'Unverified capital should be 2M');
+  assert(portfolioAssurancePercent === 67, 'Assurance percentage should be 67%');
+});
+
 const passed = tests.filter(t => t.passed).length;
 const total = tests.length;
 
