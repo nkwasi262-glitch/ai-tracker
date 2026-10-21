@@ -339,8 +339,26 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                       {p.mdaCode} • {p.sector}
                     </div>
                   </div>
-                  <div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
                     {getStageBadge(p.stage)}
+                    {p.reviewStatus && (
+                      <span style={{
+                        fontSize: '0.62rem',
+                        fontWeight: 700,
+                        padding: '1px 6px',
+                        borderRadius: '4px',
+                        background: p.reviewStatus === 'Approved' ? 'rgba(16, 185, 129, 0.2)' :
+                                    p.reviewStatus === 'Pending' ? 'rgba(251, 191, 36, 0.2)' :
+                                    p.reviewStatus === 'Rejected' ? 'rgba(239, 68, 68, 0.2)' :
+                                    'rgba(59, 130, 246, 0.2)',
+                        color: p.reviewStatus === 'Approved' ? '#10b981' :
+                               p.reviewStatus === 'Pending' ? '#fbbf24' :
+                               p.reviewStatus === 'Rejected' ? '#f87171' :
+                               '#60a5fa'
+                      }}>
+                        {p.reviewStatus}
+                      </span>
+                    )}
                   </div>
                 </div>
               ))
@@ -355,8 +373,27 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                   <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>{selectedProject.name}</h4>
                   <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{selectedProject.mda}</span>
                 </div>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                   <span className="badge badge-info" style={{ fontSize: '0.65rem' }}>{selectedProject.category}</span>
+                  {selectedProject.reviewStatus && (
+                    <span style={{
+                      fontSize: '0.65rem',
+                      fontWeight: 700,
+                      padding: '2px 8px',
+                      borderRadius: '4px',
+                      background: selectedProject.reviewStatus === 'Approved' ? 'rgba(16, 185, 129, 0.2)' :
+                                  selectedProject.reviewStatus === 'Pending' ? 'rgba(251, 191, 36, 0.2)' :
+                                  selectedProject.reviewStatus === 'Rejected' ? 'rgba(239, 68, 68, 0.2)' :
+                                  'rgba(59, 130, 246, 0.2)',
+                      color: selectedProject.reviewStatus === 'Approved' ? '#10b981' :
+                             selectedProject.reviewStatus === 'Pending' ? '#fbbf24' :
+                             selectedProject.reviewStatus === 'Rejected' ? '#f87171' :
+                             '#60a5fa',
+                      border: '1px solid currentColor'
+                    }}>
+                      Registration: {selectedProject.reviewStatus}
+                    </span>
+                  )}
                   {canWrite && (
                     <button
                       onClick={() => {

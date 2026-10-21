@@ -52,7 +52,29 @@ export type ReviewWorkflowStatus =
   | 'Under DG Review'
   | 'Approved'
   | 'Rejected'
-  | 'Returned';
+  | 'Returned'
+  | 'Pending';
+
+export interface AutoAssessmentDetails {
+  generatedAt: string;
+  generatedBy: string;
+  documentCount: number;
+  documentsAnalyzed: string[];
+  ethicsSummary: string;
+  readinessSummary: string;
+  keySignals: string[];
+  fairnessRationale?: string;
+  transparencyRationale?: string;
+  accountabilityRationale?: string;
+  privacyRationale?: string;
+  securityRationale?: string;
+  readinessPillars?: {
+    infrastructure: number;
+    dataGovernance: number;
+    technicalStaff: number;
+    policyLeadership: number;
+  };
+}
 
 export interface TechnicalReviewDetails {
   reviewerName?: string;
@@ -89,6 +111,7 @@ export interface AIProject {
   documents: DocumentAsset[];
   reviewStatus?: ReviewWorkflowStatus;
   technicalReview?: TechnicalReviewDetails;
+  autoAssessment?: AutoAssessmentDetails;
 }
 
 export const sampleProjects: AIProject[] = [

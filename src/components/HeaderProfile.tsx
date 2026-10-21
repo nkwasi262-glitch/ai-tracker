@@ -13,7 +13,8 @@ import {
   Building2,
   Sparkles,
   X,
-  AlertTriangle
+  AlertTriangle,
+  Lock
 } from 'lucide-react';
 import { UserSession, ActiveRole } from '../data/authTypes';
 
@@ -172,68 +173,65 @@ export const HeaderProfile: React.FC<HeaderProfileProps> = ({ session, onSwitchR
           <span>{session.role}</span>
         </div>
 
-        {/* If First-Timer: Select Active Role Profile Button */}
-        {session.role === 'First-Timer / New User' && onOpenRoleSelector && (
-          <button
-            onClick={onOpenRoleSelector}
-            title="Activate your official Active Role Profile"
+        {/* First-Timer: Role Selection is Restricted During Guided Onboarding */}
+        {session.role === 'First-Timer / New User' ? (
+          <div
+            title="Role profile selection is restricted during guided onboarding. Super Admin audits uploaded project documents to authorize clearance."
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '6px',
-              padding: '5px 12px',
+              gap: '5px',
+              padding: '4px 10px',
               borderRadius: '9999px',
-              background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.25), rgba(16, 185, 129, 0.25))',
-              border: '1px solid rgba(251, 191, 36, 0.6)',
-              color: '#fef08a',
-              fontSize: '0.74rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              boxShadow: '0 0 12px rgba(251, 191, 36, 0.25)',
-              transition: 'all 0.2s ease'
+              background: 'rgba(251, 191, 36, 0.08)',
+              border: '1px solid rgba(251, 191, 36, 0.25)',
+              color: '#fde68a',
+              fontSize: '0.7rem',
+              fontWeight: 600,
+              cursor: 'not-allowed'
             }}
           >
-            <Sparkles size={12} className="text-amber-400" />
-            <span>Select Active Role Profile ➜</span>
+            <Lock size={11} className="text-amber-400" />
+            <span>Role Selection Restricted</span>
+          </div>
+        ) : (
+          /* Switch Role Option for Elevated Roles */
+          <button
+            onClick={() => {
+              if (onOpenRoleSelector) {
+                onOpenRoleSelector();
+              } else {
+                setShowConfirmModal(true);
+              }
+            }}
+            title="Switch to another Active Role Profile"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '5px 10px',
+              borderRadius: '9999px',
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              color: 'var(--text-secondary)',
+              fontSize: '0.72rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.color = '#fff';
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.color = 'var(--text-secondary)';
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+            }}
+          >
+            <RefreshCw size={12} />
+            <span>Switch Role</span>
           </button>
         )}
-
-        {/* Switch Role Option */}
-        <button
-          onClick={() => {
-            if (onOpenRoleSelector) {
-              onOpenRoleSelector();
-            } else {
-              setShowConfirmModal(true);
-            }
-          }}
-          title="Switch to another Active Role Profile"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '5px',
-            padding: '5px 10px',
-            borderRadius: '9999px',
-            background: 'rgba(255, 255, 255, 0.05)',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
-            color: 'var(--text-secondary)',
-            fontSize: '0.72rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-            transition: 'all 0.2s ease'
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.color = '#fff';
-            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)';
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.color = 'var(--text-secondary)';
-            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)';
-          }}
-        >
-          <RefreshCw size={12} />
-          <span>Switch Role</span>
-        </button>
 
         {/* Prominent High-Visibility Sign Out Button */}
         <button

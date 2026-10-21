@@ -3,7 +3,8 @@ import {
   ArrowRight, 
   X, 
   Sparkles,
-  CheckCircle2
+  CheckCircle2,
+  Lock
 } from 'lucide-react';
 import { ActiveRole, UserSession } from '../data/authTypes';
 import { MODULE_REGISTRY, AppModuleId } from '../services/rbacPolicy';
@@ -33,6 +34,63 @@ export const ActiveRoleSelectorModal: React.FC<ActiveRoleSelectorModalProps> = (
   const [selectedRole, setSelectedRole] = useState<ActiveRole>('AI Manager');
 
   if (!isOpen) return null;
+
+  // First-Timer Onboarding Mode cannot select active role profile
+  if (session.role === 'First-Timer / New User') {
+    return (
+      <div style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 9999,
+        background: 'rgba(5, 8, 15, 0.88)',
+        backdropFilter: 'blur(10px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px'
+      }}>
+        <div className="glass-card" style={{
+          maxWidth: '520px',
+          width: '100%',
+          padding: '32px',
+          textAlign: 'center',
+          border: '1px solid rgba(251, 191, 36, 0.4)',
+          boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
+        }}>
+          <div style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '16px',
+            background: 'rgba(251, 191, 36, 0.15)',
+            border: '1px solid rgba(251, 191, 36, 0.35)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fbbf24',
+            margin: '0 auto 16px auto'
+          }}>
+            <Lock size={28} />
+          </div>
+
+          <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#fde68a', marginBottom: '8px' }}>
+            Active Role Selection Restricted
+          </h3>
+
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '20px' }}>
+            Users in <strong>First-Timer Onboarding Mode: Guided Services Active</strong> do not have access to select an active role profile. Please proceed to <strong>Documents & OCR</strong> to upload your project's compliance dossiers. Super Admin must audit all uploaded documents, auto-generate Governance & Ethics and AI Readiness ratings, and approve project registration before role profile activation.
+          </p>
+
+          <button
+            onClick={onClose}
+            className="btn btn-primary"
+            style={{ padding: '10px 24px', fontSize: '0.84rem' }}
+          >
+            Acknowledge & Return to Guided Documents
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const roles: RoleOption[] = [
     {

@@ -15,10 +15,11 @@ import { AuditLogViewer } from './components/AuditLogViewer';
 import { EntryGateModal } from './components/EntryGateModal';
 import { AccessDenied } from './components/AccessDenied';
 import { ActiveRoleSelectorModal } from './components/ActiveRoleSelectorModal';
-import { sampleProjects, AIProject, ComplianceScore, DocumentAsset, ReviewWorkflowStatus } from './data/sampleProjects';
+import { sampleProjects, AIProject, ComplianceScore, DocumentAsset, ReviewWorkflowStatus, AutoAssessmentDetails } from './data/sampleProjects';
 import { UserSession, ActiveRole } from './data/authTypes';
 import { getStoredSession, clearSession, elevateFromFirstTimer } from './services/authService';
 import { AppModuleId, canAccessModule } from './services/rbacPolicy';
+import { generateAssessmentFromDocuments } from './services/assessmentEngine';
 
 function App() {
   // 1. Session State from Mandatory Entry Gate
@@ -112,13 +113,19 @@ function App() {
     }));
   };
 
-  // Appends uploaded PDF metadata inside MinIO simulation
+  // Appends uploaded PDF metadata inside MinIO simulation and auto-generates Governance & Readiness
   const handleAddDocument = (projectId: string, newDoc: DocumentAsset) => {
     setProjects(prev => prev.map(p => {
       if (p.id === projectId) {
+        const updatedDocs = [newDoc, ...p.documents];
+        const tempProject = { ...p, documents: updatedDocs };
+        const auto = generateAssessmentFromDocuments(tempProject, session || undefined);
         return {
           ...p,
-          documents: [newDoc, ...p.documents]
+          documents: updatedDocs,
+          compliance: auto.compliance,
+          readinessScore: auto.readinessScore,
+          autoAssessment: auto.details
         };
       }
       return p;
@@ -146,7 +153,27 @@ function App() {
     }));
   };
 
-  // Updates project review lifecycle status (Technical review / DG clearance)
+  // Updates automatically generated assessments (Governance & Ethics, AI Readiness)
+  const handleUpdateProjectAssessment = (
+    projectId: string,
+    newCompliance: ComplianceScore,
+    newReadinessScore: number,
+    details: AutoAssessmentDetails
+  ) => {
+    setProjects(prev => prev.map(p => {
+      if (p.id === projectId) {
+        return {
+          ...p,
+          compliance: newCompliance,
+          readinessScore: newReadinessScore,
+          autoAssessment: details
+        };
+      }
+      return p;
+    }));
+  };
+
+  // Updates project review lifecycle status (Technical review / Super Admin clearance / DG clearance)
   const handleUpdateProjectReviewStatus = (
     projectId: string, 
     newReviewStatus: ReviewWorkflowStatus, 
@@ -157,6 +184,7 @@ function App() {
         return {
           ...p,
           reviewStatus: newReviewStatus,
+          status: newReviewStatus === 'Approved' ? 'Active' : p.status,
           technicalReview: notes ? {
             reviewerName: session?.fullName,
             reviewerRole: session?.role,
@@ -245,6 +273,7 @@ function App() {
             currentRole={session.role as any}
             session={session}
             onUpdateProjectStatus={handleUpdateProjectReviewStatus}
+            onUpdateProjectAssessment={handleUpdateProjectAssessment}
           />
         );
       case 'dg_queue':
@@ -287,7 +316,7 @@ function App() {
       <Layout 
         session={session}
         onSwitchRole={handleSwitchRole}
-        onOpenRoleSelector={() => setShowRoleSelectorModal(true)}
+        onOpenRoleSelector={session.role === 'First-Timer / New User' ? undefined : () => setShowRoleSelectorModal(true)}
         activeTab={activeTab} 
         setActiveTab={setActiveTab}
       >

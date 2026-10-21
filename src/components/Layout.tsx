@@ -15,8 +15,8 @@ import {
   MessageSquare,
   ShieldAlert,
   Sparkles,
-  ArrowRight,
-  LogOut
+  LogOut,
+  Lock
 } from 'lucide-react';
 import { UserSession } from '../data/authTypes';
 import { HeaderProfile } from './HeaderProfile';
@@ -197,34 +197,27 @@ export const Layout: React.FC<LayoutProps> = ({
                     First-Timer Onboarding Mode: Guided Services Active
                   </div>
                   <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                    You have guided access to <strong>Documents & OCR</strong> (upload required files), <strong>AI Readiness</strong>, and <strong>Governance & Ethics</strong>. Once you are ready, select your Active Role Profile to unlock your assigned institutional modules.
+                    You have guided access to <strong>Documents & OCR</strong> (upload required compliance files), <strong>AI Readiness</strong>, and <strong>Governance & Ethics</strong>. Access to select an Active Role Profile is restricted during onboarding; Super Admin audits uploaded documents, auto-generates governance & readiness ratings, and decides project registration.
                   </div>
                 </div>
               </div>
 
-              {onOpenRoleSelector && (
-                <button
-                  onClick={onOpenRoleSelector}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '9px 18px',
-                    borderRadius: '8px',
-                    background: 'linear-gradient(135deg, var(--ghana-emerald), #059669)',
-                    border: 'none',
-                    color: '#000',
-                    fontSize: '0.82rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
-                  }}
-                >
-                  <span>Select Active Role Profile</span>
-                  <ArrowRight size={14} />
-                </button>
-              )}
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                background: 'rgba(251, 191, 36, 0.1)',
+                border: '1px solid rgba(251, 191, 36, 0.35)',
+                color: '#fde68a',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                whiteSpace: 'nowrap'
+              }}>
+                <Lock size={14} className="text-amber-400" />
+                <span>Role Selection Restricted</span>
+              </div>
             </div>
           )}
 
