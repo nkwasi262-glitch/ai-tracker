@@ -27,7 +27,9 @@ export type AppAction =
   | 'SIGN_DOCUMENT'
   | 'VIEW_AUDIT_LOG'
   | 'PURGE_AUDIT_LOG'
-  | 'VERIFY_FINANCIAL_EXPENDITURE';
+  | 'VERIFY_FINANCIAL_EXPENDITURE'
+  | 'REVIEW_AND_GRADE_DOCUMENT'
+  | 'COMMENT_ON_ONBOARDER_DOCUMENT';
 
 export interface ModuleDefinition {
   id: AppModuleId;
@@ -207,7 +209,9 @@ const ROLE_ACTION_PERMISSIONS: Record<ActiveRole, Partial<Record<AppAction, bool
     SIGN_DOCUMENT: true,
     VIEW_AUDIT_LOG: true,
     PURGE_AUDIT_LOG: false, // Tamper-evident: even super admin cannot purge immutable logs
-    VERIFY_FINANCIAL_EXPENDITURE: true
+    VERIFY_FINANCIAL_EXPENDITURE: true,
+    REVIEW_AND_GRADE_DOCUMENT: true,
+    COMMENT_ON_ONBOARDER_DOCUMENT: true
   },
   'Technical Director': {
     VIEW: true,
@@ -221,7 +225,9 @@ const ROLE_ACTION_PERMISSIONS: Record<ActiveRole, Partial<Record<AppAction, bool
     COMMENT_INTERNAL_REPORT: true,
     SIGN_DOCUMENT: true,
     VIEW_AUDIT_LOG: true,
-    PURGE_AUDIT_LOG: false
+    PURGE_AUDIT_LOG: false,
+    REVIEW_AND_GRADE_DOCUMENT: true,
+    COMMENT_ON_ONBOARDER_DOCUMENT: true
   },
   'Technical Clearance Team': {
     VIEW: true,
@@ -235,7 +241,9 @@ const ROLE_ACTION_PERMISSIONS: Record<ActiveRole, Partial<Record<AppAction, bool
     COMMENT_INTERNAL_REPORT: true,
     SIGN_DOCUMENT: true,
     VIEW_AUDIT_LOG: true,
-    PURGE_AUDIT_LOG: false
+    PURGE_AUDIT_LOG: false,
+    REVIEW_AND_GRADE_DOCUMENT: true,
+    COMMENT_ON_ONBOARDER_DOCUMENT: true
   },
   'AI Manager': {
     VIEW: true,
@@ -249,7 +257,9 @@ const ROLE_ACTION_PERMISSIONS: Record<ActiveRole, Partial<Record<AppAction, bool
     COMMENT_INTERNAL_REPORT: true,
     SIGN_DOCUMENT: true,
     VIEW_AUDIT_LOG: false,
-    PURGE_AUDIT_LOG: false
+    PURGE_AUDIT_LOG: false,
+    REVIEW_AND_GRADE_DOCUMENT: false,
+    COMMENT_ON_ONBOARDER_DOCUMENT: false
   },
   'Director General': {
     VIEW: true,
@@ -263,7 +273,9 @@ const ROLE_ACTION_PERMISSIONS: Record<ActiveRole, Partial<Record<AppAction, bool
     COMMENT_INTERNAL_REPORT: true,
     SIGN_DOCUMENT: true,
     VIEW_AUDIT_LOG: true,
-    PURGE_AUDIT_LOG: false
+    PURGE_AUDIT_LOG: false,
+    REVIEW_AND_GRADE_DOCUMENT: true,
+    COMMENT_ON_ONBOARDER_DOCUMENT: true
   },
   'Finance Minister': {
     VIEW: true,

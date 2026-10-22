@@ -17,9 +17,18 @@ import {
   Layers,
   ShieldAlert,
   X,
-  FolderOpen
+  FolderOpen,
+  MessageSquare
 } from 'lucide-react';
-import { AIProject, DocumentAsset, ReviewWorkflowStatus, ComplianceScore, AutoAssessmentDetails, ZeroAssumptionAudit } from '../data/sampleProjects';
+import { 
+  AIProject, 
+  DocumentAsset, 
+  DocumentReviewComment,
+  ReviewWorkflowStatus, 
+  ComplianceScore, 
+  AutoAssessmentDetails, 
+  ZeroAssumptionAudit 
+} from '../data/sampleProjects';
 import { UserRole } from './RoleSwitcher';
 import { UserSession } from '../data/authTypes';
 import { recordAuditEvent } from '../services/auditService';
@@ -28,6 +37,7 @@ import {
   getDocumentOcrText, 
   registerUploadedDocumentOcr 
 } from '../services/assessmentEngine';
+import { DocumentReviewGradeModal } from './DocumentReviewGradeModal';
 
 interface DocumentManagerProps {
   projects: AIProject[];
@@ -43,6 +53,14 @@ interface DocumentManagerProps {
     details: AutoAssessmentDetails,
     zeroAssumptionAudit?: ZeroAssumptionAudit
   ) => void;
+  onReviewDocument?: (
+    projectId: string,
+    docId: string,
+    reviewComment: DocumentReviewComment,
+    newCompliance?: ComplianceScore,
+    newReadinessScore?: number,
+    newProjectStatus?: ReviewWorkflowStatus
+  ) => void;
 }
 
 export const DocumentManager: React.FC<DocumentManagerProps> = ({
@@ -52,7 +70,8 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
   currentRole,
   session,
   onUpdateProjectStatus,
-  onUpdateProjectAssessment
+  onUpdateProjectAssessment,
+  onReviewDocument
 }) => {
   const [selectedProjectId, setSelectedProjectId] = useState<string>(projects[0]?.id || '');
   const activeProject = projects.find(p => p.id === selectedProjectId);
@@ -68,6 +87,24 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
     session?.role === 'Technical Clearance Team' ||
     session?.role === 'Super Admin'
   );
+
+  // Statutory authority to review documents, grade modules, and pass comments on first-timer uploads
+  const canReviewAndGrade = !isFirstTimer && (
+    session?.role === 'Director General' ||
+    session?.role === 'Super Admin' ||
+    session?.role === 'Technical Clearance Team' ||
+    session?.role === 'Technical Director' ||
+    currentRole === 'Director General' ||
+    currentRole === 'Super Admin' ||
+    currentRole === 'Technical Clearance Team' ||
+    currentRole === 'Technical Director'
+  );
+
+  // Review & Grade modal state
+  const [reviewingItem, setReviewingItem] = useState<{ doc: DocumentAsset; project: AIProject } | null>(null);
+
+  // Filter for first-timer uploads only
+  const [onlyFirstTimerFilter, setOnlyFirstTimerFilter] = useState(false);
 
   // View mode: 'project' (current project vault) vs 'all' (super admin master document explorer)
   const [viewMode, setViewMode] = useState<'project' | 'all'>('project');
@@ -108,7 +145,21 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
     }))
   );
 
+  const firstTimerUploadsCount = allUploadedDocuments.filter(item => 
+    item.doc.isFirstTimerUpload || 
+    item.doc.uploadedByRole === 'First-Timer / New User' ||
+    item.doc.id.includes('onboard') ||
+    item.doc.signedBy?.includes('First-Timer / New User')
+  ).length;
+
   const filteredAllDocuments = allUploadedDocuments.filter(item => {
+    if (onlyFirstTimerFilter) {
+      const isFT = item.doc.isFirstTimerUpload || 
+        item.doc.uploadedByRole === 'First-Timer / New User' ||
+        item.doc.id.includes('onboard') ||
+        item.doc.signedBy?.includes('First-Timer / New User');
+      if (!isFT) return false;
+    }
     if (!allDocsFilter) return true;
     const q = allDocsFilter.toLowerCase();
     return (
@@ -116,7 +167,9 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
       item.project.name.toLowerCase().includes(q) ||
       item.project.projectCode.toLowerCase().includes(q) ||
       item.project.mda.toLowerCase().includes(q) ||
-      item.project.mdaCode.toLowerCase().includes(q)
+      item.project.mdaCode.toLowerCase().includes(q) ||
+      (item.doc.uploadedByName && item.doc.uploadedByName.toLowerCase().includes(q)) ||
+      (item.doc.reviewStatus && item.doc.reviewStatus.toLowerCase().includes(q))
     );
   });
 
@@ -166,7 +219,12 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                 fileType: 'pdf',
                 uploadedAt: new Date().toISOString().split('T')[0],
                 version: 1,
-                signedBy: [currentRole]
+                signedBy: [currentRole],
+                uploadedByRole: session?.role || currentRole,
+                uploadedByName: session?.fullName || 'Registry User',
+                uploadedByEmail: session?.email || '',
+                isFirstTimerUpload: isFirstTimer,
+                reviewStatus: 'Pending Review'
               };
 
               // Register simulated OCR text for the newly uploaded document
@@ -458,16 +516,56 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
               </p>
             </div>
 
-            <div style={{ position: 'relative', width: '280px' }}>
-              <input
-                type="text"
-                placeholder="Filter by filename, project, MDA..."
-                value={allDocsFilter}
-                onChange={(e) => setAllDocsFilter(e.target.value)}
-                className="form-input"
-                style={{ paddingLeft: '34px', fontSize: '0.8rem', height: '36px' }}
-              />
-              <Search style={{ position: 'absolute', left: '10px', top: '10px', width: '15px', height: '15px', color: 'var(--text-muted)' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(255, 255, 255, 0.04)', padding: '3px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                <button
+                  type="button"
+                  onClick={() => setOnlyFirstTimerFilter(false)}
+                  style={{
+                    padding: '5px 10px',
+                    borderRadius: '6px',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: !onlyFirstTimerFilter ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
+                    color: !onlyFirstTimerFilter ? '#fff' : 'var(--text-muted)'
+                  }}
+                >
+                  All Files ({allUploadedDocuments.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOnlyFirstTimerFilter(true)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '5px 10px',
+                    borderRadius: '6px',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: onlyFirstTimerFilter ? 'rgba(251, 191, 36, 0.2)' : 'transparent',
+                    color: onlyFirstTimerFilter ? '#fde68a' : 'var(--text-muted)'
+                  }}
+                >
+                  <span>⚡ First-Timer Uploads ({firstTimerUploadsCount})</span>
+                </button>
+              </div>
+
+              <div style={{ position: 'relative', width: '240px' }}>
+                <input
+                  type="text"
+                  placeholder="Filter by filename, project, MDA..."
+                  value={allDocsFilter}
+                  onChange={(e) => setAllDocsFilter(e.target.value)}
+                  className="form-input"
+                  style={{ paddingLeft: '34px', fontSize: '0.78rem', height: '34px' }}
+                />
+                <Search style={{ position: 'absolute', left: '10px', top: '9px', width: '14px', height: '14px', color: 'var(--text-muted)' }} />
+              </div>
             </div>
           </div>
 
@@ -478,7 +576,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                   <th style={{ padding: '12px 16px' }}>Document Name & Type</th>
                   <th style={{ padding: '12px 16px' }}>Associated AI Project</th>
                   <th style={{ padding: '12px 16px' }}>MDA Affiliation</th>
-                  <th style={{ padding: '12px 16px' }}>Upload Date</th>
+                  <th style={{ padding: '12px 16px' }}>Review & Regulatory Status</th>
                   <th style={{ padding: '12px 16px' }}>Signatures</th>
                   <th style={{ padding: '12px 16px', textAlign: 'right' }}>Dossier Actions</th>
                 </tr>
@@ -491,93 +589,186 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                     </td>
                   </tr>
                 ) : (
-                  filteredAllDocuments.map(({ doc, project }) => (
-                    <tr 
-                      key={`${project.id}-${doc.id}`}
-                      style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)', transition: 'background 0.15s ease' }}
-                      onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)'}
-                      onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <td style={{ padding: '12px 16px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <FileText className="w-5 h-5 text-emerald-400" />
-                          <div>
-                            <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{doc.fileName}</div>
-                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Version {doc.version} • {doc.fileType.toUpperCase()}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <div style={{ fontWeight: 700, color: 'var(--ghana-emerald)', fontSize: '0.75rem' }}>{project.projectCode}</div>
-                        <div style={{ color: 'var(--text-primary)', fontSize: '0.78rem' }}>{project.name}</div>
-                      </td>
-                      <td style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>
-                        <span className="badge badge-info" style={{ fontSize: '0.68rem' }}>{project.mdaCode}</span>
-                      </td>
-                      <td style={{ padding: '12px 16px', color: 'var(--text-muted)' }}>
-                        {doc.uploadedAt}
-                      </td>
-                      <td style={{ padding: '12px 16px' }}>
-                        {doc.signedBy.length > 0 ? (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#10b981', fontWeight: 600, fontSize: '0.72rem' }}>
-                            <ShieldCheck size={14} />
-                            <span>Signed ({doc.signedBy.length})</span>
-                          </span>
-                        ) : (
-                          <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>Pending</span>
-                        )}
-                      </td>
-                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                          <button
-                            type="button"
-                            onClick={() => setInspectingItem({ doc, project })}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              padding: '6px 12px',
-                              borderRadius: '6px',
-                              background: 'rgba(59, 130, 246, 0.15)',
-                              border: '1px solid rgba(59, 130, 246, 0.3)',
-                              color: '#93c5fd',
-                              fontSize: '0.74rem',
-                              fontWeight: 700,
-                              cursor: 'pointer'
-                            }}
-                          >
-                            <Eye size={13} />
-                            <span>Inspect OCR & Dossier</span>
-                          </button>
+                  filteredAllDocuments.map(({ doc, project }) => {
+                    const isFT = doc.isFirstTimerUpload || 
+                      doc.uploadedByRole === 'First-Timer / New User' ||
+                      doc.id.includes('onboard') ||
+                      doc.signedBy?.includes('First-Timer / New User');
 
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedProjectId(project.id);
-                              setSelectedDoc(doc);
-                              setViewMode('project');
-                            }}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              padding: '6px 12px',
-                              borderRadius: '6px',
-                              background: 'rgba(16, 185, 129, 0.15)',
-                              border: '1px solid rgba(16, 185, 129, 0.3)',
-                              color: '#a7f3d0',
-                              fontSize: '0.74rem',
+                    return (
+                      <tr 
+                        key={`${project.id}-${doc.id}`}
+                        style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)', transition: 'background 0.15s ease' }}
+                        onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)'}
+                        onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <td style={{ padding: '12px 16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                            <FileText className="w-5 h-5 text-emerald-400 mt-1 flex-shrink-0" />
+                            <div>
+                              <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{doc.fileName}</div>
+                              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                Version {doc.version} • {doc.fileType.toUpperCase()} • {doc.uploadedAt}
+                              </div>
+                              {isFT && (
+                                <div style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  background: 'rgba(251, 191, 36, 0.15)',
+                                  border: '1px solid rgba(251, 191, 36, 0.35)',
+                                  color: '#fde68a',
+                                  fontSize: '0.66rem',
+                                  fontWeight: 700,
+                                  marginTop: '4px'
+                                }}>
+                                  <span>⚡ First-Timer Dossier: {doc.uploadedByName || 'Onboarder'}</span>
+                                  {doc.uploadedByEmail && (
+                                    <span style={{ color: 'var(--text-muted)' }}>({doc.uploadedByEmail})</span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                          <div style={{ fontWeight: 700, color: 'var(--ghana-emerald)', fontSize: '0.75rem' }}>{project.projectCode}</div>
+                          <div style={{ color: 'var(--text-primary)', fontSize: '0.78rem' }}>{project.name}</div>
+                        </td>
+                        <td style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>
+                          <span className="badge badge-info" style={{ fontSize: '0.68rem' }}>{project.mdaCode}</span>
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <span style={{
+                              display: 'inline-block',
+                              padding: '2px 8px',
+                              borderRadius: '9999px',
+                              fontSize: '0.68rem',
                               fontWeight: 700,
-                              cursor: 'pointer'
-                            }}
-                          >
-                            <span>Audit Project</span>
-                            <ArrowRight size={13} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                              width: 'fit-content',
+                              background: doc.reviewStatus === 'Reviewed & Verified' ? 'rgba(16, 185, 129, 0.2)' :
+                                          doc.reviewStatus === 'Requires Re-submission' ? 'rgba(239, 68, 68, 0.2)' :
+                                          doc.reviewStatus === 'Under Review' ? 'rgba(59, 130, 246, 0.2)' :
+                                          'rgba(251, 191, 36, 0.2)',
+                              color: doc.reviewStatus === 'Reviewed & Verified' ? '#10b981' :
+                                     doc.reviewStatus === 'Requires Re-submission' ? '#f87171' :
+                                     doc.reviewStatus === 'Under Review' ? '#60a5fa' :
+                                     '#fbbf24',
+                              border: '1px solid currentColor'
+                            }}>
+                              {doc.reviewStatus || 'Pending Review'}
+                            </span>
+
+                            {doc.reviewerComments && doc.reviewerComments.length > 0 ? (
+                              <div 
+                                onClick={() => setInspectingItem({ doc, project })}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  color: '#93c5fd',
+                                  fontSize: '0.68rem',
+                                  fontWeight: 600,
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                <MessageSquare size={11} />
+                                <span>{doc.reviewerComments.length} Review Directive{doc.reviewerComments.length > 1 ? 's' : ''}</span>
+                              </div>
+                            ) : (
+                              <span style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>No comments yet</span>
+                            )}
+                          </div>
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                          {doc.signedBy.length > 0 ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#10b981', fontWeight: 600, fontSize: '0.72rem' }}>
+                              <ShieldCheck size={14} />
+                              <span>Signed ({doc.signedBy.length})</span>
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>Pending</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                            {canReviewAndGrade && (
+                              <button
+                                type="button"
+                                onClick={() => setReviewingItem({ doc, project })}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  padding: '6px 12px',
+                                  borderRadius: '6px',
+                                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.3))',
+                                  border: '1px solid rgba(16, 185, 129, 0.5)',
+                                  color: '#a7f3d0',
+                                  fontSize: '0.74rem',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  boxShadow: '0 2px 8px rgba(16, 185, 129, 0.2)'
+                                }}
+                              >
+                                <Award size={13} />
+                                <span>Review & Grade</span>
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => setInspectingItem({ doc, project })}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '6px 12px',
+                                borderRadius: '6px',
+                                background: 'rgba(59, 130, 246, 0.15)',
+                                border: '1px solid rgba(59, 130, 246, 0.3)',
+                                color: '#93c5fd',
+                                fontSize: '0.74rem',
+                                fontWeight: 700,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <Eye size={13} />
+                              <span>Inspect</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedProjectId(project.id);
+                                setSelectedDoc(doc);
+                                setViewMode('project');
+                              }}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '6px 12px',
+                                borderRadius: '6px',
+                                background: 'rgba(255, 255, 255, 0.05)',
+                                border: '1px solid rgba(255, 255, 255, 0.12)',
+                                color: '#e2e8f0',
+                                fontSize: '0.74rem',
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <span>Vault</span>
+                              <ArrowRight size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -679,68 +870,166 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                         No documents uploaded for this project yet. Use upload tool below to add compliance files.
                       </div>
                     ) : (
-                      activeProject.documents.map(d => (
-                        <div 
-                          key={d.id}
-                          onClick={() => setSelectedDoc(d)}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '12px 16px',
-                            background: selectedDoc?.id === d.id ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.01)',
-                            border: '1px solid',
-                            borderColor: selectedDoc?.id === d.id ? 'rgba(16,185,129,0.35)' : 'var(--border-color)',
-                            borderRadius: '8px',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease'
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <FileText className="w-5 h-5 text-emerald-400" />
-                            <div>
-                              <div style={{ fontSize: '0.86rem', fontWeight: 600 }}>{d.fileName}</div>
-                              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                                Version {d.version} • Uploaded {d.uploadedAt}
+                      activeProject.documents.map(d => {
+                        const isFT = d.isFirstTimerUpload || 
+                          d.uploadedByRole === 'First-Timer / New User' ||
+                          d.id.includes('onboard') ||
+                          d.signedBy?.includes('First-Timer / New User');
+
+                        return (
+                          <div 
+                            key={d.id}
+                            onClick={() => setSelectedDoc(d)}
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '8px',
+                              padding: '12px 16px',
+                              background: selectedDoc?.id === d.id ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.01)',
+                              border: '1px solid',
+                              borderColor: selectedDoc?.id === d.id ? 'rgba(16,185,129,0.35)' : 'var(--border-color)',
+                              borderRadius: '8px',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <FileText className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+                                <div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                    <span style={{ fontSize: '0.86rem', fontWeight: 600 }}>{d.fileName}</span>
+                                    {isFT && (
+                                      <span style={{
+                                        padding: '1px 6px',
+                                        borderRadius: '4px',
+                                        background: 'rgba(251, 191, 36, 0.15)',
+                                        border: '1px solid rgba(251, 191, 36, 0.35)',
+                                        color: '#fde68a',
+                                        fontSize: '0.64rem',
+                                        fontWeight: 700
+                                      }}>
+                                        ⚡ Onboarder Submission
+                                      </span>
+                                    )}
+                                    <span style={{
+                                      padding: '1px 6px',
+                                      borderRadius: '9999px',
+                                      fontSize: '0.64rem',
+                                      fontWeight: 700,
+                                      background: d.reviewStatus === 'Reviewed & Verified' ? 'rgba(16, 185, 129, 0.2)' :
+                                                  d.reviewStatus === 'Requires Re-submission' ? 'rgba(239, 68, 68, 0.2)' :
+                                                  d.reviewStatus === 'Under Review' ? 'rgba(59, 130, 246, 0.2)' :
+                                                  'rgba(251, 191, 36, 0.2)',
+                                      color: d.reviewStatus === 'Reviewed & Verified' ? '#10b981' :
+                                             d.reviewStatus === 'Requires Re-submission' ? '#f87171' :
+                                             d.reviewStatus === 'Under Review' ? '#60a5fa' :
+                                             '#fbbf24',
+                                      border: '1px solid currentColor'
+                                    }}>
+                                      {d.reviewStatus || 'Pending Review'}
+                                    </span>
+                                  </div>
+                                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                    Version {d.version} • Uploaded {d.uploadedAt} {d.uploadedByName ? `by ${d.uploadedByName}` : ''}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                {canReviewAndGrade && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setReviewingItem({ doc: d, project: activeProject });
+                                    }}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px',
+                                      padding: '5px 10px',
+                                      borderRadius: '6px',
+                                      background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.3))',
+                                      border: '1px solid rgba(16, 185, 129, 0.5)',
+                                      color: '#a7f3d0',
+                                      fontSize: '0.72rem',
+                                      fontWeight: 700,
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    <Award size={12} />
+                                    <span>Review & Grade</span>
+                                  </button>
+                                )}
+
+                                {d.signedBy.length > 0 ? (
+                                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', color: 'var(--ghana-emerald)', fontWeight: 600 }}>
+                                    <ShieldCheck className="w-4 h-4" />
+                                    <span>Signed ({d.signedBy.length})</span>
+                                  </span>
+                                ) : (
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Unsigned</span>
+                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setInspectingItem({ doc: d, project: activeProject });
+                                  }}
+                                  title="Inspect full extracted OCR text"
+                                  style={{
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                    background: 'rgba(255, 255, 255, 0.08)',
+                                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                                    color: '#fff',
+                                    fontSize: '0.7rem',
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }}
+                                >
+                                  <Eye size={12} /> Read OCR
+                                </button>
                               </div>
                             </div>
-                          </div>
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            {d.signedBy.length > 0 ? (
-                              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', color: 'var(--ghana-emerald)', fontWeight: 600 }}>
-                                <ShieldCheck className="w-4 h-4" />
-                                <span>Signed ({d.signedBy.length})</span>
-                              </span>
-                            ) : (
-                              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Unsigned</span>
+                            {/* Direct Reviewer Feedback Snippet */}
+                            {d.reviewerComments && d.reviewerComments.length > 0 && (
+                              <div style={{
+                                padding: '8px 12px',
+                                borderRadius: '6px',
+                                background: 'rgba(0, 0, 0, 0.35)',
+                                border: '1px solid rgba(59, 130, 246, 0.3)',
+                                fontSize: '0.74rem'
+                              }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '3px' }}>
+                                  <span style={{ color: '#93c5fd', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                    <MessageSquare size={12} />
+                                    <span>{d.reviewerComments[0].reviewerRole}: {d.reviewerComments[0].reviewerName}</span>
+                                  </span>
+                                  <span style={{
+                                    fontSize: '0.66rem',
+                                    padding: '1px 6px',
+                                    borderRadius: '4px',
+                                    fontWeight: 700,
+                                    background: d.reviewerComments[0].verdict === 'Approved' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                                    color: d.reviewerComments[0].verdict === 'Approved' ? '#10b981' : '#f87171'
+                                  }}>
+                                    Verdict: {d.reviewerComments[0].verdict}
+                                  </span>
+                                </div>
+                                <p style={{ color: '#e2e8f0', margin: 0, fontStyle: 'italic', lineHeight: 1.4 }}>
+                                  "{d.reviewerComments[0].comment}"
+                                </p>
+                              </div>
                             )}
-
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setInspectingItem({ doc: d, project: activeProject });
-                              }}
-                              title="Inspect full extracted OCR text"
-                              style={{
-                                padding: '4px 8px',
-                                borderRadius: '4px',
-                                background: 'rgba(255, 255, 255, 0.08)',
-                                border: '1px solid rgba(255, 255, 255, 0.15)',
-                                color: '#fff',
-                                fontSize: '0.7rem',
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px'
-                              }}
-                            >
-                              <Eye size={12} /> Read OCR
-                            </button>
                           </div>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
 
@@ -1503,24 +1792,70 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
               </div>
             </div>
 
-            {/* Modal Footer */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
+            {/* Modal Footer with Review & Grade Action */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: '12px', flexWrap: 'wrap', gap: '10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
                 <ShieldCheck size={14} className="text-emerald-400" />
                 <span>SHA-256 Checksum: sha256-{inspectingItem.doc.id}f89a2b</span>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setInspectingItem(null)}
-                className="btn btn-primary"
-                style={{ padding: '8px 20px', fontSize: '0.8rem' }}
-              >
-                Done Reading Dossier
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {canReviewAndGrade && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReviewingItem({ doc: inspectingItem.doc, project: inspectingItem.project });
+                      setInspectingItem(null);
+                    }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      background: 'linear-gradient(135deg, var(--ghana-emerald), #059669)',
+                      color: '#0b0f19',
+                      fontWeight: 800,
+                      fontSize: '0.8rem',
+                      border: 'none',
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 10px rgba(16, 185, 129, 0.3)'
+                    }}
+                  >
+                    <Award size={14} />
+                    <span>Review, Grade & Comment</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setInspectingItem(null)}
+                  className="btn btn-primary"
+                  style={{ padding: '8px 20px', fontSize: '0.8rem' }}
+                >
+                  Done Reading Dossier
+                </button>
+              </div>
             </div>
           </div>
         </div>
+      )}
+
+      {/* DOCUMENT REVIEW & GRADING MODAL FOR ACTIVE ROLE PROFILES */}
+      {reviewingItem && (
+        <DocumentReviewGradeModal
+          isOpen={!!reviewingItem}
+          onClose={() => setReviewingItem(null)}
+          document={reviewingItem.doc}
+          project={reviewingItem.project}
+          session={session as any}
+          onSaveReview={(projectId, docId, comment, comp, read, stat) => {
+            if (onReviewDocument) {
+              onReviewDocument(projectId, docId, comment, comp, read, stat);
+            }
+            setReviewingItem(null);
+          }}
+        />
       )}
 
     </div>

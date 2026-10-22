@@ -9,11 +9,14 @@ import {
   ArrowRight, 
   Clock, 
   Send,
-  Info
+  Info,
+  MessageSquare
 } from 'lucide-react';
 import { 
   AIProject, 
   DocumentAsset, 
+  DocumentReviewComment,
+  ReviewWorkflowStatus,
   ComplianceScore, 
   AutoAssessmentDetails, 
   ZeroAssumptionAudit 
@@ -25,6 +28,7 @@ import {
   getDocumentOcrText, 
   registerUploadedDocumentOcr 
 } from '../services/assessmentEngine';
+import { DocumentReviewGradeModal } from './DocumentReviewGradeModal';
 
 interface FirstTimerOnboardingHubProps {
   session: UserSession;
@@ -37,6 +41,14 @@ interface FirstTimerOnboardingHubProps {
     details: AutoAssessmentDetails,
     zeroAssumptionAudit?: ZeroAssumptionAudit
   ) => void;
+  onReviewDocument?: (
+    projectId: string,
+    docId: string,
+    reviewComment: DocumentReviewComment,
+    newCompliance?: ComplianceScore,
+    newReadinessScore?: number,
+    newProjectStatus?: ReviewWorkflowStatus
+  ) => void;
   onSubmitForApproval: () => void;
   onProceedToMonitoring: () => void;
   onSwitchRole: () => void;
@@ -47,6 +59,7 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
   projects,
   onAddDocument,
   onUpdateProjectAssessment,
+  onReviewDocument,
   onSubmitForApproval,
   onProceedToMonitoring,
   onSwitchRole
@@ -62,6 +75,9 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
 
   // Modal confirmation state
   const [showPendingModal, setShowPendingModal] = useState(false);
+  const [reviewingDoc, setReviewingDoc] = useState<DocumentAsset | null>(null);
+
+  const canReview = session.role === 'Super Admin' || session.role === 'Director General' || session.role === 'Technical Clearance Team' || session.role === 'Technical Director';
 
   // Active project assessment metrics
   const auto = activeProject ? generateAssessmentFromDocuments(activeProject, session) : null;
@@ -91,7 +107,12 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
             fileType: 'pdf',
             uploadedAt: new Date().toISOString().split('T')[0],
             version: 1,
-            signedBy: ['First-Timer / New User']
+            signedBy: ['First-Timer / New User'],
+            uploadedByRole: session.role || 'First-Timer / New User',
+            uploadedByName: session.fullName,
+            uploadedByEmail: session.email,
+            isFirstTimerUpload: true,
+            reviewStatus: 'Pending Review'
           };
 
           // Register OCR extraction
@@ -558,37 +579,156 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
                 key={doc.id}
                 style={{
                   display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '12px 16px',
+                  flexDirection: 'column',
+                  gap: '10px',
+                  padding: '14px 16px',
                   borderRadius: '10px',
                   background: 'rgba(255, 255, 255, 0.02)',
-                  border: '1px solid rgba(255, 255, 255, 0.06)'
+                  border: '1px solid rgba(255, 255, 255, 0.08)'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <FileText size={20} className="text-amber-400" />
-                  <div>
-                    <div style={{ fontSize: '0.84rem', fontWeight: 700, color: '#fff' }}>
-                      {doc.fileName}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <FileText size={20} className="text-amber-400 flex-shrink-0" />
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '0.86rem', fontWeight: 700, color: '#fff' }}>
+                          {doc.fileName}
+                        </span>
+                        <span style={{
+                          padding: '2px 8px',
+                          borderRadius: '9999px',
+                          fontSize: '0.66rem',
+                          fontWeight: 700,
+                          background: doc.reviewStatus === 'Reviewed & Verified' ? 'rgba(16, 185, 129, 0.2)' :
+                                      doc.reviewStatus === 'Requires Re-submission' ? 'rgba(239, 68, 68, 0.2)' :
+                                      doc.reviewStatus === 'Under Review' ? 'rgba(59, 130, 246, 0.2)' :
+                                      'rgba(251, 191, 36, 0.2)',
+                          color: doc.reviewStatus === 'Reviewed & Verified' ? '#10b981' :
+                                 doc.reviewStatus === 'Requires Re-submission' ? '#f87171' :
+                                 doc.reviewStatus === 'Under Review' ? '#60a5fa' :
+                                 '#fbbf24',
+                          border: '1px solid currentColor'
+                        }}>
+                          {doc.reviewStatus || 'Pending Review'}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        Uploaded: {doc.uploadedAt} • Version {doc.version} • Format: {doc.fileType.toUpperCase()}
+                      </div>
                     </div>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                      Uploaded: {doc.uploadedAt} • Version {doc.version} • Format: {doc.fileType.toUpperCase()}
-                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {canReview && (
+                      <button
+                        type="button"
+                        onClick={() => setReviewingDoc(doc)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '5px 12px',
+                          borderRadius: '6px',
+                          background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.3))',
+                          border: '1px solid rgba(16, 185, 129, 0.5)',
+                          color: '#a7f3d0',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Award size={13} />
+                        <span>Review & Grade Document</span>
+                      </button>
+                    )}
+
+                    <span style={{
+                      padding: '3px 10px',
+                      borderRadius: '6px',
+                      background: 'rgba(16, 185, 129, 0.15)',
+                      border: '1px solid rgba(16, 185, 129, 0.3)',
+                      color: '#a7f3d0',
+                      fontSize: '0.7rem',
+                      fontWeight: 700
+                    }}>
+                      ✓ OCR Parsed & Graded
+                    </span>
                   </div>
                 </div>
 
-                <span style={{
-                  padding: '3px 10px',
-                  borderRadius: '6px',
-                  background: 'rgba(16, 185, 129, 0.15)',
-                  border: '1px solid rgba(16, 185, 129, 0.3)',
-                  color: '#a7f3d0',
-                  fontSize: '0.7rem',
-                  fontWeight: 700
-                }}>
-                  ✓ OCR Parsed & Graded
-                </span>
+                {/* Reviewer Directives & Official Comments Card */}
+                {doc.reviewerComments && doc.reviewerComments.length > 0 ? (
+                  <div style={{
+                    marginTop: '4px',
+                    padding: '12px 14px',
+                    borderRadius: '8px',
+                    background: 'rgba(0, 0, 0, 0.4)',
+                    border: '1px solid rgba(59, 130, 246, 0.35)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '6px' }}>
+                      <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#93c5fd', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        <MessageSquare size={14} className="text-sky-400" />
+                        <span>Official Review Directives & Comments from Authorities ({doc.reviewerComments.length})</span>
+                      </span>
+                      <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                        Reviewed by Director General / Super Admin / Technical Clearance Team
+                      </span>
+                    </div>
+
+                    {doc.reviewerComments.map((comm) => (
+                      <div key={comm.id} style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.76rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
+                          <span style={{ color: '#fde68a', fontWeight: 700 }}>
+                            {comm.reviewerRole}: {comm.reviewerName} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({comm.reviewerEmail})</span>
+                          </span>
+                          <span style={{
+                            fontSize: '0.66rem',
+                            padding: '1px 8px',
+                            borderRadius: '4px',
+                            fontWeight: 700,
+                            background: comm.verdict === 'Approved' ? 'rgba(16, 185, 129, 0.25)' :
+                                        comm.verdict === 'Changes Requested' ? 'rgba(239, 68, 68, 0.25)' :
+                                        comm.verdict === 'Conditionally Cleared' ? 'rgba(251, 191, 36, 0.25)' :
+                                        'rgba(59, 130, 246, 0.25)',
+                            color: comm.verdict === 'Approved' ? '#10b981' :
+                                   comm.verdict === 'Changes Requested' ? '#f87171' :
+                                   comm.verdict === 'Conditionally Cleared' ? '#fbbf24' :
+                                   '#60a5fa'
+                          }}>
+                            Verdict: {comm.verdict}
+                          </span>
+                        </div>
+
+                        <div style={{ color: '#e2e8f0', background: 'rgba(255,255,255,0.02)', padding: '8px 10px', borderRadius: '6px', borderLeft: '3px solid #3b82f6', lineHeight: 1.4 }}>
+                          "{comm.comment}"
+                        </div>
+
+                        {comm.governanceAdjustment && (
+                          <div style={{ fontSize: '0.7rem', color: '#a7f3d0', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                            <span>🏛️ Governance & Ethics Grade: <strong>{comm.governanceAdjustment.overallGrade}</strong></span>
+                            <span>Fairness: {comm.governanceAdjustment.fairness}%</span>
+                            <span>Privacy: {comm.governanceAdjustment.privacy}%</span>
+                            <span>Security: {comm.governanceAdjustment.security}%</span>
+                          </div>
+                        )}
+
+                        {comm.readinessAdjustment !== undefined && (
+                          <div style={{ fontSize: '0.7rem', color: '#fde68a' }}>
+                            🚀 AI Readiness Capability Graded: <strong>{comm.readinessAdjustment}%</strong>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic', paddingLeft: '4px' }}>
+                    Awaiting official directive comments from Director General or Technical Clearance Team reviewers.
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -763,6 +903,23 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
             </button>
           </div>
         </div>
+      )}
+
+      {/* DOCUMENT REVIEW & GRADING MODAL FOR ACTIVE ROLE PROFILES */}
+      {reviewingDoc && activeProject && (
+        <DocumentReviewGradeModal
+          isOpen={!!reviewingDoc}
+          onClose={() => setReviewingDoc(null)}
+          document={reviewingDoc}
+          project={activeProject}
+          session={session}
+          onSaveReview={(projectId, docId, comment, comp, read, stat) => {
+            if (onReviewDocument) {
+              onReviewDocument(projectId, docId, comment, comp, read, stat);
+            }
+            setReviewingDoc(null);
+          }}
+        />
       )}
     </div>
   );

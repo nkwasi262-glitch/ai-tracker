@@ -9,24 +9,41 @@ import {
   Clock, 
   FileCheck2,
   Stamp,
-  AlertTriangle
+  AlertTriangle,
+  MessageSquare
 } from 'lucide-react';
-import { AIProject, ReviewWorkflowStatus } from '../data/sampleProjects';
+import { 
+  AIProject, 
+  DocumentAsset,
+  DocumentReviewComment,
+  ComplianceScore,
+  ReviewWorkflowStatus 
+} from '../data/sampleProjects';
 import { UserSession } from '../data/authTypes';
 import { DGVerdictDecision, DGVerdictRecord } from '../data/verdictTypes';
 import { getDGVerdicts, recordDGVerdict } from '../services/verdictService';
 import { canPerformAction } from '../services/rbacPolicy';
+import { DocumentReviewGradeModal } from './DocumentReviewGradeModal';
 
 interface DGDecisionQueueProps {
   projects: AIProject[];
   session: UserSession;
   onUpdateProjectStatus: (projectId: string, newReviewStatus: ReviewWorkflowStatus, notes?: string) => void;
+  onReviewDocument?: (
+    projectId: string,
+    docId: string,
+    reviewComment: DocumentReviewComment,
+    newCompliance?: ComplianceScore,
+    newReadinessScore?: number,
+    newProjectStatus?: ReviewWorkflowStatus
+  ) => void;
 }
 
 export const DGDecisionQueue: React.FC<DGDecisionQueueProps> = ({
   projects,
   session,
-  onUpdateProjectStatus
+  onUpdateProjectStatus,
+  onReviewDocument
 }) => {
   // Only projects that have been RECOMMENDED by technical clearance teams appear in the DG queue!
   const recommendedProjects = projects.filter(p => p.reviewStatus === 'Recommended');
@@ -41,6 +58,7 @@ export const DGDecisionQueue: React.FC<DGDecisionQueueProps> = ({
   const [successFeedback, setSuccessFeedback] = useState<string | null>(null);
   const [activeSubTab, setActiveSubTab] = useState<'queue' | 'history'>('queue');
   const [verdictHistory, setVerdictHistory] = useState<DGVerdictRecord[]>(() => getDGVerdicts());
+  const [reviewingDoc, setReviewingDoc] = useState<DocumentAsset | null>(null);
 
   const canPassVerdict = canPerformAction(session.role, 'PASS_DG_VERDICT');
 
@@ -377,33 +395,126 @@ export const DGDecisionQueue: React.FC<DGDecisionQueueProps> = ({
                       Attached Compliance Documents ({selectedProject.documents.length})
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {selectedProject.documents.map((doc) => (
-                        <div
-                          key={doc.id}
-                          style={{
-                            padding: '10px 14px',
-                            borderRadius: '8px',
-                            background: 'rgba(255, 255, 255, 0.02)',
-                            border: '1px solid rgba(255, 255, 255, 0.08)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between'
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <FileText size={16} className="text-emerald-400" />
-                            <div>
-                              <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#fff' }}>{doc.fileName}</div>
-                              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                                Uploaded {doc.uploadedAt} • Signed by: {doc.signedBy.join(', ') || 'Pending'}
+                      {selectedProject.documents.map((doc) => {
+                        const isFT = doc.isFirstTimerUpload || 
+                          doc.uploadedByRole === 'First-Timer / New User' ||
+                          doc.id.includes('onboard') ||
+                          doc.signedBy?.includes('First-Timer / New User');
+
+                        return (
+                          <div
+                            key={doc.id}
+                            style={{
+                              padding: '12px 14px',
+                              borderRadius: '8px',
+                              background: 'rgba(255, 255, 255, 0.02)',
+                              border: '1px solid rgba(255, 255, 255, 0.08)',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '8px'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <FileText size={16} className="text-emerald-400 flex-shrink-0" />
+                                <div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                    <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#fff' }}>{doc.fileName}</span>
+                                    {isFT && (
+                                      <span style={{
+                                        padding: '1px 6px',
+                                        borderRadius: '4px',
+                                        background: 'rgba(251, 191, 36, 0.15)',
+                                        border: '1px solid rgba(251, 191, 36, 0.35)',
+                                        color: '#fde68a',
+                                        fontSize: '0.64rem',
+                                        fontWeight: 700
+                                      }}>
+                                        ⚡ Onboarder Submission
+                                      </span>
+                                    )}
+                                    <span style={{
+                                      padding: '1px 6px',
+                                      borderRadius: '9999px',
+                                      fontSize: '0.64rem',
+                                      fontWeight: 700,
+                                      background: doc.reviewStatus === 'Reviewed & Verified' ? 'rgba(16, 185, 129, 0.2)' :
+                                                  doc.reviewStatus === 'Requires Re-submission' ? 'rgba(239, 68, 68, 0.2)' :
+                                                  doc.reviewStatus === 'Under Review' ? 'rgba(59, 130, 246, 0.2)' :
+                                                  'rgba(251, 191, 36, 0.2)',
+                                      color: doc.reviewStatus === 'Reviewed & Verified' ? '#10b981' :
+                                             doc.reviewStatus === 'Requires Re-submission' ? '#f87171' :
+                                             doc.reviewStatus === 'Under Review' ? '#60a5fa' :
+                                             '#fbbf24',
+                                      border: '1px solid currentColor'
+                                    }}>
+                                      {doc.reviewStatus || 'Pending Review'}
+                                    </span>
+                                  </div>
+                                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                    Uploaded {doc.uploadedAt} • Signed: {doc.signedBy.join(', ') || 'Pending'}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => setReviewingDoc(doc)}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    padding: '5px 12px',
+                                    borderRadius: '6px',
+                                    background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.3))',
+                                    border: '1px solid rgba(16, 185, 129, 0.5)',
+                                    color: '#a7f3d0',
+                                    fontSize: '0.74rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    boxShadow: '0 2px 8px rgba(16, 185, 129, 0.2)'
+                                  }}
+                                >
+                                  <Award size={13} />
+                                  <span>Review, Grade & Comment</span>
+                                </button>
                               </div>
                             </div>
+
+                            {/* Existing Reviewer Comments */}
+                            {doc.reviewerComments && doc.reviewerComments.length > 0 && (
+                              <div style={{
+                                padding: '8px 12px',
+                                borderRadius: '6px',
+                                background: 'rgba(0, 0, 0, 0.35)',
+                                border: '1px solid rgba(59, 130, 246, 0.25)',
+                                fontSize: '0.74rem'
+                              }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
+                                  <span style={{ color: '#93c5fd', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                    <MessageSquare size={12} />
+                                    <span>{doc.reviewerComments[0].reviewerRole}: {doc.reviewerComments[0].reviewerName}</span>
+                                  </span>
+                                  <span style={{
+                                    fontSize: '0.66rem',
+                                    padding: '1px 6px',
+                                    borderRadius: '4px',
+                                    fontWeight: 700,
+                                    background: doc.reviewerComments[0].verdict === 'Approved' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                                    color: doc.reviewerComments[0].verdict === 'Approved' ? '#10b981' : '#f87171'
+                                  }}>
+                                    Verdict: {doc.reviewerComments[0].verdict}
+                                  </span>
+                                </div>
+                                <div style={{ color: '#cbd5e1', fontStyle: 'italic', lineHeight: 1.4 }}>
+                                  "{doc.reviewerComments[0].comment}"
+                                </div>
+                              </div>
+                            )}
                           </div>
-                          <span style={{ fontSize: '0.72rem', color: 'var(--ghana-emerald)', fontWeight: 600 }}>
-                            Validated OCR ✓
-                          </span>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -721,6 +832,23 @@ export const DGDecisionQueue: React.FC<DGDecisionQueueProps> = ({
             ))}
           </div>
         </div>
+      )}
+
+      {/* DOCUMENT REVIEW & GRADING MODAL FOR DIRECTOR GENERAL / ACTIVE PROFILES */}
+      {reviewingDoc && selectedProject && (
+        <DocumentReviewGradeModal
+          isOpen={!!reviewingDoc}
+          onClose={() => setReviewingDoc(null)}
+          document={reviewingDoc}
+          project={selectedProject}
+          session={session}
+          onSaveReview={(projectId, docId, comment, comp, read, stat) => {
+            if (onReviewDocument) {
+              onReviewDocument(projectId, docId, comment, comp, read, stat);
+            }
+            setReviewingDoc(null);
+          }}
+        />
       )}
     </div>
   );

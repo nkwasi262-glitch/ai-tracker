@@ -60,6 +60,25 @@ export interface RiskItem {
   status: 'Open' | 'Mitigated' | 'Escalated';
 }
 
+export interface DocumentReviewComment {
+  id: string;
+  reviewerName: string;
+  reviewerRole: string; // 'Director General' | 'Super Admin' | 'Technical Clearance Team' | 'Technical Director'
+  reviewerEmail: string;
+  comment: string;
+  createdAt: string;
+  verdict?: 'Approved' | 'Changes Requested' | 'Conditionally Cleared' | 'Under Investigation';
+  governanceAdjustment?: {
+    fairness?: number;
+    transparency?: number;
+    accountability?: number;
+    privacy?: number;
+    security?: number;
+    overallGrade?: 'Excellent' | 'Good' | 'Moderate' | 'High Risk';
+  };
+  readinessAdjustment?: number;
+}
+
 export interface DocumentAsset {
   id: string;
   fileName: string;
@@ -67,6 +86,12 @@ export interface DocumentAsset {
   uploadedAt: string;
   version: number;
   signedBy: string[];
+  uploadedByRole?: string;
+  uploadedByName?: string;
+  uploadedByEmail?: string;
+  isFirstTimerUpload?: boolean;
+  reviewStatus?: 'Pending Review' | 'Under Review' | 'Reviewed & Verified' | 'Requires Re-submission';
+  reviewerComments?: DocumentReviewComment[];
 }
 
 export type ReviewWorkflowStatus =

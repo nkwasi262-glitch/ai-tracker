@@ -17,12 +17,13 @@ import { AccessDenied } from './components/AccessDenied';
 import { ActiveRoleSelectorModal } from './components/ActiveRoleSelectorModal';
 import { FirstTimerOnboardingHub } from './components/FirstTimerOnboardingHub';
 import { PendingApprovalNotice } from './components/PendingApprovalNotice';
-import { AIProject, ComplianceScore, DocumentAsset, ReviewWorkflowStatus, AutoAssessmentDetails, ZeroAssumptionAudit } from './data/sampleProjects';
+import { AIProject, ComplianceScore, DocumentAsset, DocumentReviewComment, ReviewWorkflowStatus, AutoAssessmentDetails, ZeroAssumptionAudit } from './data/sampleProjects';
 import { UserSession, ActiveRole } from './data/authTypes';
 import { getStoredSession, clearSession, elevateFromFirstTimer, submitOnboardingForApproval } from './services/authService';
 import { AppModuleId, canAccessModule, MODULE_REGISTRY } from './services/rbacPolicy';
 import { generateAssessmentFromDocuments } from './services/assessmentEngine';
 import { loadStoredProjects, saveStoredProjects, resetProjectsStorage } from './services/projectStorage';
+import { recordAuditEvent } from './services/auditService';
 
 function App() {
   // 1. Session State from Mandatory Entry Gate
@@ -261,6 +262,60 @@ function App() {
     }));
   };
 
+  // Reviews a specific document, updates its review comments and status, and applies updated Governance & Ethics / AI Readiness grades to the project
+  const handleReviewDocument = (
+    projectId: string,
+    docId: string,
+    reviewComment: DocumentReviewComment,
+    newCompliance?: ComplianceScore,
+    newReadinessScore?: number,
+    newProjectStatus?: ReviewWorkflowStatus
+  ) => {
+    setProjects(prev => {
+      const updated = prev.map(p => {
+        if (p.id === projectId) {
+          const updatedDocs = (p.documents || []).map(d => {
+            if (d.id === docId) {
+              const prevComments = d.reviewerComments || [];
+              const updatedStatus: DocumentAsset['reviewStatus'] = 
+                reviewComment.verdict === 'Approved' ? 'Reviewed & Verified' :
+                reviewComment.verdict === 'Changes Requested' ? 'Requires Re-submission' :
+                'Under Review';
+              return {
+                ...d,
+                reviewStatus: updatedStatus,
+                reviewerComments: [reviewComment, ...prevComments]
+              };
+            }
+            return d;
+          });
+
+          return {
+            ...p,
+            documents: updatedDocs,
+            compliance: newCompliance || p.compliance,
+            readinessScore: newReadinessScore !== undefined ? newReadinessScore : p.readinessScore,
+            reviewStatus: newProjectStatus || p.reviewStatus
+          };
+        }
+        return p;
+      });
+      saveStoredProjects(updated);
+      return updated;
+    });
+
+    recordAuditEvent({
+      eventType: 'DOCUMENT_REVIEW',
+      actorName: session?.fullName || 'Reviewer',
+      actorEmail: session?.email || '',
+      actorRole: (session?.role || 'Super Admin') as ActiveRole,
+      actorInstitution: session?.institution || '',
+      targetModule: 'documents',
+      targetEntityId: docId,
+      actionDetails: `${session?.role} reviewed and passed comment on document "${docId}" for project ${projectId}. Verdict: [${reviewComment.verdict}]. Applied updated Governance & Ethics (${newCompliance?.overallGrade || 'maintained'}) and AI Readiness (${newReadinessScore ?? 'maintained'}%).`
+    });
+  };
+
   // 4. If No Verified Session Exists, Render Mandatory Entry Gate Modal (Non-Dismissible)
   if (!session) {
     return (
@@ -289,6 +344,7 @@ function App() {
             projects={projects}
             onAddDocument={handleAddDocument}
             onUpdateProjectAssessment={handleUpdateProjectAssessment}
+            onReviewDocument={handleReviewDocument}
             onSubmitForApproval={() => {
               const updated = submitOnboardingForApproval();
               if (updated) {
@@ -359,7 +415,8 @@ function App() {
             projects={projects} 
             onUpdateCompliance={handleUpdateCompliance} 
             currentRole={session.role as any}
-            session={session} 
+            session={session}
+            onReviewDocument={handleReviewDocument} 
           />
         );
       case 'readiness':
@@ -369,6 +426,7 @@ function App() {
             projects={projects}
             onUpdateReadinessScore={handleUpdateReadinessScore}
             session={session}
+            onReviewDocument={handleReviewDocument}
           />
         );
       case 'risk':
@@ -389,6 +447,7 @@ function App() {
             session={session}
             onUpdateProjectStatus={handleUpdateProjectReviewStatus}
             onUpdateProjectAssessment={handleUpdateProjectAssessment}
+            onReviewDocument={handleReviewDocument}
           />
         );
       case 'dg_queue':
@@ -397,6 +456,7 @@ function App() {
             projects={projects}
             session={session}
             onUpdateProjectStatus={handleUpdateProjectReviewStatus}
+            onReviewDocument={handleReviewDocument}
           />
         );
       case 'finance':

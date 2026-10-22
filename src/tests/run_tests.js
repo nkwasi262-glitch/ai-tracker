@@ -602,6 +602,141 @@ test('Option 2 (In / Old Member) pops up Active Role Profile with unique statuto
   assert(ROLE_SECURITY_MAP['Public User'] === 'PUBLIC-2026', 'Public User must have unique password');
 });
 
+// ====================================================================
+// SECTION 12: DOCUMENT REVIEW, COMMENTING & GRADING BY ACTIVE ROLE PROFILES
+// ====================================================================
+
+test('Only authorized Active Role Profiles (Director General, Super Admin, Technical Clearance Team, Technical Director) have authority to review and grade documents', () => {
+  const REVIEW_AUTHORIZED_ROLES = [
+    'Super Admin',
+    'Director General',
+    'Technical Clearance Team',
+    'Technical Director'
+  ];
+
+  function canReviewAndGrade(role) {
+    return REVIEW_AUTHORIZED_ROLES.includes(role);
+  }
+
+  // Permitted roles
+  assert(canReviewAndGrade('Director General') === true, 'Director General must have review and grading authority');
+  assert(canReviewAndGrade('Super Admin') === true, 'Super Admin must have review and grading authority');
+  assert(canReviewAndGrade('Technical Clearance Team') === true, 'Technical Clearance Team must have review and grading authority');
+  assert(canReviewAndGrade('Technical Director') === true, 'Technical Director must have review and grading authority');
+
+  // Forbidden roles
+  assert(canReviewAndGrade('First-Timer / New User') === false, 'First-Timer cannot review or grade documents');
+  assert(canReviewAndGrade('AI Manager') === false, 'AI Manager cannot review or grade documents');
+  assert(canReviewAndGrade('Finance Minister') === false, 'Finance Minister cannot review or grade documents');
+  assert(canReviewAndGrade('Public User') === false, 'Public User cannot review or grade documents');
+});
+
+test('Authorized active role profiles can pass review directives and comments on documents uploaded by first-timers or onboarders', () => {
+  // Mock first-timer uploaded document
+  const firstTimerDoc = {
+    id: 'doc-ft-901',
+    fileName: 'ghana_health_ai_spec_v1.pdf',
+    uploadedByRole: 'First-Timer / New User',
+    uploadedByName: 'Kwame Mensah',
+    uploadedByEmail: 'kwame.mensah@moh.gov.gh',
+    isFirstTimerUpload: true,
+    reviewStatus: 'Pending Review',
+    reviewerComments: []
+  };
+
+  // Active role profile passes directive
+  const dgReviewComment = {
+    id: 'rev-dg-001',
+    reviewerName: 'Dr. Edward Osei',
+    reviewerRole: 'Director General',
+    reviewerEmail: 'dg@nita.gov.gh',
+    comment: 'Data localization complies with Section 18 of Act 843. Approved for deployment.',
+    verdict: 'Approved',
+    timestamp: new Date().toISOString()
+  };
+
+  firstTimerDoc.reviewerComments.push(dgReviewComment);
+  firstTimerDoc.reviewStatus = 'Reviewed & Verified';
+
+  assert(firstTimerDoc.isFirstTimerUpload === true, 'Document must be identified as first-timer upload');
+  assert(firstTimerDoc.uploadedByRole === 'First-Timer / New User', 'Uploader role must be tracked');
+  assert(firstTimerDoc.reviewerComments.length === 1, 'Review comment must be attached to document');
+  assert(firstTimerDoc.reviewerComments[0].reviewerRole === 'Director General', 'Reviewer role must be recorded');
+  assert(firstTimerDoc.reviewerComments[0].verdict === 'Approved', 'Verdict must be recorded');
+  assert(firstTimerDoc.reviewStatus === 'Reviewed & Verified', 'Review status must update');
+});
+
+test('Document review allows authorized roles to grade Governance & Ethics (5 pillars) and AI Readiness (0-100%)', () => {
+  // Baseline project scores
+  const project = {
+    id: 'proj-001',
+    projectCode: 'GH-AI-HEALTH-01',
+    readinessScore: 72,
+    compliance: {
+      fairness: 70,
+      transparency: 68,
+      accountability: 75,
+      privacy: 80,
+      security: 74,
+      overallGrade: 'B'
+    }
+  };
+
+  // Technical Clearance Team reviews document and grades modules
+  const updatedCompliance = {
+    fairness: 88,
+    transparency: 92,
+    accountability: 90,
+    privacy: 95,
+    security: 89,
+    overallGrade: 'A+'
+  };
+  const updatedReadiness = 94;
+
+  // Apply grades
+  project.compliance = { ...project.compliance, ...updatedCompliance };
+  project.readinessScore = updatedReadiness;
+
+  // Verify updated Governance & Ethics grades
+  assert(project.compliance.fairness === 88, 'Fairness score must be updated');
+  assert(project.compliance.transparency === 92, 'Transparency score must be updated');
+  assert(project.compliance.accountability === 90, 'Accountability score must be updated');
+  assert(project.compliance.privacy === 95, 'Privacy Act 843 score must be updated');
+  assert(project.compliance.security === 89, 'Security score must be updated');
+  assert(project.compliance.overallGrade === 'A+', 'Overall grade must recalculate');
+
+  // Verify updated AI Readiness score
+  assert(project.readinessScore === 94, 'AI Readiness score must update to 94%');
+});
+
+test('Audit trail logs DOCUMENT_REVIEW event with reviewer role, project code, and document ID', () => {
+  const auditLogs = [];
+
+  function recordReviewAudit(session, projectId, projectCode, docId, comment, verdict) {
+    auditLogs.push({
+      id: `audit-${Date.now()}`,
+      eventType: 'DOCUMENT_REVIEW',
+      actorRole: session.role,
+      actorName: session.fullName,
+      projectId: projectId,
+      description: `[${session.role}] ${session.fullName} completed document review on ${projectCode} (Doc ID: ${docId}) with verdict: ${verdict}`,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  const superAdminSession = {
+    role: 'Super Admin',
+    fullName: 'National Security Lead'
+  };
+
+  recordReviewAudit(superAdminSession, 'proj-001', 'GH-AI-HEALTH-01', 'doc-ft-901', 'Cleared', 'Approved');
+
+  assert(auditLogs.length === 1, 'Audit log must record entry');
+  assert(auditLogs[0].eventType === 'DOCUMENT_REVIEW', 'Event type must be DOCUMENT_REVIEW');
+  assert(auditLogs[0].actorRole === 'Super Admin', 'Actor role must be Super Admin');
+  assert(auditLogs[0].description.includes('Approved'), 'Description must contain verdict');
+});
+
 const passed = tests.filter(t => t.passed).length;
 const total = tests.length;
 

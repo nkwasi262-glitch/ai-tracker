@@ -1,14 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Award, AlertTriangle, Info, CheckCircle2, AlertCircle, XCircle, Sparkles, FolderOpen } from 'lucide-react';
-import { AIProject, ComplianceScore } from '../data/sampleProjects';
+import { ShieldCheck, Award, AlertTriangle, Info, CheckCircle2, AlertCircle, XCircle, Sparkles, FolderOpen, FileText, MessageSquare } from 'lucide-react';
+import { 
+  AIProject, 
+  ComplianceScore,
+  DocumentAsset,
+  DocumentReviewComment,
+  ReviewWorkflowStatus
+} from '../data/sampleProjects';
 import { UserRole } from './RoleSwitcher';
 import { UserSession } from '../data/authTypes';
+import { DocumentReviewGradeModal } from './DocumentReviewGradeModal';
 
 interface GovernanceComplianceProps {
   projects: AIProject[];
   onUpdateCompliance: (projectId: string, newScore: ComplianceScore) => void;
   currentRole: UserRole | string;
   session?: UserSession;
+  onReviewDocument?: (
+    projectId: string,
+    docId: string,
+    reviewComment: DocumentReviewComment,
+    newCompliance?: ComplianceScore,
+    newReadinessScore?: number,
+    newProjectStatus?: ReviewWorkflowStatus
+  ) => void;
 }
 
 interface SubParameter {
@@ -919,11 +934,15 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
   projects,
   onUpdateCompliance,
   currentRole,
-  session
+  session,
+  onReviewDocument
 }) => {
   const defaultProjId = projects.find(p => (p.documents?.length || 0) > 0)?.id || projects[0]?.id || 'general';
   const [selectedProjectId, setSelectedProjectId] = useState<string>(defaultProjId);
   const activeProject = projects.find(p => p.id === selectedProjectId);
+  const [reviewingDoc, setReviewingDoc] = useState<DocumentAsset | null>(null);
+
+  const canReview = session?.role === 'Super Admin' || session?.role === 'Director General' || session?.role === 'Technical Clearance Team' || session?.role === 'Technical Director' || currentRole === 'Super Admin' || currentRole === 'Director General' || currentRole === 'Technical Clearance Team' || currentRole === 'Technical Director';
 
   const [generalCompliance, setGeneralCompliance] = useState<ComplianceScore>({
     fairness: 70,
@@ -1438,6 +1457,140 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
               ))}
             </div>
           )}
+
+          {/* PROJECT COMPLIANCE DOCUMENTS & REVIEW DIRECTIVES CARD */}
+          {activeProject.documents && activeProject.documents.length > 0 && (
+            <div style={{
+              marginTop: '10px',
+              padding: '14px 16px',
+              borderRadius: '10px',
+              background: 'rgba(0, 0, 0, 0.3)',
+              border: '1px solid rgba(16, 185, 129, 0.25)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <FileText size={16} className="text-emerald-400" />
+                  <span style={{ fontSize: '0.84rem', fontWeight: 700, color: '#fff' }}>
+                    Attached Project Dossiers & Governance Directives ({activeProject.documents.length})
+                  </span>
+                </div>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                  Statutory review by Director General, Super Admin & Technical Clearance Team
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {activeProject.documents.map((doc) => {
+                  const isFT = doc.isFirstTimerUpload || 
+                    doc.uploadedByRole === 'First-Timer / New User' ||
+                    doc.id.includes('onboard') ||
+                    doc.signedBy?.includes('First-Timer / New User');
+
+                  return (
+                    <div
+                      key={doc.id}
+                      style={{
+                        padding: '10px 14px',
+                        borderRadius: '8px',
+                        background: 'rgba(255, 255, 255, 0.02)',
+                        border: '1px solid rgba(255, 255, 255, 0.06)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#fff' }}>{doc.fileName}</span>
+                          {isFT && (
+                            <span style={{
+                              padding: '1px 6px',
+                              borderRadius: '4px',
+                              background: 'rgba(251, 191, 36, 0.15)',
+                              border: '1px solid rgba(251, 191, 36, 0.35)',
+                              color: '#fde68a',
+                              fontSize: '0.64rem',
+                              fontWeight: 700
+                            }}>
+                              ⚡ Onboarder Submission
+                            </span>
+                          )}
+                          <span style={{
+                            padding: '1px 6px',
+                            borderRadius: '9999px',
+                            fontSize: '0.64rem',
+                            fontWeight: 700,
+                            background: doc.reviewStatus === 'Reviewed & Verified' ? 'rgba(16, 185, 129, 0.2)' :
+                                        doc.reviewStatus === 'Requires Re-submission' ? 'rgba(239, 68, 68, 0.2)' :
+                                        doc.reviewStatus === 'Under Review' ? 'rgba(59, 130, 246, 0.2)' :
+                                        'rgba(251, 191, 36, 0.2)',
+                            color: doc.reviewStatus === 'Reviewed & Verified' ? '#10b981' :
+                                   doc.reviewStatus === 'Requires Re-submission' ? '#f87171' :
+                                   doc.reviewStatus === 'Under Review' ? '#60a5fa' :
+                                   '#fbbf24',
+                            border: '1px solid currentColor'
+                          }}>
+                            {doc.reviewStatus || 'Pending Review'}
+                          </span>
+                        </div>
+
+                        {canReview && (
+                          <button
+                            type="button"
+                            onClick={() => setReviewingDoc(doc)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '5px 12px',
+                              borderRadius: '6px',
+                              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.3))',
+                              border: '1px solid rgba(16, 185, 129, 0.5)',
+                              color: '#a7f3d0',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <Award size={12} />
+                            <span>Review & Grade Governance</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Reviewer Comment Preview */}
+                      {doc.reviewerComments && doc.reviewerComments.length > 0 && (
+                        <div style={{
+                          padding: '6px 10px',
+                          borderRadius: '6px',
+                          background: 'rgba(0, 0, 0, 0.3)',
+                          borderLeft: '3px solid #3b82f6',
+                          fontSize: '0.72rem',
+                          color: '#e2e8f0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          flexWrap: 'wrap',
+                          gap: '6px'
+                        }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <MessageSquare size={12} className="text-blue-400" />
+                            <strong style={{ color: '#93c5fd' }}>{doc.reviewerComments[0].reviewerRole} ({doc.reviewerComments[0].reviewerName}):</strong> "{doc.reviewerComments[0].comment}"
+                          </span>
+                          <span style={{ color: doc.reviewerComments[0].verdict === 'Approved' ? '#10b981' : '#f87171', fontWeight: 700 }}>
+                            [{doc.reviewerComments[0].verdict}]
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1578,6 +1731,23 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
           </div>
 
         </div>
+      )}
+
+      {/* DOCUMENT REVIEW & GRADING MODAL FOR ACTIVE ROLE PROFILES */}
+      {reviewingDoc && activeProject && (
+        <DocumentReviewGradeModal
+          isOpen={!!reviewingDoc}
+          onClose={() => setReviewingDoc(null)}
+          document={reviewingDoc}
+          project={activeProject}
+          session={session as any}
+          onSaveReview={(projectId, docId, comment, comp, read, stat) => {
+            if (onReviewDocument) {
+              onReviewDocument(projectId, docId, comment, comp, read, stat);
+            }
+            setReviewingDoc(null);
+          }}
+        />
       )}
     </div>
   );
