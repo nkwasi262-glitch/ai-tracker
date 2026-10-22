@@ -944,6 +944,9 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
 
   const canReview = session?.role === 'Super Admin' || session?.role === 'Director General' || session?.role === 'Technical Clearance Team' || session?.role === 'Technical Director' || currentRole === 'Super Admin' || currentRole === 'Director General' || currentRole === 'Technical Clearance Team' || currentRole === 'Technical Director';
 
+  // Audit Verification Checklist is active and accessible (not read-only) for active roles & onboarders
+  const canAudit = session ? session.role !== 'Public User' : currentRole !== 'Public User';
+
   const [generalCompliance, setGeneralCompliance] = useState<ComplianceScore>({
     fairness: 70,
     transparency: 70,
@@ -996,7 +999,6 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
   }, [selectedProjectId]);
 
   const handleAnswerChange = (subId: string, val: 'yes' | 'no') => {
-    const canAudit = ['Super Administrator', 'National AI Authority', 'Government Administrator', 'Auditor'].includes(currentRole);
     if (!canAudit) return;
 
     const newAnswers = {
@@ -1106,8 +1108,6 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
       return <XCircle className="w-4 h-4 text-rose-500" style={{ marginRight: '6px' }} />;
     }
   };
-
-  const canAudit = ['Super Administrator', 'National AI Authority', 'Government Administrator', 'Auditor'].includes(currentRole);
 
   const renderQuestionGroup = (cat: 'fairness' | 'transparency' | 'privacy' | 'security') => {
     const colorMap = {
@@ -1613,8 +1613,13 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
                 <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>
                   Audit Verification Checklist
                 </h3>
-                {!canAudit && (
+                {!canAudit ? (
                   <span className="badge badge-warning" style={{ fontSize: '0.68rem' }}>Read-only Mode</span>
+                ) : (
+                  <span className="badge badge-success" style={{ fontSize: '0.68rem', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#34d399', display: 'inline-block' }}></span>
+                    Active Verification Mode
+                  </span>
                 )}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

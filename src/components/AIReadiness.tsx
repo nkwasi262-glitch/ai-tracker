@@ -392,7 +392,8 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({
     }
   }, [selectedProjectId, activeProject?.documents?.length, activeProject?.readinessScore]);
 
-  const canEdit = ['Super Administrator', 'National AI Authority', 'Government Administrator', 'Auditor', 'Super Admin'].includes(currentRole as string);
+  // AI Readiness Verification Audit is active and accessible (not read-only) for active roles & onboarders
+  const canEdit = session ? session.role !== 'Public User' : currentRole !== 'Public User';
 
   const handleAnswerChange = (subId: string, val: 'yes' | 'no') => {
     if (!canEdit) return;
@@ -974,8 +975,13 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({
                 Verify and answer yes/no for each nested checkpoint parameters.
               </p>
             </div>
-            {!canEdit && (
+            {!canEdit ? (
               <span className="badge badge-warning" style={{ fontSize: '0.65rem' }}>Read-only Mode</span>
+            ) : (
+              <span className="badge badge-success" style={{ fontSize: '0.65rem', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#34d399', display: 'inline-block' }}></span>
+                Active Audit Mode
+              </span>
             )}
           </div>
 

@@ -737,6 +737,57 @@ test('Audit trail logs DOCUMENT_REVIEW event with reviewer role, project code, a
   assert(auditLogs[0].description.includes('Approved'), 'Description must contain verdict');
 });
 
+// ====================================================================
+// SECTION 13: GOVERNANCE & ETHICS AUDIT VERIFICATION CHECKLIST ACCESSIBILITY
+// ====================================================================
+
+test('Audit Verification Checklist in Governance & Ethics is accessible and NOT in read-only mode for active roles & onboarders', () => {
+  function getAuditAccessibility(session, currentRole) {
+    return session ? session.role !== 'Public User' : currentRole !== 'Public User';
+  }
+
+  // Active roles
+  assert(getAuditAccessibility({ role: 'Super Admin' }, 'Super Admin') === true, 'Super Admin must have active checklist access');
+  assert(getAuditAccessibility({ role: 'Technical Clearance Team' }, 'Technical Clearance Team') === true, 'Technical Clearance Team must have active checklist access');
+  assert(getAuditAccessibility({ role: 'Technical Director' }, 'Technical Director') === true, 'Technical Director must have active checklist access');
+  assert(getAuditAccessibility({ role: 'Director General' }, 'Director General') === true, 'Director General must have active checklist access');
+  assert(getAuditAccessibility({ role: 'AI Manager' }, 'AI Manager') === true, 'AI Manager must have active checklist access');
+  assert(getAuditAccessibility({ role: 'First-Timer / New User' }, 'First-Timer / New User') === true, 'First-Timer / Onboarder must have active checklist access to guide and grade');
+
+  // Public User is strictly non-auditor
+  assert(getAuditAccessibility({ role: 'Public User' }, 'Public User') === false, 'Public User cannot audit or edit verification checklist');
+});
+
+test('Answering YES / NO on Audit Verification Checklist dynamically recalculates statutory compliance scores', () => {
+  const answers = {
+    f1_sub1: 'no', f1_sub2: 'no', f2_sub1: 'no', f2_sub2: 'no', f3_sub1: 'no', f3_sub2: 'no',
+    t1_sub1: 'no', t1_sub2: 'no', t2_sub1: 'no', t2_sub2: 'no', t3_sub1: 'no', t3_sub2: 'no',
+    p1_sub1: 'no', p1_sub2: 'no', p1_sub3: 'no', p2_sub1: 'no', p2_sub2: 'no', p3_sub1: 'no', p3_sub2: 'no', p4_sub1: 'no',
+    s1_sub1: 'no', s1_sub2: 'no', s2_sub1: 'no', s2_sub2: 'no', s3_sub1: 'no', s3_sub2: 'no', s4_sub1: 'no'
+  };
+
+  const computeCategoryScore = (subIds) => {
+    const yesCount = subIds.filter(id => answers[id] === 'yes').length;
+    if (subIds.length === 0) return 100;
+    return Math.round(40 + (yesCount / subIds.length) * 60);
+  };
+
+  // Baseline with all NO answers = 40%
+  const fairnessSubIds = ['f1_sub1', 'f1_sub2', 'f2_sub1', 'f2_sub2', 'f3_sub1', 'f3_sub2'];
+  assert(computeCategoryScore(fairnessSubIds) === 40, 'Baseline score with all NOs must be 40%');
+
+  // Verify parameter 1 & 2
+  answers['f1_sub1'] = 'yes';
+  answers['f1_sub2'] = 'yes';
+  answers['f2_sub1'] = 'yes';
+  const updatedFairness = computeCategoryScore(fairnessSubIds);
+  assert(updatedFairness === 70, '3 out of 6 YES answers must equal 70%');
+
+  // Fully compliant category
+  fairnessSubIds.forEach(id => { answers[id] = 'yes'; });
+  assert(computeCategoryScore(fairnessSubIds) === 100, 'All YES answers must equal 100%');
+});
+
 const passed = tests.filter(t => t.passed).length;
 const total = tests.length;
 
