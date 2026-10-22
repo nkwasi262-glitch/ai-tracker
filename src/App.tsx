@@ -15,10 +15,12 @@ import { AuditLogViewer } from './components/AuditLogViewer';
 import { EntryGateModal } from './components/EntryGateModal';
 import { AccessDenied } from './components/AccessDenied';
 import { ActiveRoleSelectorModal } from './components/ActiveRoleSelectorModal';
+import { FirstTimerOnboardingHub } from './components/FirstTimerOnboardingHub';
+import { PendingApprovalNotice } from './components/PendingApprovalNotice';
 import { AIProject, ComplianceScore, DocumentAsset, ReviewWorkflowStatus, AutoAssessmentDetails, ZeroAssumptionAudit } from './data/sampleProjects';
 import { UserSession, ActiveRole } from './data/authTypes';
-import { getStoredSession, clearSession, elevateFromFirstTimer } from './services/authService';
-import { AppModuleId, canAccessModule } from './services/rbacPolicy';
+import { getStoredSession, clearSession, elevateFromFirstTimer, submitOnboardingForApproval } from './services/authService';
+import { AppModuleId, canAccessModule, MODULE_REGISTRY } from './services/rbacPolicy';
 import { generateAssessmentFromDocuments } from './services/assessmentEngine';
 import { loadStoredProjects, saveStoredProjects, resetProjectsStorage } from './services/projectStorage';
 
@@ -35,13 +37,16 @@ function App() {
   }, [projects]);
   const [activeTab, setActiveTab] = useState<string>(() => {
     const s = getStoredSession();
-    return s?.role === 'First-Timer / New User' ? 'documents' : 'dashboard';
+    if (s?.onboardingStatus === 'pending_approval') return 'dashboard';
+    if (s?.role === 'First-Timer / New User') return 'documents';
+    return 'dashboard';
   });
   const [showRoleSelectorModal, setShowRoleSelectorModal] = useState<boolean>(false);
+  const [viewingOnboardingHub, setViewingOnboardingHub] = useState<boolean>(false);
 
-  // Ensure active tab is reset if current role changes to one without permission
+  // Ensure active tab is reset if current role changes to one without permission (pending_approval users may browse all modules to see notices)
   useEffect(() => {
-    if (session && !canAccessModule(session.role, activeTab as AppModuleId)) {
+    if (session && session.onboardingStatus !== 'pending_approval' && !canAccessModule(session.role, activeTab as AppModuleId)) {
       const fallbackTab = session.role === 'First-Timer / New User' ? 'documents' : 'dashboard';
       setActiveTab(fallbackTab);
     }
@@ -262,20 +267,64 @@ function App() {
       <EntryGateModal 
         onSuccess={(newSession) => {
           setSession(newSession);
-          const initialTab = newSession.role === 'First-Timer / New User' ? 'documents' : 'dashboard';
+          const initialTab = newSession.role === 'First-Timer / New User' ? 'dashboard' :
+                            newSession.role === 'Director General' ? 'dg_queue' :
+                            newSession.role === 'Finance Minister' ? 'finance' :
+                            newSession.role === 'Technical Clearance Team' ? 'documents' :
+                            newSession.role === 'AI Manager' ? 'registry' :
+                            'dashboard';
           setActiveTab(initialTab);
         }} 
       />
     );
   }
 
+  // 4b. If New Member in Onboarding Track (or viewing Onboard Hub), render FirstTimerOnboardingHub
+  if ((session.memberType === 'new_member' && session.onboardingStatus === 'onboarding') || viewingOnboardingHub) {
+    return (
+      <div className="layout-wrapper" style={{ minHeight: '100vh', background: 'var(--bg-dark)', padding: '24px 16px' }}>
+        <div style={{ maxWidth: '1240px', margin: '0 auto' }}>
+          <FirstTimerOnboardingHub
+            session={session}
+            projects={projects}
+            onAddDocument={handleAddDocument}
+            onUpdateProjectAssessment={handleUpdateProjectAssessment}
+            onSubmitForApproval={() => {
+              const updated = submitOnboardingForApproval();
+              if (updated) {
+                setSession(updated);
+              }
+            }}
+            onProceedToMonitoring={() => {
+              setViewingOnboardingHub(false);
+              setActiveTab('dashboard');
+            }}
+            onSwitchRole={handleSwitchRole}
+          />
+        </div>
+      </div>
+    );
+  }
+
   // 5. Central RBAC Policy Enforcement on Tab Routing
-  const isTabPermitted = canAccessModule(session.role, activeTab as AppModuleId);
+  const isTabPermitted = canAccessModule(session.role, activeTab as AppModuleId, session);
 
   // 6. Conditional Tab Routing Canvas
   const renderTabContent = () => {
-    // If forbidden module is accessed via deep-linking or state tampering, render AccessDenied
-    if (!isTabPermitted) {
+    // If user is in pending_approval onboarding status, check if module is restricted
+    if (session.onboardingStatus === 'pending_approval') {
+      if (!['dashboard', 'gis', 'chat'].includes(activeTab)) {
+        return (
+          <PendingApprovalNotice
+            session={session}
+            targetModuleLabel={MODULE_REGISTRY[activeTab as AppModuleId]?.label || activeTab}
+            onNavigate={(tab) => setActiveTab(tab)}
+            onSwitchRole={handleSwitchRole}
+          />
+        );
+      }
+    } else if (!isTabPermitted) {
+      // Regular RBAC forbidden check
       return (
         <AccessDenied
           currentRole={session.role}
@@ -283,7 +332,7 @@ function App() {
           userName={session.fullName}
           userEmail={session.email}
           userInstitution={session.institution}
-          onNavigateHome={() => setActiveTab(session.role === 'First-Timer / New User' ? 'documents' : 'dashboard')}
+          onNavigateHome={() => setActiveTab(session.role === 'First-Timer / New User' ? 'dashboard' : 'dashboard')}
           onRequestElevation={() => setShowRoleSelectorModal(true)}
         />
       );
@@ -384,6 +433,7 @@ function App() {
         session={session}
         onSwitchRole={handleSwitchRole}
         onOpenRoleSelector={session.role === 'First-Timer / New User' ? undefined : () => setShowRoleSelectorModal(true)}
+        onOpenOnboardingHub={session.memberType === 'new_member' ? () => setViewingOnboardingHub(true) : undefined}
         activeTab={activeTab} 
         setActiveTab={setActiveTab}
       >

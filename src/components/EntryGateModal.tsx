@@ -12,26 +12,27 @@ import {
   Search, 
   Sparkles, 
   CheckCircle2, 
-  X, 
   ShieldAlert, 
   UserCheck, 
   DollarSign, 
   Globe,
   Lock,
   Unlock,
-  KeyRound
+  KeyRound,
+  UserPlus,
+  Users
 } from 'lucide-react';
 import { 
   ActiveRole, 
   InstitutionCategory, 
-  STANDARD_INSTITUTIONS 
+  STANDARD_INSTITUTIONS,
+  UserSession 
 } from '../data/authTypes';
 import { 
   processGateSubmission, 
   GateResult,
   getLastSelectedRole 
 } from '../services/authService';
-import { UserSession } from '../data/authTypes';
 
 interface EntryGateModalProps {
   onSuccess: (session: UserSession) => void;
@@ -44,7 +45,7 @@ interface RoleSecurityConfig {
   authorizedAgency: string;
 }
 
-const ROLE_SECURITY_MAP: Record<ActiveRole, RoleSecurityConfig> = {
+export const ROLE_SECURITY_MAP: Record<ActiveRole, RoleSecurityConfig> = {
   'Super Admin': {
     isRestricted: true,
     clearanceLevel: 'Tier-1 Presidential & Security Directorate',
@@ -76,15 +77,15 @@ const ROLE_SECURITY_MAP: Record<ActiveRole, RoleSecurityConfig> = {
     authorizedAgency: 'Ministry of Finance'
   },
   'AI Manager': {
-    isRestricted: false,
+    isRestricted: true,
     clearanceLevel: 'Institutional Operations Lead',
-    pin: '',
+    pin: 'AIMANAGER-2026',
     authorizedAgency: 'Registered MDAs / MMDAs / SOEs'
   },
   'Public User': {
-    isRestricted: false,
+    isRestricted: true,
     clearanceLevel: 'Open Citizen Transparency',
-    pin: '',
+    pin: 'PUBLIC-2026',
     authorizedAgency: 'General Public'
   },
   'First-Timer / New User': {
@@ -95,7 +96,15 @@ const ROLE_SECURITY_MAP: Record<ActiveRole, RoleSecurityConfig> = {
   }
 };
 
+type GateStep = 'mandatory_form' | 'member_choice' | 'in_member_role_popup';
+
 export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => {
+  // Step in gateway flow:
+  // 1. 'mandatory_form' (5 Mandatory spaces)
+  // 2. 'member_choice' (ONLY TWO OPTIONS: "New Member" vs "In / Old Member")
+  // 3. 'in_member_role_popup' (Active Role Profile popup with unique password required)
+  const [currentStep, setCurrentStep] = useState<GateStep>('mandatory_form');
+
   // Form fields (Mandatory Gatekeeper Spaces)
   // 1. FULL NAME
   const [fullName, setFullName] = useState('');
@@ -116,28 +125,23 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
   // 5. GHANA DATA PROTECTION ACT
   const [consentGiven, setConsentGiven] = useState(false);
 
-  // Small popup of (active role profile) state
-  const [showRolePopup, setShowRolePopup] = useState(false);
-
-  // Open roles (Public User, First-Timer, AI Manager) are unlocked by default
+  // Track unlocked roles for in-member access
   const [unlockedRoles, setUnlockedRoles] = useState<Record<string, boolean>>({
-    'Public User': true,
-    'First-Timer / New User': true,
-    'AI Manager': true,
     'Super Admin': false,
     'Director General': false,
     'Technical Director': false,
     'Technical Clearance Team': false,
-    'Finance Minister': false
+    'Finance Minister': false,
+    'AI Manager': false,
+    'Public User': false
   });
 
-  // Default to an open public role so unauthorized users cannot enter high-privilege roles by default
   const [selectedRole, setSelectedRole] = useState<ActiveRole>(() => {
     const last = getLastSelectedRole();
-    if (last && !ROLE_SECURITY_MAP[last]?.isRestricted) {
+    if (last && last !== 'First-Timer / New User') {
       return last;
     }
-    return 'Public User';
+    return 'Super Admin';
   });
 
   // PIN clearance challenge state
@@ -149,8 +153,8 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Roles available in the Active Role Profile popup
-  const rolesList: { 
+  // Roles available for In / Old Member
+  const inMemberRolesList: { 
     role: ActiveRole; 
     label: string; 
     badge: string; 
@@ -221,15 +225,6 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
       desc: 'General public overview of transparent AI initiatives, regional deployments, and GIS map.',
       modules: 'Transparent Dashboard, GIS Map, Regulatory Assistant',
       icon: <Globe size={16} className="text-slate-400" />
-    },
-    { 
-      role: 'First-Timer / New User', 
-      label: 'First-Timer / Guided Onboarding', 
-      badge: 'Orientation Track', 
-      color: '#eab308', 
-      desc: 'Guided onboarding with exclusive access to Document & OCR file uploads, AI Readiness guide, and Ethics.',
-      modules: 'Document & OCR (File Uploads), AI Readiness Guide, Governance & Ethics',
-      icon: <Sparkles size={16} className="text-amber-400" />
     }
   ];
 
@@ -304,27 +299,60 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
       return;
     }
 
-    // All 5 spaces validated: Open the small pop up of the (active role profile) for selection
-    setShowRolePopup(true);
+    // All 5 spaces validated: Proceed directly to the TWO OPTIONS screen!
+    setCurrentStep('member_choice');
   };
 
-  // Handle clicking a role card: check if restricted and prompt for PIN if needed
+  // Option 1: Handle New Member Selection
+  const handleSelectNewMember = () => {
+    setIsSubmitting(true);
+    setErrorMessage(null);
+
+    const institutionName = selectedInstId === 'other' ? customInstitution.trim() : getSelectedInstName();
+
+    const result: GateResult = processGateSubmission({
+      fullName: fullName.trim(),
+      institution: institutionName,
+      institutionCategory: instCategory,
+      role: 'First-Timer / New User',
+      email: cleanEmail,
+      submissionDate: date,
+      isFirstTimer: true,
+      memberType: 'new_member',
+      onboardingStatus: 'onboarding'
+    });
+
+    setIsSubmitting(false);
+    onSuccess(result.session);
+  };
+
+  // Option 2: Transition to In / Old Member Role Profile Popup
+  const handleOpenInMemberPopup = () => {
+    setErrorMessage(null);
+    setCurrentStep('in_member_role_popup');
+    // Pre-prompt challenge for the default selected role if not unlocked
+    const initialRole = selectedRole;
+    if (!unlockedRoles[initialRole]) {
+      setPinChallengeRole(initialRole);
+      setEnteredPin('');
+      setPinError(null);
+    }
+  };
+
+  // Handle clicking a role in the Active Role Profile popup
   const handleSelectRole = (rRole: ActiveRole) => {
-    const config = ROLE_SECURITY_MAP[rRole];
-    if (!config.isRestricted || unlockedRoles[rRole]) {
-      // Role is open or already unlocked
-      setSelectedRole(rRole);
+    setSelectedRole(rRole);
+    if (unlockedRoles[rRole]) {
       setPinChallengeRole(null);
       setPinError(null);
     } else {
-      // Role is restricted: open PIN challenge
       setPinChallengeRole(rRole);
       setEnteredPin('');
       setPinError(null);
     }
   };
 
-  // Handle PIN verification challenge
+  // Handle PIN verification challenge for in-member roles
   const handleVerifyPin = (e: React.FormEvent) => {
     e.preventDefault();
     if (!pinChallengeRole) return;
@@ -335,15 +363,15 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
       setPinChallengeRole(null);
       setPinError(null);
     } else {
-      setPinError(`Access Denied: Invalid statutory PIN for ${pinChallengeRole}. Public users cannot access this clearance level.`);
+      setPinError(`Access Denied: Invalid statutory access key / password for ${pinChallengeRole}.`);
     }
   };
 
-  // Confirm Active Role Profile from Pop up and Enter System
-  const handleConfirmRoleProfile = () => {
-    const config = ROLE_SECURITY_MAP[selectedRole];
-    if (config.isRestricted && !unlockedRoles[selectedRole]) {
-      setErrorMessage(`Access Denied: ${selectedRole} requires statutory security clearance. Please enter the authorized PIN or select an open role (Public User / AI Manager).`);
+  // Confirm Active Role Profile and Enter System
+  const handleConfirmInMemberProfile = () => {
+    if (!unlockedRoles[selectedRole]) {
+      setErrorMessage(`Access Denied: ${selectedRole} requires authentication with its unique statutory access password.`);
+      setPinChallengeRole(selectedRole);
       return;
     }
 
@@ -359,11 +387,12 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
       role: selectedRole,
       email: cleanEmail,
       submissionDate: date,
-      isFirstTimer: selectedRole === 'First-Timer / New User'
+      isFirstTimer: false,
+      memberType: 'in_member',
+      onboardingStatus: 'approved'
     });
 
     setIsSubmitting(false);
-    setShowRolePopup(false);
     onSuccess(result.session);
   };
 
@@ -371,7 +400,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
     <div style={{
       position: 'fixed',
       inset: 0,
-      zIndex: 99999, // Absolute top layer
+      zIndex: 99999,
       background: 'rgba(5, 8, 15, 0.94)',
       backdropFilter: 'blur(20px)',
       display: 'flex',
@@ -383,7 +412,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
     }}>
       {/* Container Box */}
       <div style={{
-        maxWidth: '720px',
+        maxWidth: currentStep === 'member_choice' ? '820px' : '720px',
         width: '100%',
         margin: '0 auto',
         background: 'linear-gradient(170deg, #111827 0%, #0d121f 100%)',
@@ -391,7 +420,8 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
         boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 35px rgba(16, 185, 129, 0.12)',
         borderRadius: '20px',
         overflow: 'hidden',
-        position: 'relative'
+        position: 'relative',
+        transition: 'all 0.3s ease'
       }}>
         {/* Top National Ribbon */}
         <div style={{
@@ -439,7 +469,9 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
               National AI Projects Registry & Monitoring System
             </h1>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px', margin: 0 }}>
-              Mandatory Gatekeeper: Verify institutional identity and statutory compliance to enter.
+              {currentStep === 'mandatory_form' && 'Mandatory Gatekeeper: Verify institutional identity and statutory compliance to proceed.'}
+              {currentStep === 'member_choice' && 'Statutory Entry Point: Select your membership track to enter the system.'}
+              {currentStep === 'in_member_role_popup' && 'Active Role Profile: Enter unique statutory clearance access key / password.'}
             </p>
           </div>
         </div>
@@ -463,150 +495,177 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
           </div>
         )}
 
-        {/* Mandatory Gatekeeper Form (Space for FULL NAME, MANAGING INSTITUTION, EMAIL ADDRESS, DATE, & GHANA DATA PROTECTION ACT) */}
-        <form onSubmit={handleGatekeeperSubmit} style={{ padding: '24px 32px 32px 32px' }}>
-          
-          <div style={{
-            marginBottom: '18px',
-            padding: '10px 14px',
-            borderRadius: '8px',
-            background: 'rgba(16, 185, 129, 0.05)',
-            border: '1px solid rgba(16, 185, 129, 0.15)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            fontSize: '0.78rem',
-            color: 'var(--text-secondary)'
-          }}>
-            <Sparkles size={14} className="text-emerald-400" style={{ flexShrink: 0 }} />
-            <span>
-              All personnel enter as first-timers through statutory logging. Complete the 5 spaces below to open the <strong>(active role profile)</strong> selector.
-            </span>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-            
-            {/* Space 1: FULL NAME */}
-            <div style={{ gridColumn: 'span 2' }}>
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '0.78rem',
-                fontWeight: 700,
-                color: 'var(--text-primary)',
-                letterSpacing: '0.04em',
-                marginBottom: '6px'
-              }}>
-                <User size={14} className="text-emerald-400" />
-                <span>FULL NAME *</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="e.g. Dr. Kwaku Mensah or Hon. Abena Ofori"
-                style={{
-                  width: '100%',
-                  padding: '11px 14px',
-                  borderRadius: '8px',
-                  background: 'rgba(255, 255, 255, 0.04)',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                  color: '#fff',
-                  fontSize: '0.88rem',
-                  outline: 'none'
-                }}
-                onFocus={(e) => e.target.style.borderColor = 'var(--ghana-emerald)'}
-                onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.12)'}
-              />
+        {/* STEP 1: Mandatory Gatekeeper Form (Space for FULL NAME, MANAGING INSTITUTION, EMAIL ADDRESS, DATE, & GHANA DATA PROTECTION ACT) */}
+        {currentStep === 'mandatory_form' && (
+          <form onSubmit={handleGatekeeperSubmit} style={{ padding: '24px 32px 32px 32px' }}>
+            <div style={{
+              marginBottom: '18px',
+              padding: '10px 14px',
+              borderRadius: '8px',
+              background: 'rgba(16, 185, 129, 0.05)',
+              border: '1px solid rgba(16, 185, 129, 0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '0.78rem',
+              color: 'var(--text-secondary)'
+            }}>
+              <Sparkles size={14} className="text-emerald-400" style={{ flexShrink: 0 }} />
+              <span>
+                Please fill in the 5 mandatory gateway spaces below to access the system membership options.
+              </span>
             </div>
 
-            {/* Space 2: MANAGING INSTITUTION (Searchable Selector) */}
-            <div style={{ gridColumn: 'span 2', position: 'relative' }}>
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '0.78rem',
-                fontWeight: 700,
-                color: 'var(--text-primary)',
-                letterSpacing: '0.04em',
-                marginBottom: '6px'
-              }}>
-                <Building2 size={14} className="text-emerald-400" />
-                <span>MANAGING INSTITUTION *</span>
-              </label>
-
-              <div
-                onClick={() => setShowInstDropdown(!showInstDropdown)}
-                style={{
-                  width: '100%',
-                  padding: '11px 14px',
-                  borderRadius: '8px',
-                  background: 'rgba(255, 255, 255, 0.04)',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                  color: '#fff',
-                  fontSize: '0.88rem',
-                  cursor: 'pointer',
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              
+              {/* Space 1: FULL NAME */}
+              <div style={{ gridColumn: 'span 2' }}>
+                <label style={{
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'space-between'
-                }}
-              >
-                <span style={{ fontWeight: 500 }}>{getSelectedInstName()}</span>
-                <span style={{
-                  fontSize: '0.7rem',
-                  padding: '2px 8px',
-                  borderRadius: '9999px',
-                  background: 'rgba(16, 185, 129, 0.15)',
-                  color: 'var(--ghana-emerald)',
-                  fontWeight: 700
+                  gap: '6px',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  color: 'var(--text-primary)',
+                  letterSpacing: '0.04em',
+                  marginBottom: '6px'
                 }}>
-                  {instCategory}
-                </span>
+                  <User size={14} className="text-emerald-400" />
+                  <span>FULL NAME *</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="e.g. Dr. Kwaku Mensah or Hon. Abena Ofori"
+                  style={{
+                    width: '100%',
+                    padding: '11px 14px',
+                    borderRadius: '8px',
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#fff',
+                    fontSize: '0.88rem',
+                    outline: 'none'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--ghana-emerald)'}
+                  onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.12)'}
+                />
               </div>
 
-              {/* Dropdown Menu */}
-              {showInstDropdown && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  right: 0,
-                  marginTop: '6px',
-                  borderRadius: '10px',
-                  background: '#0f172a',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  boxShadow: '0 15px 35px rgba(0, 0, 0, 0.8)',
-                  zIndex: 100,
-                  maxHeight: '260px',
-                  overflowY: 'auto',
-                  padding: '8px'
+              {/* Space 2: MANAGING INSTITUTION (Searchable Selector) */}
+              <div style={{ gridColumn: 'span 2', position: 'relative' }}>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  color: 'var(--text-primary)',
+                  letterSpacing: '0.04em',
+                  marginBottom: '6px'
                 }}>
-                  <div style={{ padding: '4px 6px 8px 6px', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                    <Search size={14} style={{ color: 'var(--text-muted)' }} />
-                    <input
-                      type="text"
-                      placeholder="Search MDA, MMDA, or SOE..."
-                      value={instSearch}
-                      onChange={(e) => setInstSearch(e.target.value)}
-                      style={{
-                        width: '100%',
-                        background: 'transparent',
-                        border: 'none',
-                        color: '#fff',
-                        fontSize: '0.82rem',
-                        outline: 'none'
-                      }}
-                    />
-                  </div>
+                  <Building2 size={14} className="text-emerald-400" />
+                  <span>MANAGING INSTITUTION *</span>
+                </label>
 
-                  <div style={{ marginTop: '6px' }}>
-                    {filteredInstitutions.map((inst) => (
+                <div
+                  onClick={() => setShowInstDropdown(!showInstDropdown)}
+                  style={{
+                    width: '100%',
+                    padding: '11px 14px',
+                    borderRadius: '8px',
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#fff',
+                    fontSize: '0.88rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}
+                >
+                  <span style={{ fontWeight: 500 }}>{getSelectedInstName()}</span>
+                  <span style={{
+                    fontSize: '0.7rem',
+                    padding: '2px 8px',
+                    borderRadius: '9999px',
+                    background: 'rgba(16, 185, 129, 0.15)',
+                    color: 'var(--ghana-emerald)',
+                    fontWeight: 700
+                  }}>
+                    {instCategory}
+                  </span>
+                </div>
+
+                {/* Dropdown Menu */}
+                {showInstDropdown && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    marginTop: '6px',
+                    borderRadius: '10px',
+                    background: '#0f172a',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    boxShadow: '0 15px 35px rgba(0, 0, 0, 0.8)',
+                    zIndex: 100,
+                    maxHeight: '260px',
+                    overflowY: 'auto',
+                    padding: '8px'
+                  }}>
+                    <div style={{ padding: '4px 6px 8px 6px', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                      <Search size={14} style={{ color: 'var(--text-muted)' }} />
+                      <input
+                        type="text"
+                        placeholder="Search MDA, MMDA, or SOE..."
+                        value={instSearch}
+                        onChange={(e) => setInstSearch(e.target.value)}
+                        style={{
+                          width: '100%',
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#fff',
+                          fontSize: '0.82rem',
+                          outline: 'none'
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ marginTop: '6px' }}>
+                      {filteredInstitutions.map((inst) => (
+                        <div
+                          key={inst.id}
+                          onClick={() => handleSelectInstitution(inst)}
+                          style={{
+                            padding: '8px 12px',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            fontSize: '0.82rem',
+                            color: selectedInstId === inst.id ? '#10b981' : '#e2e8f0',
+                            background: selectedInstId === inst.id ? 'rgba(16, 185, 129, 0.1)' : 'transparent'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = selectedInstId === inst.id ? 'rgba(16, 185, 129, 0.1)' : 'transparent'}
+                        >
+                          <div>
+                            <div style={{ fontWeight: 600 }}>{inst.name}</div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Code: {inst.code}</div>
+                          </div>
+                          <span style={{ fontSize: '0.68rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(255, 255, 255, 0.08)', color: '#94a3b8' }}>
+                            {inst.category}
+                          </span>
+                        </div>
+                      ))}
+
+                      {/* "Other" Option */}
                       <div
-                        key={inst.id}
-                        onClick={() => handleSelectInstitution(inst)}
+                        onClick={() => handleSelectInstitution('other')}
                         style={{
                           padding: '8px 12px',
                           borderRadius: '6px',
@@ -615,362 +674,539 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
                           alignItems: 'center',
                           justifyContent: 'space-between',
                           fontSize: '0.82rem',
-                          color: selectedInstId === inst.id ? '#10b981' : '#e2e8f0',
-                          background: selectedInstId === inst.id ? 'rgba(16, 185, 129, 0.1)' : 'transparent'
+                          color: selectedInstId === 'other' ? '#10b981' : '#e2e8f0',
+                          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                          marginTop: '4px'
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = selectedInstId === inst.id ? 'rgba(16, 185, 129, 0.1)' : 'transparent'}
                       >
-                        <div>
-                          <div style={{ fontWeight: 600 }}>{inst.name}</div>
-                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Code: {inst.code}</div>
-                        </div>
+                        <span style={{ fontWeight: 600 }}>Other Institution / Organization (Custom)</span>
                         <span style={{ fontSize: '0.68rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(255, 255, 255, 0.08)', color: '#94a3b8' }}>
-                          {inst.category}
+                          Other
                         </span>
                       </div>
-                    ))}
-
-                    {/* "Other" Option */}
-                    <div
-                      onClick={() => handleSelectInstitution('other')}
-                      style={{
-                        padding: '8px 12px',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        fontSize: '0.82rem',
-                        color: selectedInstId === 'other' ? '#10b981' : '#e2e8f0',
-                        borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-                        marginTop: '4px'
-                      }}
-                    >
-                      <span style={{ fontWeight: 600 }}>Other Institution / Organization (Custom)</span>
-                      <span style={{ fontSize: '0.68rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(255, 255, 255, 0.08)', color: '#94a3b8' }}>
-                        Other
-                      </span>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Custom Institution Input if "Other" */}
-              {selectedInstId === 'other' && (
-                <div style={{ marginTop: '10px' }}>
-                  <input
-                    type="text"
-                    required
-                    value={customInstitution}
-                    onChange={(e) => setCustomInstitution(e.target.value)}
-                    placeholder="Enter custom institution / entity name"
-                    style={{
-                      width: '100%',
-                      padding: '10px 14px',
-                      borderRadius: '8px',
-                      background: 'rgba(255, 255, 255, 0.04)',
-                      border: '1px solid rgba(16, 185, 129, 0.3)',
-                      color: '#fff',
-                      fontSize: '0.85rem',
-                      outline: 'none'
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Space 3: EMAIL ADDRESS (.gov.gh only) */}
-            <div>
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '0.78rem',
-                fontWeight: 700,
-                color: 'var(--text-primary)',
-                letterSpacing: '0.04em',
-                marginBottom: '6px'
-              }}>
-                <Mail size={14} className="text-emerald-400" />
-                <span>EMAIL ADDRESS (.gov.gh only) *</span>
-              </label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="e.g. officer@nita.gov.gh"
-                style={{
-                  width: '100%',
-                  padding: '11px 14px',
-                  borderRadius: '8px',
-                  background: 'rgba(255, 255, 255, 0.04)',
-                  border: cleanEmail === '' 
-                    ? '1px solid rgba(255, 255, 255, 0.12)' 
-                    : isGovGhEmail 
-                      ? '1px solid var(--ghana-emerald)' 
-                      : '1px solid rgba(239, 68, 68, 0.6)',
-                  color: '#fff',
-                  fontSize: '0.88rem',
-                  outline: 'none'
-                }}
-                onFocus={(e) => e.target.style.borderColor = isGovGhEmail ? 'var(--ghana-emerald)' : 'var(--ghana-gold)'}
-                onBlur={(e) => e.target.style.borderColor = cleanEmail === '' ? 'rgba(255, 255, 255, 0.12)' : isGovGhEmail ? 'var(--ghana-emerald)' : 'rgba(239, 68, 68, 0.6)'}
-              />
-              <div style={{ fontSize: '0.72rem', marginTop: '5px' }}>
-                {cleanEmail === '' ? (
-                  <span style={{ color: 'var(--text-muted)' }}>
-                    Mandatory requirement: Acceptable email must end with <strong>.gov.gh</strong>
-                  </span>
-                ) : isGovGhEmail ? (
-                  <span style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
-                    <CheckCircle2 size={13} />
-                    <span>✓ Approved Ghana Gov Domain detected ({emailDomain})</span>
-                  </span>
-                ) : (
-                  <span style={{ color: '#f87171', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
-                    <AlertTriangle size={13} />
-                    <span>Invalid domain: Acceptable email must end with <strong>.gov.gh</strong></span>
-                  </span>
+                {/* Custom Institution Input if "Other" */}
+                {selectedInstId === 'other' && (
+                  <div style={{ marginTop: '10px' }}>
+                    <input
+                      type="text"
+                      required
+                      value={customInstitution}
+                      onChange={(e) => setCustomInstitution(e.target.value)}
+                      placeholder="Enter custom institution / entity name"
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: '8px',
+                        background: 'rgba(255, 255, 255, 0.04)',
+                        border: '1px solid rgba(16, 185, 129, 0.3)',
+                        color: '#fff',
+                        fontSize: '0.85rem',
+                        outline: 'none'
+                      }}
+                    />
+                  </div>
                 )}
               </div>
-            </div>
 
-            {/* Space 4: DATE */}
-            <div>
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '0.78rem',
-                fontWeight: 700,
-                color: 'var(--text-primary)',
-                letterSpacing: '0.04em',
-                marginBottom: '6px'
-              }}>
-                <Calendar size={14} className="text-emerald-400" />
-                <span>DATE *</span>
-              </label>
-              <input
-                type="date"
-                required
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '11px 14px',
-                  borderRadius: '8px',
-                  background: 'rgba(255, 255, 255, 0.04)',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                  color: '#fff',
-                  fontSize: '0.88rem',
-                  outline: 'none'
-                }}
-                onFocus={(e) => e.target.style.borderColor = 'var(--ghana-emerald)'}
-                onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.12)'}
-              />
-            </div>
-
-          </div>
-
-          {/* Space 5: GHANA DATA PROTECTION ACT */}
-          <div style={{
-            marginTop: '22px',
-            padding: '16px',
-            borderRadius: '12px',
-            background: 'rgba(16, 185, 129, 0.08)',
-            border: '1px solid rgba(16, 185, 129, 0.3)',
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '14px'
-          }}>
-            <input
-              type="checkbox"
-              id="act843-consent"
-              checked={consentGiven}
-              onChange={(e) => setConsentGiven(e.target.checked)}
-              style={{
-                marginTop: '4px',
-                width: '18px',
-                height: '18px',
-                accentColor: 'var(--ghana-emerald)',
-                cursor: 'pointer'
-              }}
-            />
-            <label htmlFor="act843-consent" style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.5, cursor: 'pointer' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                <ShieldCheck size={14} className="text-emerald-400" />
-                <strong style={{ color: '#fff', letterSpacing: '0.02em' }}>
-                  GHANA DATA PROTECTION ACT, 2012 (ACT 843) STATUTORY COMPLIANCE *
-                </strong>
-              </div>
-              I confirm statutory compliance under the <strong>Ghana Data Protection Act (Act 843)</strong>. I understand and acknowledge that my institutional credentials, access timestamps, and session actions will be cryptographically logged in an immutable statutory audit trail maintained by the National Information Technology Agency (NITA) with a mandatory 5-year retention period.
-            </label>
-          </div>
-
-          {/* Submit Button to trigger the (active role profile) pop up */}
-          <div style={{ marginTop: '26px', display: 'flex', justifyContent: 'flex-end' }}>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '10px',
-                padding: '13px 28px',
-                borderRadius: '10px',
-                background: 'linear-gradient(135deg, var(--ghana-emerald) 0%, #059669 100%)',
-                color: '#0b0f19',
-                fontWeight: 800,
-                fontSize: '0.92rem',
-                border: 'none',
-                cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                boxShadow: '0 4px 15px rgba(16, 185, 129, 0.35)',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <span>Submit & Select Active Role Profile</span>
-              <ArrowRight size={18} />
-            </button>
-          </div>
-        </form>
-
-      </div>
-
-      {/* Small Pop Up of the (Active Role Profile) for Selection */}
-      {showRolePopup && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 100000, // Above gatekeeper
-          background: 'rgba(3, 7, 18, 0.88)',
-          backdropFilter: 'blur(16px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '24px 16px',
-          overflowY: 'auto'
-        }}>
-          <div style={{
-            maxWidth: '600px',
-            width: '100%',
-            margin: '0 auto',
-            background: 'linear-gradient(175deg, #111827 0%, #0c121e 100%)',
-            border: '1px solid rgba(16, 185, 129, 0.45)',
-            boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.95), 0 0 40px rgba(16, 185, 129, 0.18)',
-            borderRadius: '18px',
-            overflow: 'hidden',
-            position: 'relative'
-          }}>
-            {/* National Ribbon */}
-            <div style={{
-              height: '4px',
-              background: 'linear-gradient(90deg, #ef4444 0%, #ef4444 33.3%, #fbbf24 33.3%, #fbbf24 66.6%, #10b981 66.6%, #10b981 100%)'
-            }} />
-
-            {/* Pop up Header */}
-            <div style={{
-              padding: '22px 24px 16px 24px',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '10px',
-                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(251, 191, 36, 0.15))',
-                  border: '1px solid rgba(16, 185, 129, 0.4)',
+              {/* Space 3: EMAIL ADDRESS (.gov.gh only) */}
+              <div>
+                <label style={{
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '1.3rem'
+                  gap: '6px',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  color: 'var(--text-primary)',
+                  letterSpacing: '0.04em',
+                  marginBottom: '6px'
                 }}>
-                  🇬🇭
-                </div>
-                <div>
-                  <div style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    color: 'var(--ghana-emerald)',
-                    fontSize: '0.7rem',
-                    fontWeight: 700,
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase'
-                  }}>
-                    <Sparkles size={12} />
-                    <span>Statutory Clearance & Role Access Control</span>
-                  </div>
-                  <h2 style={{ fontSize: '1.18rem', fontWeight: 700, color: '#fff', margin: '2px 0 0 0' }}>
-                    Active Role Profile Selection
-                  </h2>
+                  <Mail size={14} className="text-emerald-400" />
+                  <span>EMAIL ADDRESS (.gov.gh only) *</span>
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="e.g. officer@nita.gov.gh"
+                  style={{
+                    width: '100%',
+                    padding: '11px 14px',
+                    borderRadius: '8px',
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: cleanEmail === '' 
+                      ? '1px solid rgba(255, 255, 255, 0.12)' 
+                      : isGovGhEmail 
+                        ? '1px solid var(--ghana-emerald)' 
+                        : '1px solid rgba(239, 68, 68, 0.6)',
+                    color: '#fff',
+                    fontSize: '0.88rem',
+                    outline: 'none'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = isGovGhEmail ? 'var(--ghana-emerald)' : 'var(--ghana-gold)'}
+                  onBlur={(e) => e.target.style.borderColor = cleanEmail === '' ? 'rgba(255, 255, 255, 0.12)' : isGovGhEmail ? 'var(--ghana-emerald)' : 'rgba(239, 68, 68, 0.6)'}
+                />
+                <div style={{ fontSize: '0.72rem', marginTop: '5px' }}>
+                  {cleanEmail === '' ? (
+                    <span style={{ color: 'var(--text-muted)' }}>
+                      Mandatory requirement: Acceptable email must end with <strong>.gov.gh</strong>
+                    </span>
+                  ) : isGovGhEmail ? (
+                    <span style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                      <CheckCircle2 size={13} />
+                      <span>✓ Approved Ghana Gov Domain detected ({emailDomain})</span>
+                    </span>
+                  ) : (
+                    <span style={{ color: '#f87171', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                      <AlertTriangle size={13} />
+                      <span>Invalid domain: Acceptable email must end with <strong>.gov.gh</strong></span>
+                    </span>
+                  )}
                 </div>
               </div>
 
-              <button
-                onClick={() => setShowRolePopup(false)}
-                title="Back to Gatekeeper Form"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.06)',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                  borderRadius: '8px',
-                  color: 'var(--text-secondary)',
-                  cursor: 'pointer',
-                  padding: '6px',
+              {/* Space 4: DATE */}
+              <div>
+                <label style={{
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center'
+                  gap: '6px',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  color: 'var(--text-primary)',
+                  letterSpacing: '0.04em',
+                  marginBottom: '6px'
+                }}>
+                  <Calendar size={14} className="text-emerald-400" />
+                  <span>DATE *</span>
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '11px 14px',
+                    borderRadius: '8px',
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#fff',
+                    fontSize: '0.88rem',
+                    outline: 'none'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--ghana-emerald)'}
+                  onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.12)'}
+                />
+              </div>
+
+            </div>
+
+            {/* Space 5: GHANA DATA PROTECTION ACT */}
+            <div style={{
+              marginTop: '22px',
+              padding: '16px',
+              borderRadius: '12px',
+              background: 'rgba(16, 185, 129, 0.08)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '14px'
+            }}>
+              <input
+                type="checkbox"
+                id="act843-consent"
+                checked={consentGiven}
+                onChange={(e) => setConsentGiven(e.target.checked)}
+                style={{
+                  marginTop: '4px',
+                  width: '18px',
+                  height: '18px',
+                  accentColor: 'var(--ghana-emerald)',
+                  cursor: 'pointer'
+                }}
+              />
+              <label htmlFor="act843-consent" style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.5, cursor: 'pointer' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                  <ShieldCheck size={14} className="text-emerald-400" />
+                  <strong style={{ color: '#fff', letterSpacing: '0.02em' }}>
+                    GHANA DATA PROTECTION ACT, 2012 (ACT 843) STATUTORY COMPLIANCE *
+                  </strong>
+                </div>
+                I confirm statutory compliance under the <strong>Ghana Data Protection Act (Act 843)</strong>. I understand and acknowledge that my institutional credentials, access timestamps, and session actions will be cryptographically logged in an immutable statutory audit trail maintained by the National Information Technology Agency (NITA) with a mandatory 5-year retention period.
+              </label>
+            </div>
+
+            {/* Submit Button to trigger Membership Options Screen */}
+            <div style={{ marginTop: '26px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '13px 28px',
+                  borderRadius: '10px',
+                  background: 'linear-gradient(135deg, var(--ghana-emerald) 0%, #059669 100%)',
+                  color: '#0b0f19',
+                  fontWeight: 800,
+                  fontSize: '0.92rem',
+                  border: 'none',
+                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 4px 15px rgba(16, 185, 129, 0.35)',
+                  transition: 'all 0.15s ease'
                 }}
               >
-                <X size={16} />
+                <span>Verify Credentials & Continue</span>
+                <ArrowRight size={18} />
               </button>
             </div>
+          </form>
+        )}
 
-            {/* Submitted Info Context Strip */}
+        {/* STEP 2: The Two Options Screen (ONLY TWO OPTIONS: "New Member" vs "In / Old Member") */}
+        {currentStep === 'member_choice' && (
+          <div style={{ padding: '24px 32px 32px 32px' }}>
+            
+            {/* Officer Identification Strip */}
             <div style={{
-              margin: '14px 24px 0 24px',
-              padding: '10px 14px',
+              padding: '12px 16px',
               borderRadius: '10px',
               background: 'rgba(16, 185, 129, 0.08)',
               border: '1px solid rgba(16, 185, 129, 0.22)',
-              fontSize: '0.76rem',
+              fontSize: '0.78rem',
               color: 'var(--text-secondary)',
-              lineHeight: 1.45
+              lineHeight: 1.45,
+              marginBottom: '20px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                <div>
+                  Verified Officer: <strong style={{ color: '#fff' }}>{fullName}</strong> ({selectedInstId === 'other' ? customInstitution : getSelectedInstName()})
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.72rem' }}>
+                  <span style={{ color: '#a7f3d0', fontWeight: 600 }}>Act 843 Statutory Consent Verified ✓</span>
+                  <span>•</span>
+                  <span>{cleanEmail}</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ textAlign: 'center', marginBottom: '22px' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', margin: '0 0 6px 0' }}>
+                Please Select Your Membership Status
+              </h2>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, maxWidth: '540px', marginInline: 'auto' }}>
+                Access is strictly routed according to your operational status. Choose one of the two options below:
+              </p>
+            </div>
+
+            {/* ONLY TWO OPTIONS: NEW MEMBER vs IN / OLD MEMBER */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '20px',
+              marginBottom: '24px'
+            }}>
+              
+              {/* Option 1: New Member */}
+              <div
+                onClick={handleSelectNewMember}
+                style={{
+                  padding: '24px',
+                  borderRadius: '14px',
+                  background: 'linear-gradient(180deg, rgba(234, 179, 8, 0.08) 0%, rgba(234, 179, 8, 0.02) 100%)',
+                  border: '1px solid rgba(234, 179, 8, 0.4)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(234, 179, 8, 0.8)';
+                  e.currentTarget.style.boxShadow = '0 12px 30px rgba(234, 179, 8, 0.2)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(234, 179, 8, 0.4)';
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.4)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                    <div style={{
+                      width: '44px',
+                      height: '44px',
+                      borderRadius: '12px',
+                      background: 'rgba(234, 179, 8, 0.15)',
+                      border: '1px solid rgba(234, 179, 8, 0.4)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--ghana-gold)'
+                    }}>
+                      <UserPlus size={22} />
+                    </div>
+                    <span style={{
+                      fontSize: '0.68rem',
+                      padding: '3px 9px',
+                      borderRadius: '9999px',
+                      background: 'rgba(234, 179, 8, 0.15)',
+                      border: '1px solid rgba(234, 179, 8, 0.35)',
+                      color: '#fde68a',
+                      fontWeight: 800,
+                      textTransform: 'uppercase'
+                    }}>
+                      Option 1
+                    </span>
+                  </div>
+
+                  <h3 style={{ fontSize: '1.18rem', fontWeight: 800, color: '#fde68a', margin: '0 0 6px 0' }}>
+                    New Member
+                  </h3>
+                  <div style={{ fontSize: '0.74rem', color: 'var(--ghana-gold)', fontWeight: 700, marginBottom: '10px' }}>
+                    First-Timer / Onboard Track
+                  </div>
+
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 14px 0' }}>
+                    For officers registering new AI projects or visiting the system for the first time:
+                  </p>
+
+                  <ul style={{
+                    paddingLeft: '18px',
+                    margin: '0 0 16px 0',
+                    fontSize: '0.75rem',
+                    color: 'var(--text-secondary)',
+                    lineHeight: 1.5,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px'
+                  }}>
+                    <li>Direct access to the <strong>First-Timer / Onboard Page</strong>.</li>
+                    <li>Upload project documents with <strong>Governance & Ethics</strong> and <strong>AI Readiness</strong> live guidance and real-time grading.</li>
+                    <li>Submits request with confirmation: <em>"Request pending will send you email when approved, THANK YOU"</em>.</li>
+                    <li>Limited monitoring access to <strong>M&E Dashboard</strong>, <strong>GIS Spatial</strong>, and <strong>AI Chat Assistant</strong>.</li>
+                  </ul>
+                </div>
+
+                <button
+                  type="button"
+                  style={{
+                    width: '100%',
+                    padding: '11px',
+                    borderRadius: '8px',
+                    background: 'linear-gradient(135deg, #fbbf24 0%, #d97706 100%)',
+                    color: '#0b0f19',
+                    fontSize: '0.84rem',
+                    fontWeight: 800,
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <Sparkles size={16} />
+                  <span>Enter as New Member</span>
+                  <ArrowRight size={15} />
+                </button>
+              </div>
+
+              {/* Option 2: In / Old Member */}
+              <div
+                onClick={handleOpenInMemberPopup}
+                style={{
+                  padding: '24px',
+                  borderRadius: '14px',
+                  background: 'linear-gradient(180deg, rgba(16, 185, 129, 0.08) 0%, rgba(16, 185, 129, 0.02) 100%)',
+                  border: '1px solid rgba(16, 185, 129, 0.4)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.8)';
+                  e.currentTarget.style.boxShadow = '0 12px 30px rgba(16, 185, 129, 0.2)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.4)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                    <div style={{
+                      width: '44px',
+                      height: '44px',
+                      borderRadius: '12px',
+                      background: 'rgba(16, 185, 129, 0.15)',
+                      border: '1px solid rgba(16, 185, 129, 0.4)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--ghana-emerald)'
+                    }}>
+                      <Users size={22} />
+                    </div>
+                    <span style={{
+                      fontSize: '0.68rem',
+                      padding: '3px 9px',
+                      borderRadius: '9999px',
+                      background: 'rgba(16, 185, 129, 0.15)',
+                      border: '1px solid rgba(16, 185, 129, 0.35)',
+                      color: '#a7f3d0',
+                      fontWeight: 800,
+                      textTransform: 'uppercase'
+                    }}>
+                      Option 2
+                    </span>
+                  </div>
+
+                  <h3 style={{ fontSize: '1.18rem', fontWeight: 800, color: '#a7f3d0', margin: '0 0 6px 0' }}>
+                    In / Old Member
+                  </h3>
+                  <div style={{ fontSize: '0.74rem', color: 'var(--ghana-emerald)', fontWeight: 700, marginBottom: '10px' }}>
+                    Active Role Profile • Statutory Clearance
+                  </div>
+
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 14px 0' }}>
+                    For recognized statutory officers with approved active roles:
+                  </p>
+
+                  <ul style={{
+                    paddingLeft: '18px',
+                    margin: '0 0 16px 0',
+                    fontSize: '0.75rem',
+                    color: 'var(--text-secondary)',
+                    lineHeight: 1.5,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px'
+                  }}>
+                    <li>Pops up the <strong>Active Role Profile</strong> selector.</li>
+                    <li>Requires <strong>unique statutory access key / password</strong> for each active role.</li>
+                    <li>Enforces clearance levels for Super Admin, Director General, Technical Clearance, Finance Minister, etc.</li>
+                    <li>Directs authorized officers directly to their <strong>actual working console</strong>.</li>
+                  </ul>
+                </div>
+
+                <button
+                  type="button"
+                  style={{
+                    width: '100%',
+                    padding: '11px',
+                    borderRadius: '8px',
+                    background: 'linear-gradient(135deg, var(--ghana-emerald) 0%, #059669 100%)',
+                    color: '#0b0f19',
+                    fontSize: '0.84rem',
+                    fontWeight: 800,
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <KeyRound size={16} />
+                  <span>Select Active Role & Enter</span>
+                  <ArrowRight size={15} />
+                </button>
+              </div>
+
+            </div>
+
+            {/* Back button to re-edit mandatory fields */}
+            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+              <button
+                type="button"
+                onClick={() => setCurrentStep('mandatory_form')}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  background: 'transparent',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  color: 'var(--text-secondary)',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                ← Back / Edit Mandatory Information
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 3: Active Role Profile Pop up for In / Old Members */}
+        {currentStep === 'in_member_role_popup' && (
+          <div style={{ padding: '24px 32px 32px 32px' }}>
+            
+            {/* Header Strip */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '16px',
+              paddingBottom: '12px',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.08)'
             }}>
               <div>
-                Official Identity: <strong style={{ color: '#fff' }}>{fullName}</strong> ({selectedInstId === 'other' ? customInstitution : getSelectedInstName()})
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--ghana-emerald)', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase' }}>
+                  <ShieldCheck size={14} />
+                  <span>In / Old Member Clearance</span>
+                </div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#fff', margin: '2px 0 0 0' }}>
+                  Active Role Profile • Unique Password Verification
+                </h3>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '3px', fontSize: '0.72rem' }}>
-                <span>Email: <span style={{ color: '#94a3b8' }}>{cleanEmail}</span></span>
-                <span>•</span>
-                <span>Date: <span style={{ color: '#94a3b8' }}>{date}</span></span>
-                <span>•</span>
-                <span style={{ color: '#a7f3d0', fontWeight: 600 }}>Act 843 Verified ✓</span>
-              </div>
+              <button
+                type="button"
+                onClick={() => setCurrentStep('member_choice')}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  background: 'rgba(255, 255, 255, 0.06)',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  color: 'var(--text-secondary)',
+                  fontSize: '0.76rem',
+                  cursor: 'pointer'
+                }}
+              >
+                ← Back to Options
+              </button>
             </div>
 
-            {/* Instructions */}
-            <div style={{ padding: '12px 24px 4px 24px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-              🔒 <strong>Privilege Protection Active:</strong> High-privilege roles require institutional security clearance. Public users may access open roles (Public User / AI Manager).
-            </div>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '14px' }}>
+              🔒 <strong>Statutory Clearance Active:</strong> Select your registered active role profile. Each role requires its unique statutory access key / password before admission to actual pages.
+            </p>
 
-            {/* Role Options Cards */}
+            {/* Role Cards List */}
             <div style={{
-              padding: '10px 24px 16px 24px',
-              maxHeight: '360px',
+              maxHeight: '340px',
               overflowY: 'auto',
               display: 'flex',
               flexDirection: 'column',
-              gap: '10px'
+              gap: '10px',
+              paddingRight: '6px'
             }}>
-              {rolesList.map((r) => {
+              {inMemberRolesList.map((r) => {
                 const isSelected = selectedRole === r.role;
                 const config = ROLE_SECURITY_MAP[r.role];
-                const isUnlocked = !config.isRestricted || !!unlockedRoles[r.role];
+                const isUnlocked = !!unlockedRoles[r.role];
                 const isChallenging = pinChallengeRole === r.role;
 
                 return (
@@ -1004,7 +1240,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
                             border: isSelected 
                               ? '5px solid var(--ghana-emerald)' 
                               : isUnlocked 
-                                ? '2px solid rgba(255, 255, 255, 0.3)' 
+                                ? '2px solid rgba(16, 185, 129, 0.8)' 
                                 : '2px solid rgba(245, 158, 11, 0.4)',
                             background: isSelected ? '#fff' : 'transparent',
                             transition: 'all 0.15s ease',
@@ -1017,23 +1253,22 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          {config.isRestricted && (
-                            <span style={{
-                              fontSize: '0.64rem',
-                              padding: '2px 7px',
-                              borderRadius: '4px',
-                              background: isUnlocked ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                              border: isUnlocked ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid rgba(245, 158, 11, 0.35)',
-                              color: isUnlocked ? '#a7f3d0' : '#fde68a',
-                              fontWeight: 700,
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}>
-                              {isUnlocked ? <Unlock size={10} /> : <Lock size={10} />}
-                              <span>{isUnlocked ? 'Clearance Verified ✓' : 'PIN Restricted'}</span>
-                            </span>
-                          )}
+                          <span style={{
+                            fontSize: '0.64rem',
+                            padding: '2px 7px',
+                            borderRadius: '4px',
+                            background: isUnlocked ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                            border: isUnlocked ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid rgba(245, 158, 11, 0.35)',
+                            color: isUnlocked ? '#a7f3d0' : '#fde68a',
+                            fontWeight: 700,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}>
+                            {isUnlocked ? <Unlock size={10} /> : <Lock size={10} />}
+                            <span>{isUnlocked ? 'Key Verified ✓' : 'Unique Password Required'}</span>
+                          </span>
+
                           <span style={{
                             fontSize: '0.66rem',
                             padding: '2px 7px',
@@ -1067,11 +1302,11 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
                         gap: '4px'
                       }}>
                         <CheckCircle2 size={11} className={isSelected ? 'text-emerald-400' : 'text-slate-500'} />
-                        <span>{r.modules}</span>
+                        <span>Actual Pages: {r.modules}</span>
                       </div>
                     </div>
 
-                    {/* Inline Security PIN Challenge Box */}
+                    {/* Security PIN Challenge Box */}
                     {isChallenging && (
                       <div style={{
                         marginLeft: '12px',
@@ -1083,10 +1318,10 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#fbbf24', fontSize: '0.76rem', fontWeight: 700, marginBottom: '4px' }}>
                           <KeyRound size={14} />
-                          <span>Statutory Security Clearance Required: {r.role}</span>
+                          <span>Unique Statutory Access Password Required: {r.role}</span>
                         </div>
                         <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', margin: '0 0 8px 0', lineHeight: 1.4 }}>
-                          Restricted to <strong>{config.authorizedAgency}</strong>. Public and unauthorized users cannot select this role profile without a statutory clearance PIN:
+                          Clearance authorized for <strong>{config.authorizedAgency}</strong>:
                         </p>
                         <form onSubmit={handleVerifyPin} style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                           <input
@@ -1094,7 +1329,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
                             autoFocus
                             value={enteredPin}
                             onChange={(e) => setEnteredPin(e.target.value)}
-                            placeholder="Enter Clearance PIN"
+                            placeholder="Enter Unique Access Key"
                             style={{
                               flex: 1,
                               minWidth: '170px',
@@ -1124,27 +1359,9 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
                           >
                             Verify & Unlock
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPinChallengeRole(null);
-                              setPinError(null);
-                            }}
-                            style={{
-                              padding: '7px 10px',
-                              borderRadius: '6px',
-                              background: 'transparent',
-                              border: '1px solid rgba(255, 255, 255, 0.15)',
-                              color: 'var(--text-secondary)',
-                              fontSize: '0.74rem',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            Cancel
-                          </button>
                         </form>
 
-                        {/* Quick evaluation helper */}
+                        {/* Evaluation Key Helper */}
                         <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.68rem' }}>
                           <span style={{ color: 'var(--text-muted)' }}>
                             Authorized Key: <code style={{ color: '#fbbf24', background: 'rgba(251, 191, 36, 0.12)', padding: '1px 5px', borderRadius: '4px' }}>{config.pin}</code>
@@ -1162,7 +1379,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
                               fontSize: '0.68rem'
                             }}
                           >
-                            Auto-fill PIN
+                            Auto-fill Key
                           </button>
                         </div>
 
@@ -1179,19 +1396,18 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
               })}
             </div>
 
-            {/* Pop up Footer Actions */}
+            {/* Footer Actions */}
             <div style={{
-              padding: '16px 24px',
+              marginTop: '20px',
+              paddingTop: '16px',
               borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-              background: 'rgba(0, 0, 0, 0.25)',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '12px'
+              justifyContent: 'space-between'
             }}>
               <button
                 type="button"
-                onClick={() => setShowRolePopup(false)}
+                onClick={() => setCurrentStep('member_choice')}
                 style={{
                   padding: '9px 16px',
                   borderRadius: '8px',
@@ -1203,38 +1419,38 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
                   cursor: 'pointer'
                 }}
               >
-                ← Back / Edit Info
+                ← Back to Member Options
               </button>
 
               <button
                 type="button"
-                onClick={handleConfirmRoleProfile}
+                onClick={handleConfirmInMemberProfile}
                 disabled={isSubmitting}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '8px',
-                  padding: '10px 22px',
+                  padding: '11px 24px',
                   borderRadius: '8px',
                   background: 'linear-gradient(135deg, var(--ghana-emerald), #059669)',
                   border: 'none',
                   color: '#000',
                   fontWeight: 800,
-                  fontSize: '0.86rem',
+                  fontSize: '0.88rem',
                   cursor: isSubmitting ? 'not-allowed' : 'pointer',
                   boxShadow: '0 4px 15px rgba(16, 185, 129, 0.35)'
                 }}
               >
                 <FileCheck2 size={16} />
-                <span>Confirm & Enter as {selectedRole}</span>
+                <span>Authenticate & Enter as {selectedRole}</span>
                 <ArrowRight size={15} />
               </button>
             </div>
 
           </div>
-        </div>
-      )}
+        )}
 
+      </div>
     </div>
   );
 };

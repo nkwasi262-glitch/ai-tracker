@@ -312,8 +312,12 @@ const ROLE_ACTION_PERMISSIONS: Record<ActiveRole, Partial<Record<AppAction, bool
 
 /**
  * Checks whether an active role profile is authorized to access a specific module.
+ * If a session is in 'pending_approval' onboarding status, access is strictly limited to dashboard, gis, and chat.
  */
-export function canAccessModule(role: ActiveRole, moduleId: AppModuleId): boolean {
+export function canAccessModule(role: ActiveRole, moduleId: AppModuleId, session?: { onboardingStatus?: string }): boolean {
+  if (session?.onboardingStatus === 'pending_approval') {
+    return ['dashboard', 'gis', 'chat'].includes(moduleId);
+  }
   const allowedModules = ROLE_MODULE_PERMISSIONS[role] || [];
   return allowedModules.includes(moduleId);
 }

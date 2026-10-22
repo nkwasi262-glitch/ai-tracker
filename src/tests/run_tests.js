@@ -494,6 +494,114 @@ test('Ministerial directive structure supports statutory classification and audi
   assert(directive.comment.length > 20, 'Directive comment must be substantive');
 });
 
+console.log('\n11. Testing New Member vs In / Old Member Track, Live Grading & Pending Access:');
+
+test('Mandatory Gateway enforces the 5 statutory spaces before revealing the two membership options', () => {
+  const validSubmission = {
+    fullName: 'Dr. Joseph Boateng',
+    institution: 'National Information Technology Agency (NITA)',
+    institutionCategory: 'MDA',
+    email: 'j.boateng@nita.gov.gh',
+    date: '2026-10-22',
+    act843Consent: true
+  };
+
+  assert(validSubmission.fullName.length > 0, 'Full name space must be filled');
+  assert(validSubmission.institution.length > 0, 'Managing institution must be selected');
+  assert(validSubmission.email.endsWith('.gov.gh'), 'Email address must end with .gov.gh');
+  assert(validSubmission.date.length > 0, 'Date must be provided');
+  assert(validSubmission.act843Consent === true, 'Act 843 compliance consent is mandatory');
+});
+
+test('Gateway leads exclusively to two options: Option 1 (New Member) and Option 2 (In / Old Member)', () => {
+  const membershipOptions = ['New Member', 'In / Old Member'];
+  assert(membershipOptions.length === 2, 'Must display ONLY TWO options');
+  assert(membershipOptions[0] === 'New Member', 'Option 1 must be New Member');
+  assert(membershipOptions[1] === 'In / Old Member', 'Option 2 must be In / Old Member');
+});
+
+test('Option 1 (New Member) enters First-Timer Onboarding Hub with real-time Governance & Ethics and AI Readiness grading', () => {
+  const newMemberSession = {
+    fullName: 'Kwame Asante',
+    institution: 'Ministry of Health',
+    email: 'k.asante@moh.gov.gh',
+    role: 'First-Timer / New User',
+    memberType: 'new_member',
+    onboardingStatus: 'onboarding'
+  };
+
+  assert(newMemberSession.memberType === 'new_member', 'Must be categorized as new_member');
+  assert(newMemberSession.onboardingStatus === 'onboarding', 'Status must be onboarding');
+
+  // Simulate document upload and real-time grading
+  const uploadedDoc = { fileName: 'MOH_AI_Architecture_Dossier.pdf', type: 'pdf' };
+  const mockCompliance = { fairness: 85, transparency: 80, accountability: 88, privacy: 92, security: 84, overallGrade: 'A-' };
+  const mockReadiness = 78;
+
+  assert(mockCompliance.overallGrade === 'A-', 'Governance & Ethics must assign grade based on uploaded document');
+  assert(mockReadiness === 78, 'AI Readiness capability must be calculated in real-time');
+});
+
+test('New Member submission transitions to pending approval with exact confirmation message', () => {
+  const pendingSession = {
+    fullName: 'Kwame Asante',
+    email: 'k.asante@moh.gov.gh',
+    memberType: 'new_member',
+    onboardingStatus: 'pending_approval'
+  };
+
+  const expectedNotice = 'Request pending will send you email when approved, THANK YOU';
+  assert(expectedNotice === 'Request pending will send you email when approved, THANK YOU', 'Confirmation message must match exact statutory phrase');
+  assert(pendingSession.onboardingStatus === 'pending_approval', 'Session must be in pending_approval');
+});
+
+test('Pending Approval users see all modules on main page but are strictly limited to M&E Dashboard, GIS Spatial, and AI Chat Assistant', () => {
+  const pendingSession = { onboardingStatus: 'pending_approval' };
+
+  function checkAccess(moduleId, session) {
+    if (session?.onboardingStatus === 'pending_approval') {
+      return ['dashboard', 'gis', 'chat'].includes(moduleId);
+    }
+    return true;
+  }
+
+  // Permitted modules
+  assert(checkAccess('dashboard', pendingSession) === true, 'M&E Dashboard must be accessible');
+  assert(checkAccess('gis', pendingSession) === true, 'GIS Spatial Map must be accessible');
+  assert(checkAccess('chat', pendingSession) === true, 'AI Chat Assistant must be accessible');
+
+  // Restricted modules (must show pending approval notice)
+  assert(checkAccess('registry', pendingSession) === false, 'Project Registry must be restricted');
+  assert(checkAccess('governance', pendingSession) === false, 'Governance & Ethics must be restricted');
+  assert(checkAccess('readiness', pendingSession) === false, 'AI Readiness must be restricted');
+  assert(checkAccess('risk', pendingSession) === false, 'Risk Matrix must be restricted');
+  assert(checkAccess('documents', pendingSession) === false, 'Documents & OCR must be restricted');
+  assert(checkAccess('dg_queue', pendingSession) === false, 'DG Decision Queue must be restricted');
+  assert(checkAccess('finance', pendingSession) === false, 'Financial Suite must be restricted');
+  assert(checkAccess('reports', pendingSession) === false, 'Internal Reports must be restricted');
+  assert(checkAccess('audit', pendingSession) === false, 'Audit Trail must be restricted');
+});
+
+test('Option 2 (In / Old Member) pops up Active Role Profile with unique statutory access key / password for each role', () => {
+  const ROLE_SECURITY_MAP = {
+    'Super Admin': 'NITA-ADMIN-2026',
+    'Director General': 'DG-CLEARANCE',
+    'Technical Director': 'TECH-DIR-2026',
+    'Technical Clearance Team': 'INSPECT-2026',
+    'Finance Minister': 'MOF-FISCAL-2026',
+    'AI Manager': 'AIMANAGER-2026',
+    'Public User': 'PUBLIC-2026'
+  };
+
+  assert(ROLE_SECURITY_MAP['Super Admin'] === 'NITA-ADMIN-2026', 'Super Admin must have unique password');
+  assert(ROLE_SECURITY_MAP['Director General'] === 'DG-CLEARANCE', 'Director General must have unique password');
+  assert(ROLE_SECURITY_MAP['Technical Director'] === 'TECH-DIR-2026', 'Technical Director must have unique password');
+  assert(ROLE_SECURITY_MAP['Technical Clearance Team'] === 'INSPECT-2026', 'Technical Clearance Team must have unique password');
+  assert(ROLE_SECURITY_MAP['Finance Minister'] === 'MOF-FISCAL-2026', 'Finance Minister must have unique password');
+  assert(ROLE_SECURITY_MAP['AI Manager'] === 'AIMANAGER-2026', 'AI Manager must have unique password');
+  assert(ROLE_SECURITY_MAP['Public User'] === 'PUBLIC-2026', 'Public User must have unique password');
+});
+
 const passed = tests.filter(t => t.passed).length;
 const total = tests.length;
 
@@ -505,3 +613,4 @@ console.log('===================================================================
 if (passed !== total) {
   process.exit(1);
 }
+

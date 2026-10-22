@@ -33,6 +33,8 @@ export interface UserSession {
   lastActiveAt: string;
   isFirstTimer?: boolean;
   previousRole?: ActiveRole;
+  memberType?: 'new_member' | 'in_member';
+  onboardingStatus?: 'onboarding' | 'pending_approval' | 'approved';
 }
 
 export const APPROVED_GOV_DOMAINS = [

@@ -97,6 +97,8 @@ export interface GateSubmissionInput {
   email: string;
   submissionDate: string;
   isFirstTimer?: boolean;
+  memberType?: 'new_member' | 'in_member';
+  onboardingStatus?: 'onboarding' | 'pending_approval' | 'approved';
 }
 
 export interface GateResult {
@@ -107,9 +109,30 @@ export interface GateResult {
   message: string;
 }
 
+export function submitOnboardingForApproval(): UserSession | null {
+  const current = getStoredSession();
+  if (!current) return null;
+  const updated: UserSession = {
+    ...current,
+    onboardingStatus: 'pending_approval',
+    lastActiveAt: new Date().toISOString()
+  };
+  saveSession(updated);
+  recordAuditEvent({
+    eventType: 'PROJECT_REGISTRATION_PENDED',
+    actorName: updated.fullName,
+    actorEmail: updated.email,
+    actorRole: updated.role,
+    actorInstitution: updated.institution,
+    targetModule: 'gate',
+    actionDetails: `New Member ${updated.fullName} completed onboarding document submission. Request pending, will send you email when approved, THANK YOU.`
+  });
+  return updated;
+}
+
 export function processGateSubmission(input: GateSubmissionInput): GateResult {
   const isDomainApproved = isApprovedInstitutionalEmail(input.email);
-  const isFirstTimerRole = input.isFirstTimer || input.role === 'First-Timer / New User';
+  const isFirstTimerRole = input.isFirstTimer || input.role === 'First-Timer / New User' || input.memberType === 'new_member';
   const assignedRole: ActiveRole = isFirstTimerRole ? 'First-Timer / New User' : input.role;
 
   // Remember chosen active role for session persistence
@@ -125,6 +148,8 @@ export function processGateSubmission(input: GateSubmissionInput): GateResult {
     submissionDate: input.submissionDate,
     isVerified: true,
     isFirstTimer: isFirstTimerRole,
+    memberType: input.memberType || (isFirstTimerRole ? 'new_member' : 'in_member'),
+    onboardingStatus: input.onboardingStatus || (isFirstTimerRole ? 'onboarding' : 'approved'),
     token: `token-auth-${Date.now()}`,
     createdAt: new Date().toISOString(),
     lastActiveAt: new Date().toISOString()
@@ -139,7 +164,7 @@ export function processGateSubmission(input: GateSubmissionInput): GateResult {
     actorRole: session.role,
     actorInstitution: session.institution,
     targetModule: 'gate',
-    actionDetails: `Mandatory Gatekeeper verified credentials under Ghana Data Protection Act (Act 843) for ${session.fullName} (${session.institution}) on ${input.submissionDate}. Active role profile activated: [${session.role}].`
+    actionDetails: `Mandatory Gatekeeper verified credentials under Ghana Data Protection Act (Act 843) for ${session.fullName} (${session.institution}) on ${input.submissionDate}. Membership track: [${session.memberType}], active role: [${session.role}].`
   });
 
   return {

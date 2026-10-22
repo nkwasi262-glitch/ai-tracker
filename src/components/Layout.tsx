@@ -16,7 +16,8 @@ import {
   ShieldAlert,
   Sparkles,
   LogOut,
-  Lock
+  Lock,
+  Clock
 } from 'lucide-react';
 import { UserSession } from '../data/authTypes';
 import { HeaderProfile } from './HeaderProfile';
@@ -26,6 +27,7 @@ interface LayoutProps {
   session: UserSession;
   onSwitchRole: () => void;
   onOpenRoleSelector?: () => void;
+  onOpenOnboardingHub?: () => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
   children: React.ReactNode;
@@ -35,6 +37,7 @@ export const Layout: React.FC<LayoutProps> = ({
   session, 
   onSwitchRole, 
   onOpenRoleSelector,
+  onOpenOnboardingHub,
   activeTab, 
   setActiveTab, 
   children 
@@ -55,10 +58,12 @@ export const Layout: React.FC<LayoutProps> = ({
     { id: 'chat', label: 'AI Chat Assistant', icon: <MessageSquareCode size={18} /> }
   ];
 
-  // Restricts viewing tabs strictly according to active role permissions in policy engine
-  const filteredMenuItems = menuItems.filter(item => {
-    return canAccessModule(session.role, item.id);
-  });
+  // For pending_approval users, ALL 12 modules remain visible in navigation. Non-monitoring modules show a lock badge and route to pending approval notice.
+  const isPendingApproval = session.onboardingStatus === 'pending_approval';
+
+  const displayedMenuItems = isPendingApproval 
+    ? menuItems 
+    : menuItems.filter(item => canAccessModule(session.role, item.id));
 
   return (
     <div className="layout-wrapper">
@@ -76,18 +81,46 @@ export const Layout: React.FC<LayoutProps> = ({
 
         <nav className="sidebar-menu">
           <div style={{ padding: '0 12px 8px 12px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
-            Authorized Modules
+            {isPendingApproval ? 'All System Modules' : 'Authorized Modules'}
           </div>
-          {filteredMenuItems.map((item) => (
-            <div
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`menu-item ${activeTab === item.id ? 'active' : ''}`}
-            >
-              {item.icon}
-              <span>{item.label}</span>
-            </div>
-          ))}
+          {displayedMenuItems.map((item) => {
+            const isLockedForPending = isPendingApproval && !['dashboard', 'gis', 'chat'].includes(item.id);
+            return (
+              <div
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`menu-item ${activeTab === item.id ? 'active' : ''}`}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  opacity: isLockedForPending ? 0.78 : 1
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  {item.icon}
+                  <span>{item.label}</span>
+                </div>
+                {isLockedForPending && (
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '3px',
+                    fontSize: '0.62rem',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    background: 'rgba(234, 179, 8, 0.15)',
+                    border: '1px solid rgba(234, 179, 8, 0.35)',
+                    color: '#fde68a',
+                    fontWeight: 700
+                  }}>
+                    <Lock size={10} />
+                    <span>Pending</span>
+                  </span>
+                )}
+              </div>
+            );
+          })}
         </nav>
 
         <div style={{
@@ -164,7 +197,72 @@ export const Layout: React.FC<LayoutProps> = ({
 
         {/* Dynamic Component Canvas */}
         <main className="content-viewport animated-fade-in">
-          {session.role === 'First-Timer / New User' && (
+          {/* Pending Approval Officer Banner */}
+          {isPendingApproval && (
+            <div style={{
+              margin: '0 0 20px 0',
+              padding: '14px 20px',
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.14), rgba(16, 185, 129, 0.1))',
+              border: '1px solid rgba(234, 179, 8, 0.45)',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '16px',
+              flexWrap: 'wrap'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '10px',
+                  background: 'rgba(234, 179, 8, 0.2)',
+                  border: '1px solid rgba(234, 179, 8, 0.4)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#fbbf24',
+                  flexShrink: 0
+                }}>
+                  <Clock size={20} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#fde68a' }}>
+                    Request pending will send you email when approved, THANK YOU
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                    Your project documents are under statutory review. You have active monitoring access to the <strong>M&E Dashboard</strong>, <strong>GIS Spatial Map</strong>, and <strong>AI Chat Assistant</strong>.
+                  </div>
+                </div>
+              </div>
+
+              {onOpenOnboardingHub && (
+                <button
+                  onClick={onOpenOnboardingHub}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    background: 'rgba(234, 179, 8, 0.15)',
+                    border: '1px solid rgba(234, 179, 8, 0.4)',
+                    color: '#fde68a',
+                    fontSize: '0.76rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  <Sparkles size={13} />
+                  <span>View Graded Dossier</span>
+                </button>
+              )}
+            </div>
+          )}
+
+          {session.role === 'First-Timer / New User' && !isPendingApproval && (
             <div style={{
               margin: '0 0 20px 0',
               padding: '14px 20px',
@@ -216,7 +314,6 @@ export const Layout: React.FC<LayoutProps> = ({
                 whiteSpace: 'nowrap'
               }}>
                 <Lock size={14} className="text-amber-400" />
-                <span>Role Selection Restricted</span>
               </div>
             </div>
           )}
