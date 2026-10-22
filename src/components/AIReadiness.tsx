@@ -382,26 +382,51 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({
     return initial;
   };
 
-  // Initialize checklist answer states dynamically
-  const [answers, setAnswers] = useState<Record<string, 'yes' | 'no'>>(() => buildAnswersForProject(activeProject));
+  // Map of project ID to answered sub-parameters to maintain user selections across re-renders
+  const [projectAnswersMap, setProjectAnswersMap] = useState<Record<string, Record<string, 'yes' | 'no'>>>(() => {
+    if (!initialProjectId) return {};
+    const initProj = projects.find(p => p.id === initialProjectId);
+    return {
+      [initialProjectId]: buildAnswersForProject(initProj)
+    };
+  });
 
-  // Sync answers when selected project changes or updates from document upload
+  // Keep track of document count to update baseline when new documents are uploaded
+  const prevDocCountRef = React.useRef<number>(activeProject?.documents?.length || 0);
+
+  // Initialize answers for newly selected project or when documents are uploaded
   React.useEffect(() => {
-    if (activeProject) {
-      setAnswers(buildAnswersForProject(activeProject));
+    if (!activeProject) return;
+    const currentDocCount = activeProject.documents?.length || 0;
+    const docCountChanged = currentDocCount !== prevDocCountRef.current;
+    prevDocCountRef.current = currentDocCount;
+
+    if (!projectAnswersMap[selectedProjectId] || docCountChanged) {
+      setProjectAnswersMap(prev => ({
+        ...prev,
+        [selectedProjectId]: buildAnswersForProject(activeProject)
+      }));
     }
-  }, [selectedProjectId, activeProject?.documents?.length, activeProject?.readinessScore]);
+  }, [selectedProjectId, activeProject?.documents?.length]);
+
+  // Current active project answers (with fallback)
+  const answers: Record<string, 'yes' | 'no'> = projectAnswersMap[selectedProjectId] || buildAnswersForProject(activeProject);
 
   // AI Readiness Verification Audit is active and accessible (not read-only) for active roles & onboarders
   const canEdit = session ? session.role !== 'Public User' : currentRole !== 'Public User';
 
   const handleAnswerChange = (subId: string, val: 'yes' | 'no') => {
     if (!canEdit) return;
-    const newAnswers = {
+
+    const newAnswers: Record<string, 'yes' | 'no'> = {
       ...answers,
       [subId]: val
     };
-    setAnswers(newAnswers);
+
+    setProjectAnswersMap(prev => ({
+      ...prev,
+      [selectedProjectId]: newAnswers
+    }));
 
     const prefixInst = 'i';
     const subInst = [];
@@ -441,7 +466,7 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({
   const instScore = getBranchScore('institutional');
   const marketScore = getBranchScore('market');
   const computedOverall = Math.round((instScore + marketScore) / 2);
-  const overallScore = activeProject?.readinessScore ?? computedOverall;
+  const overallScore = computedOverall;
 
   const getMaturityLevel = (score: number) => {
     if (score >= 76) return { level: 'Level 4: Optimized', class: 'badge-success', desc: 'Sovereign automated code pipelines, active ethical monitoring, and ISO 42001 standardization.' };
@@ -1081,35 +1106,45 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({
                           {/* Toggle controls */}
                           <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                             <button
-                              onClick={() => handleAnswerChange(sub.id, 'yes')}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAnswerChange(sub.id, 'yes');
+                              }}
                               disabled={!canEdit}
                               style={{
-                                padding: '5px 10px',
-                                borderRadius: '4px',
-                                border: '1px solid ' + (isYes ? '#10b981' : 'rgba(255,255,255,0.06)'),
-                                background: isYes ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255,255,255,0.01)',
+                                padding: '5px 11px',
+                                borderRadius: '5px',
+                                border: '1px solid ' + (isYes ? '#10b981' : 'rgba(255,255,255,0.08)'),
+                                background: isYes ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.02)',
                                 color: isYes ? '#34d399' : 'var(--text-muted)',
-                                fontSize: '0.66rem',
+                                fontSize: '0.68rem',
                                 fontWeight: 700,
                                 cursor: canEdit ? 'pointer' : 'default',
-                                transition: 'all 0.12s ease'
+                                transition: 'all 0.15s ease',
+                                boxShadow: isYes ? '0 0 8px rgba(16, 185, 129, 0.25)' : 'none'
                               }}
                             >
                               YES
                             </button>
                             <button
-                              onClick={() => handleAnswerChange(sub.id, 'no')}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAnswerChange(sub.id, 'no');
+                              }}
                               disabled={!canEdit}
                               style={{
-                                padding: '5px 10px',
-                                borderRadius: '4px',
-                                border: '1px solid ' + (isNo ? '#f43f5e' : 'rgba(255,255,255,0.06)'),
-                                background: isNo ? 'rgba(244, 63, 94, 0.15)' : 'rgba(255,255,255,0.01)',
+                                padding: '5px 11px',
+                                borderRadius: '5px',
+                                border: '1px solid ' + (isNo ? '#f43f5e' : 'rgba(255,255,255,0.08)'),
+                                background: isNo ? 'rgba(244, 63, 94, 0.2)' : 'rgba(255,255,255,0.02)',
                                 color: isNo ? '#fb7185' : 'var(--text-muted)',
-                                fontSize: '0.66rem',
+                                fontSize: '0.68rem',
                                 fontWeight: 700,
                                 cursor: canEdit ? 'pointer' : 'default',
-                                transition: 'all 0.12s ease'
+                                transition: 'all 0.15s ease',
+                                boxShadow: isNo ? '0 0 8px rgba(244, 63, 94, 0.25)' : 'none'
                               }}
                             >
                               NO
@@ -1220,35 +1255,45 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({
                           {/* Toggle controls */}
                           <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                             <button
-                              onClick={() => handleAnswerChange(sub.id, 'yes')}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAnswerChange(sub.id, 'yes');
+                              }}
                               disabled={!canEdit}
                               style={{
-                                padding: '5px 10px',
-                                borderRadius: '4px',
-                                border: '1px solid ' + (isYes ? '#10b981' : 'rgba(255,255,255,0.06)'),
-                                background: isYes ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255,255,255,0.01)',
+                                padding: '5px 11px',
+                                borderRadius: '5px',
+                                border: '1px solid ' + (isYes ? '#10b981' : 'rgba(255,255,255,0.08)'),
+                                background: isYes ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.02)',
                                 color: isYes ? '#34d399' : 'var(--text-muted)',
-                                fontSize: '0.66rem',
+                                fontSize: '0.68rem',
                                 fontWeight: 700,
                                 cursor: canEdit ? 'pointer' : 'default',
-                                transition: 'all 0.12s ease'
+                                transition: 'all 0.15s ease',
+                                boxShadow: isYes ? '0 0 8px rgba(16, 185, 129, 0.25)' : 'none'
                               }}
                             >
                               YES
                             </button>
                             <button
-                              onClick={() => handleAnswerChange(sub.id, 'no')}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAnswerChange(sub.id, 'no');
+                              }}
                               disabled={!canEdit}
                               style={{
-                                padding: '5px 10px',
-                                borderRadius: '4px',
-                                border: '1px solid ' + (isNo ? '#f43f5e' : 'rgba(255,255,255,0.06)'),
-                                background: isNo ? 'rgba(244, 63, 94, 0.15)' : 'rgba(255,255,255,0.01)',
+                                padding: '5px 11px',
+                                borderRadius: '5px',
+                                border: '1px solid ' + (isNo ? '#f43f5e' : 'rgba(255,255,255,0.08)'),
+                                background: isNo ? 'rgba(244, 63, 94, 0.2)' : 'rgba(255,255,255,0.02)',
                                 color: isNo ? '#fb7185' : 'var(--text-muted)',
-                                fontSize: '0.66rem',
+                                fontSize: '0.68rem',
                                 fontWeight: 700,
                                 cursor: canEdit ? 'pointer' : 'default',
-                                transition: 'all 0.12s ease'
+                                transition: 'all 0.15s ease',
+                                boxShadow: isNo ? '0 0 8px rgba(244, 63, 94, 0.25)' : 'none'
                               }}
                             >
                               NO

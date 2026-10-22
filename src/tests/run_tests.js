@@ -788,6 +788,50 @@ test('Answering YES / NO on Audit Verification Checklist dynamically recalculate
   assert(computeCategoryScore(fairnessSubIds) === 100, 'All YES answers must equal 100%');
 });
 
+// ====================================================================
+// SECTION 14: AI READINESS YES / NO SELECTION & LIVE AUDIT RECALCULATION
+// ====================================================================
+
+test('AI Readiness allows selection on YES and NO options and maintains state across score updates', () => {
+  const projectAnswersMap = {};
+  const projectId = 'GN-AI-2026-001';
+
+  // Initialize mock project answers
+  projectAnswersMap[projectId] = {
+    'i1_sub1': 'no', 'i1_sub2': 'no',
+    'i2_sub1': 'no', 'i2_sub2': 'no',
+    'm1_sub1': 'no', 'm1_sub2': 'no'
+  };
+
+  function handleAnswerChange(subId, val) {
+    const current = projectAnswersMap[projectId];
+    projectAnswersMap[projectId] = {
+      ...current,
+      [subId]: val
+    };
+  }
+
+  // Initial state is 'no'
+  assert(projectAnswersMap[projectId]['i1_sub1'] === 'no', 'Initial option must be NO');
+
+  // Select YES on i1_sub1
+  handleAnswerChange('i1_sub1', 'yes');
+  assert(projectAnswersMap[projectId]['i1_sub1'] === 'yes', 'Selection on YES option must update to yes');
+
+  // Select YES on i1_sub2
+  handleAnswerChange('i1_sub2', 'yes');
+  assert(projectAnswersMap[projectId]['i1_sub2'] === 'yes', 'Selection on YES option must update to yes');
+
+  // Toggle back to NO on i1_sub1
+  handleAnswerChange('i1_sub1', 'no');
+  assert(projectAnswersMap[projectId]['i1_sub1'] === 'no', 'Selection on NO option must update to no');
+
+  // Computing Institutional branch score
+  const subInst = ['i1_sub1', 'i1_sub2'];
+  const yesInst = subInst.filter(id => projectAnswersMap[projectId][id] === 'yes').length;
+  assert(yesInst === 1, '1 YES out of 2 sub-parameters');
+});
+
 const passed = tests.filter(t => t.passed).length;
 const total = tests.length;
 
