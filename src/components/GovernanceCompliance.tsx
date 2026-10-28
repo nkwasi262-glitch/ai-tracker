@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Award, AlertTriangle, Info, CheckCircle2, AlertCircle, XCircle, Sparkles, FolderOpen, FileText, MessageSquare } from 'lucide-react';
+import { ShieldCheck, Award, AlertTriangle, Info, CheckCircle2, AlertCircle, XCircle, Sparkles, FolderOpen, FileText, MessageSquare, BookOpen } from 'lucide-react';
 import { 
   AIProject, 
   ComplianceScore,
@@ -10,6 +10,7 @@ import {
 import { UserRole } from './RoleSwitcher';
 import { UserSession } from '../data/authTypes';
 import { DocumentReviewGradeModal } from './DocumentReviewGradeModal';
+import { getFullDocumentText } from '../services/assessmentEngine';
 
 interface GovernanceComplianceProps {
   projects: AIProject[];
@@ -941,6 +942,7 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
   const [selectedProjectId, setSelectedProjectId] = useState<string>(defaultProjId);
   const activeProject = projects.find(p => p.id === selectedProjectId);
   const [reviewingDoc, setReviewingDoc] = useState<DocumentAsset | null>(null);
+  const [expandedFullDocId, setExpandedFullDocId] = useState<string | null>(null);
 
   const canReview = session?.role === 'Super Admin' || session?.role === 'Director General' || session?.role === 'Technical Clearance Team' || session?.role === 'Technical Director' || currentRole === 'Super Admin' || currentRole === 'Director General' || currentRole === 'Technical Clearance Team' || currentRole === 'Technical Director';
 
@@ -1537,29 +1539,71 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
                           </span>
                         </div>
 
-                        {canReview && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                           <button
                             type="button"
-                            onClick={() => setReviewingDoc(doc)}
+                            onClick={() => setExpandedFullDocId(expandedFullDocId === doc.id ? null : doc.id)}
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '4px',
-                              padding: '5px 12px',
+                              padding: '5px 10px',
                               borderRadius: '6px',
-                              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.3))',
-                              border: '1px solid rgba(16, 185, 129, 0.5)',
-                              color: '#a7f3d0',
+                              background: expandedFullDocId === doc.id ? 'rgba(251, 191, 36, 0.22)' : 'rgba(59, 130, 246, 0.16)',
+                              border: expandedFullDocId === doc.id ? '1px solid rgba(251, 191, 36, 0.5)' : '1px solid rgba(59, 130, 246, 0.35)',
+                              color: expandedFullDocId === doc.id ? '#fde68a' : '#93c5fd',
                               fontSize: '0.72rem',
                               fontWeight: 700,
                               cursor: 'pointer'
                             }}
                           >
-                            <Award size={12} />
-                            <span>Review & Grade Governance</span>
+                            <BookOpen size={12} />
+                            <span>{expandedFullDocId === doc.id ? 'Hide Full Document' : 'Read Full Uploaded Document'}</span>
                           </button>
-                        )}
+
+                          {canReview && (
+                            <button
+                              type="button"
+                              onClick={() => setReviewingDoc(doc)}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '5px 12px',
+                                borderRadius: '6px',
+                                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.3))',
+                                border: '1px solid rgba(16, 185, 129, 0.5)',
+                                color: '#a7f3d0',
+                                fontSize: '0.72rem',
+                                fontWeight: 700,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <Award size={12} />
+                              <span>Review & Grade Governance (Full Doc)</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
+
+                      {expandedFullDocId === doc.id && (
+                        <div style={{
+                          marginTop: '6px',
+                          padding: '12px 14px',
+                          borderRadius: '8px',
+                          background: 'rgba(5, 10, 20, 0.9)',
+                          border: '1px solid rgba(251, 191, 36, 0.35)',
+                          maxHeight: '280px',
+                          overflowY: 'auto',
+                          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                          fontSize: '0.74rem',
+                          lineHeight: 1.6,
+                          color: '#e2e8f0',
+                          whiteSpace: 'pre-wrap'
+                        }}>
+                          {getFullDocumentText(doc, activeProject)}
+                        </div>
+                      )}
 
                       {/* Reviewer Comment Preview */}
                       {doc.reviewerComments && doc.reviewerComments.length > 0 && (
@@ -1745,6 +1789,7 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
           onClose={() => setReviewingDoc(null)}
           document={reviewingDoc}
           project={activeProject}
+          allProjects={projects}
           session={session as any}
           onSaveReview={(projectId, docId, comment, comp, read, stat) => {
             if (onReviewDocument) {

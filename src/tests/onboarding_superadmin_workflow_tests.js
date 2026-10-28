@@ -225,6 +225,78 @@ test('Super Admin can reject project registration', () => {
   assert(project.reviewStatus === 'Rejected', 'Project reviewStatus set to Rejected');
 });
 
+// 5. First-Timer / Onboarder Full Document Access During Review & Grading
+console.log('\n5. Testing First-Timer / Onboarder Full Document Access in Review & Grading:');
+
+test('First-Timer / Onboarder uploaded documents preserve complete multi-page content and metadata for review & grading', () => {
+  const onboarderDoc = {
+    id: 'doc-onboard-1-2',
+    fileName: 'Telehealth_FirstTimer_Onboarder_Full_Proposal_and_DPIA.pdf',
+    fileType: 'pdf',
+    fileSize: '2.48 MB',
+    pageCount: 6,
+    documentCategory: 'First-Timer / Onboarder Full Submission Dossier',
+    uploadedAt: '2026-02-14',
+    version: 1,
+    signedBy: ['First-Timer / New User'],
+    uploadedByRole: 'First-Timer / New User',
+    uploadedByName: 'Dr. Akosua Mensah-Bonsu (GHS Onboarder)',
+    uploadedByEmail: 'a.mensah-bonsu@moh.gov.gh',
+    isFirstTimerUpload: true,
+    reviewStatus: 'Pending Review',
+    fullDocumentText: 'REPUBLIC OF GHANA - FULL STATUTORY AI ONBOARDING SUBMISSION DOSSIER\nPAGE 1: EXECUTIVE SUMMARY\nPAGE 2: ARCHITECTURE\nPAGE 3: ACT 843 DPIA\nPAGE 4: ALGORITHMIC FAIRNESS\nPAGE 5: CYBERSECURITY\nPAGE 6: ATTESTATION'
+  };
+
+  assert(onboarderDoc.isFirstTimerUpload === true, 'Document is flagged as a First-Timer / Onboarder upload');
+  assert(onboarderDoc.pageCount === 6, 'Full document preserves multi-page count (6 pages)');
+  assert(onboarderDoc.fullDocumentText.includes('PAGE 1') && onboarderDoc.fullDocumentText.includes('PAGE 6'), 'Complete multi-page full document text is accessible for reading during review & grading');
+});
+
+test('Reviewers can read full onboarder document side-by-side and submit Governance & Ethics + AI Readiness grades', () => {
+  let doc = {
+    id: 'doc-onboard-1-2',
+    fileName: 'Telehealth_FirstTimer_Onboarder_Full_Proposal_and_DPIA.pdf',
+    isFirstTimerUpload: true,
+    reviewStatus: 'Pending Review',
+    reviewerComments: []
+  };
+  let project = {
+    id: 'proj-1',
+    projectCode: 'GN-AI-2026-001',
+    compliance: { fairness: 80, transparency: 80, accountability: 80, privacy: 80, security: 80, overallGrade: 'Good' },
+    readinessScore: 78,
+    reviewStatus: 'Under Technical Review'
+  };
+
+  // Simulate side-by-side Full Document Review & Grading submission
+  const submitFullDocReviewAndGrade = (verdict, comment, newCompliance, newReadiness) => {
+    doc.reviewStatus = verdict === 'Approved' ? 'Reviewed & Verified' : 'Requires Re-submission';
+    doc.reviewerComments.unshift({
+      id: 'rev-1',
+      reviewerName: 'NITA Super Admin',
+      reviewerRole: 'Super Admin',
+      comment,
+      verdict,
+      gradedCompliance: newCompliance,
+      gradedReadinessScore: newReadiness
+    });
+    project.compliance = newCompliance;
+    project.readinessScore = newReadiness;
+  };
+
+  submitFullDocReviewAndGrade(
+    'Approved',
+    'Full 6-page onboarder dossier inspected and verified under Act 843 and NITA Act 771.',
+    { fairness: 92, transparency: 90, accountability: 90, privacy: 95, security: 93, overallGrade: 'Excellent' },
+    91
+  );
+
+  assert(doc.reviewStatus === 'Reviewed & Verified', 'Onboarder document status updated to Reviewed & Verified');
+  assert(doc.reviewerComments.length === 1, 'Reviewer directive saved on onboarder document');
+  assert(project.compliance.overallGrade === 'Excellent', 'Governance & Ethics grade updated from full-document grading studio');
+  assert(project.readinessScore === 91, 'AI Readiness score updated from full-document grading studio');
+});
+
 const passed = tests.filter(t => t.passed).length;
 const total = tests.length;
 

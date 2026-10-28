@@ -18,7 +18,10 @@ import {
   ShieldAlert,
   X,
   FolderOpen,
-  MessageSquare
+  MessageSquare,
+  BookOpen,
+  Download,
+  Send
 } from 'lucide-react';
 import { 
   AIProject, 
@@ -35,7 +38,10 @@ import { recordAuditEvent } from '../services/auditService';
 import { 
   generateAssessmentFromDocuments, 
   getDocumentOcrText, 
-  registerUploadedDocumentOcr 
+  getFullDocumentSections,
+  getFullDocumentText,
+  registerUploadedDocumentOcr,
+  registerUploadedFullDocument
 } from '../services/assessmentEngine';
 import { DocumentReviewGradeModal } from './DocumentReviewGradeModal';
 
@@ -106,8 +112,31 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
   // Filter for first-timer uploads only
   const [onlyFirstTimerFilter, setOnlyFirstTimerFilter] = useState(false);
 
-  // View mode: 'project' (current project vault) vs 'all' (super admin master document explorer)
-  const [viewMode, setViewMode] = useState<'project' | 'all'>('project');
+  // View mode: 'project' (current project vault), 'onboarders' (dedicated First-Timer / Onboarder Full Documents Review & Grading studio), 'all' (master document explorer)
+  const [viewMode, setViewMode] = useState<'project' | 'onboarders' | 'all'>('project');
+
+  // States for the dedicated First-Timer / Onboarder Full Document Review & Grading workspace inside Documents & OCR
+  const [selectedOnboarderDocKey, setSelectedOnboarderDocKey] = useState<string>('');
+  const [onboarderReaderMode, setOnboarderReaderMode] = useState<'full' | 'sections' | 'ocr'>('full');
+  const [onboarderActiveSectionIdx, setOnboarderActiveSectionIdx] = useState<number>(0);
+  const [onboarderDocSearch, setOnboarderDocSearch] = useState<string>('');
+  const [onboarderListFilter, setOnboarderListFilter] = useState<string>('');
+  const [inlineVerdict, setInlineVerdict] = useState<'Approved' | 'Changes Requested' | 'Conditionally Cleared' | 'Under Investigation'>('Approved');
+  const [inlineComment, setInlineComment] = useState<string>('');
+  const [inlineEnableGrading, setInlineEnableGrading] = useState<boolean>(true);
+  const [inlineEthics, setInlineEthics] = useState<number>(85);
+  const [inlineDataPrivacy, setInlineDataPrivacy] = useState<number>(88);
+  const [inlineTransparency, setInlineTransparency] = useState<number>(80);
+  const [inlineBiasAudit, setInlineBiasAudit] = useState<number>(82);
+  const [inlineCybersecurity, setInlineCybersecurity] = useState<number>(90);
+  const [inlineReadiness, setInlineReadiness] = useState<number>(84);
+  const [inlineProjectStatus, setInlineProjectStatus] = useState<ReviewWorkflowStatus>('Under Technical Review');
+  const [inlineReviewFeedback, setInlineReviewFeedback] = useState<string | null>(null);
+
+  // Inspection Modal reader state
+  const [inspectReaderTab, setInspectReaderTab] = useState<'full' | 'sections' | 'ocr'>('full');
+  const [inspectSectionIdx, setInspectSectionIdx] = useState<number>(0);
+  const [inspectSearchQuery, setInspectSearchQuery] = useState<string>('');
 
   // Search states
   const [ocrSearchQuery, setOcrSearchQuery] = useState('');
@@ -145,20 +174,160 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
     }))
   );
 
-  const firstTimerUploadsCount = allUploadedDocuments.filter(item => 
-    item.doc.isFirstTimerUpload || 
-    item.doc.uploadedByRole === 'First-Timer / New User' ||
-    item.doc.id.includes('onboard') ||
-    item.doc.signedBy?.includes('First-Timer / New User')
-  ).length;
+  const isDocFirstTimer = (doc: DocumentAsset) =>
+    !!(
+      doc.isFirstTimerUpload ||
+      doc.uploadedByRole === 'First-Timer / New User' ||
+      doc.id.includes('onboard') ||
+      doc.signedBy?.includes('First-Timer / New User')
+    );
+
+  const firstTimerDocumentsList = allUploadedDocuments.filter(item => isDocFirstTimer(item.doc));
+  const firstTimerUploadsCount = firstTimerDocumentsList.length;
+
+  // Filtered list for the dedicated First-Timer / Onboarder Review & Grading Center
+  const filteredOnboarderDocuments = (firstTimerDocumentsList.length > 0 ? firstTimerDocumentsList : allUploadedDocuments).filter(item => {
+    if (!onboarderListFilter.trim()) return true;
+    const q = onboarderListFilter.toLowerCase();
+    return (
+      item.doc.fileName.toLowerCase().includes(q) ||
+      item.project.name.toLowerCase().includes(q) ||
+      item.project.projectCode.toLowerCase().includes(q) ||
+      item.project.mda.toLowerCase().includes(q) ||
+      item.project.mdaCode.toLowerCase().includes(q) ||
+      (item.doc.uploadedByName && item.doc.uploadedByName.toLowerCase().includes(q)) ||
+      (item.doc.uploadedByEmail && item.doc.uploadedByEmail.toLowerCase().includes(q)) ||
+      (item.doc.documentCategory && item.doc.documentCategory.toLowerCase().includes(q))
+    );
+  });
+
+  // Resolve the currently selected First-Timer / Onboarder document in the studio
+  const activeOnboarderItem =
+    filteredOnboarderDocuments.find(item => `${item.project.id}::${item.doc.id}` === selectedOnboarderDocKey) ||
+    firstTimerDocumentsList.find(item => `${item.project.id}::${item.doc.id}` === selectedOnboarderDocKey) ||
+    filteredOnboarderDocuments[0] ||
+    firstTimerDocumentsList[0] ||
+    allUploadedDocuments[0] ||
+    null;
+
+  // Select an onboarder document and sync grading controls with its project
+  const handleSelectOnboarderDocument = (doc: DocumentAsset, project: AIProject) => {
+    setSelectedOnboarderDocKey(`${project.id}::${doc.id}`);
+    setOnboarderActiveSectionIdx(0);
+    setInlineEthics(project.compliance?.fairness ?? 85);
+    setInlineDataPrivacy(project.compliance?.privacy ?? 88);
+    setInlineTransparency(project.compliance?.transparency ?? 80);
+    setInlineBiasAudit(project.compliance?.accountability ?? 82);
+    setInlineCybersecurity(project.compliance?.security ?? 90);
+    setInlineReadiness(project.readinessScore ?? 84);
+    setInlineProjectStatus(project.reviewStatus || 'Under Technical Review');
+  };
+
+  // Download full uploaded document (original uploaded file DataURL or complete statutory transcript)
+  const handleDownloadFullDocument = (doc: DocumentAsset, project: AIProject) => {
+    const fullText = getFullDocumentText(doc, project);
+    if (doc.fileDataUrl) {
+      const a = document.createElement('a');
+      a.href = doc.fileDataUrl;
+      a.download = doc.fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return;
+    }
+    const blob = new Blob([fullText], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const baseName = doc.fileName.replace(/\.[^/.]+$/, '');
+    a.download = `${baseName}_FULL_UPLOADED_DOCUMENT.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // Compute live inline overall grade
+  const inlineAvgCompliance = Math.round(
+    (inlineEthics + inlineDataPrivacy + inlineTransparency + inlineBiasAudit + inlineCybersecurity) / 5
+  );
+  const inlineCalculatedGrade: ComplianceScore['overallGrade'] =
+    inlineAvgCompliance >= 85 ? 'Excellent' :
+    inlineAvgCompliance >= 70 ? 'Good' :
+    inlineAvgCompliance >= 50 ? 'Moderate' : 'High Risk';
+
+  // Submit inline review & module grading directly from the First-Timer / Onboarder Full Document Studio
+  const handleInlineSubmitReview = (doc: DocumentAsset, project: AIProject) => {
+    if (!onReviewDocument) return;
+    const defaultComment =
+      inlineVerdict === 'Approved'
+        ? `Full uploaded document "${doc.fileName}" reviewed and verified against Act 843 Data Protection mandates, NITA Act 771 interoperability standards, and Ghana National AI Strategy (2023-2033).`
+        : inlineVerdict === 'Changes Requested'
+        ? `Full document inspection of "${doc.fileName}" requires additional technical clarification on demographic subgroup fairness testing and Act 843 DPIA schedules before final clearance.`
+        : `Critical compliance gap flagged during full-document review of "${doc.fileName}". Mandatory remediation required prior to production deployment.`;
+
+    const finalComment = inlineComment.trim() || defaultComment;
+    const newCompliance: ComplianceScore | undefined = inlineEnableGrading
+      ? {
+          fairness: inlineEthics,
+          privacy: inlineDataPrivacy,
+          transparency: inlineTransparency,
+          accountability: inlineBiasAudit,
+          security: inlineCybersecurity,
+          overallGrade: inlineCalculatedGrade
+        }
+      : undefined;
+
+    const newReadiness = inlineEnableGrading ? inlineReadiness : undefined;
+
+    const commentObj: DocumentReviewComment = {
+      id: `rev-inline-${Date.now()}`,
+      reviewerName: session?.fullName || String(currentRole),
+      reviewerRole: session?.role || (currentRole as UserRole),
+      reviewerEmail: session?.email || 'reviewer@nita.gov.gh',
+      comment: finalComment,
+      verdict: inlineVerdict,
+      governanceAdjustment: newCompliance,
+      readinessAdjustment: newReadiness,
+      createdAt: new Date().toISOString().replace('T', ' ').substring(0, 16) + ' GMT'
+    };
+
+    onReviewDocument(
+      project.id,
+      doc.id,
+      commentObj,
+      newCompliance,
+      newReadiness,
+      inlineEnableGrading ? inlineProjectStatus : undefined
+    );
+
+    if (session) {
+      recordAuditEvent({
+        eventType: 'TECH_REVIEW_TRANSITION',
+        actorName: session.fullName,
+        actorEmail: session.email,
+        actorRole: session.role,
+        actorInstitution: session.institution,
+        targetModule: 'documents',
+        targetEntityId: project.id,
+        actionDetails: `Full-Document Review & Grading submitted for "${doc.fileName}" (${project.projectCode}). Verdict: ${inlineVerdict}. ${
+          inlineEnableGrading ? `Governance Grade: ${inlineCalculatedGrade}, AI Readiness: ${inlineReadiness}%.` : ''
+        } Comment: "${finalComment}"`
+      });
+    }
+
+    setInlineComment('');
+    setInlineReviewFeedback(
+      `✓ Review & Module Grading saved for "${doc.fileName}" (${project.projectCode}): Verdict "${inlineVerdict}"${
+        inlineEnableGrading ? ` • Governance Grade "${inlineCalculatedGrade}" • AI Readiness ${inlineReadiness}%` : ''
+      }.`
+    );
+    setTimeout(() => setInlineReviewFeedback(null), 6500);
+  };
 
   const filteredAllDocuments = allUploadedDocuments.filter(item => {
     if (onlyFirstTimerFilter) {
-      const isFT = item.doc.isFirstTimerUpload || 
-        item.doc.uploadedByRole === 'First-Timer / New User' ||
-        item.doc.id.includes('onboard') ||
-        item.doc.signedBy?.includes('First-Timer / New User');
-      if (!isFT) return false;
+      if (!isDocFirstTimer(item.doc)) return false;
     }
     if (!allDocsFilter) return true;
     const q = allDocsFilter.toLowerCase();
@@ -173,19 +342,19 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
     );
   });
 
-  // Run mock full-text search across documents
+  // Run full-text search across full uploaded documents and OCR transcripts
   const handleOcrSearch = () => {
     if (!ocrSearchQuery) return [];
     
     const results: { doc: DocumentAsset; project: AIProject; snippet: string }[] = [];
     projects.forEach(proj => {
       (proj.documents || []).forEach(doc => {
-        const fullText = getDocumentOcrText(doc.id, doc.fileName, proj.name);
+        const fullText = getFullDocumentText(doc, proj) + '\n' + getDocumentOcrText(doc.id, doc.fileName, proj.name);
         if (fullText.toLowerCase().includes(ocrSearchQuery.toLowerCase())) {
           const idx = fullText.toLowerCase().indexOf(ocrSearchQuery.toLowerCase());
-          const start = Math.max(0, idx - 20);
-          const end = Math.min(fullText.length, idx + ocrSearchQuery.length + 40);
-          const snippet = '...' + fullText.substring(start, end) + '...';
+          const start = Math.max(0, idx - 25);
+          const end = Math.min(fullText.length, idx + ocrSearchQuery.length + 50);
+          const snippet = '...' + fullText.substring(start, end).replace(/\s+/g, ' ') + '...';
           results.push({ doc, project: proj, snippet });
         }
       });
@@ -195,13 +364,43 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
 
   const searchResults = handleOcrSearch();
 
-  // Handles simulated upload sequence
+  // Handles file upload sequence and captures full uploaded document content via FileReader
   const triggerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0] && activeProject) {
       const file = e.target.files[0];
       setNewFileName(file.name);
       setUploading(true);
       setUploadProgress(10);
+
+      const fileSizeStr =
+        file.size >= 1024 * 1024
+          ? `${(file.size / (1024 * 1024)).toFixed(2)} MB`
+          : `${Math.max(1, Math.round(file.size / 1024))} KB`;
+
+      let capturedRawText = '';
+      let capturedDataUrl = '';
+
+      if (typeof FileReader !== 'undefined') {
+        try {
+          const textReader = new FileReader();
+          textReader.onload = () => {
+            if (typeof textReader.result === 'string') {
+              capturedRawText = textReader.result;
+            }
+          };
+          textReader.readAsText(file);
+
+          const urlReader = new FileReader();
+          urlReader.onload = () => {
+            if (typeof urlReader.result === 'string') {
+              capturedDataUrl = urlReader.result;
+            }
+          };
+          urlReader.readAsDataURL(file);
+        } catch {
+          // Ignore FileReader errors in non-browser environments
+        }
+      }
 
       const uploadInterval = setInterval(() => {
         setUploadProgress(prev => {
@@ -213,10 +412,24 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
             setTimeout(() => {
               setOcrWorking(false);
               const nextDocId = `doc-new-${Date.now()}`;
+              const ext = (file.name.split('.').pop() || 'pdf').toLowerCase();
+              const resolvedType: 'pdf' | 'docx' | 'xlsx' =
+                ext === 'docx' || ext === 'doc' ? 'docx' : ext === 'xlsx' || ext === 'xls' ? 'xlsx' : 'pdf';
+
+              const readableUploadedBody =
+                capturedRawText && !capturedRawText.startsWith('%PDF') && capturedRawText.replace(/[^\x20-\x7E\r\n\t]/g, '').length > 40
+                  ? capturedRawText
+                  : '';
+
               const doc: DocumentAsset = {
                 id: nextDocId,
                 fileName: file.name,
-                fileType: 'pdf',
+                fileType: resolvedType,
+                fileSize: fileSizeStr,
+                pageCount: 6,
+                documentCategory: isFirstTimer
+                  ? 'First-Timer / Onboarder Full Submission Dossier'
+                  : 'Institutional Compliance & Technical Dossier',
                 uploadedAt: new Date().toISOString().split('T')[0],
                 version: 1,
                 signedBy: [currentRole],
@@ -224,10 +437,19 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                 uploadedByName: session?.fullName || 'Registry User',
                 uploadedByEmail: session?.email || '',
                 isFirstTimerUpload: isFirstTimer,
-                reviewStatus: 'Pending Review'
+                reviewStatus: 'Pending Review',
+                fileDataUrl: capturedDataUrl || undefined
               };
 
-              // Register simulated OCR text for the newly uploaded document
+              // Register full multi-page statutory document + verbatim uploaded content
+              const fullStatutoryDocText = getFullDocumentText(
+                { ...doc, fullDocumentText: readableUploadedBody || undefined },
+                activeProject
+              );
+              doc.fullDocumentText = fullStatutoryDocText;
+              registerUploadedFullDocument(nextDocId, fullStatutoryDocText, capturedDataUrl || undefined);
+
+              // Register OCR text for the newly uploaded document
               const simulatedOcr = getDocumentOcrText(nextDocId, file.name, activeProject.name);
               registerUploadedDocumentOcr(nextDocId, simulatedOcr);
 
@@ -257,11 +479,11 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                   actorInstitution: session.institution,
                   targetModule: 'documents',
                   targetEntityId: activeProject.id,
-                  actionDetails: `Document "${file.name}" uploaded by ${session.role} for project ${activeProject.projectCode}. Triggered immediate automated regulatory assessment & system-wide synchronization.`
+                  actionDetails: `Full Document "${file.name}" (${fileSizeStr}) uploaded by ${session.role} for project ${activeProject.projectCode}. Full document indexed for Review & Grading and automated regulatory assessment.`
                 });
               }
 
-              setAssessmentFeedback(`✓ Document "${file.name}" parsed. System synchronized: AI Readiness (${auto.readinessScore}%), Governance & Ethics (${auto.compliance.overallGrade}), Zero-Assumption Provenance (${auto.zeroAssumptionAudit.evidenceBackingScore}%), and National Registry updated.`);
+              setAssessmentFeedback(`✓ Full Document "${file.name}" (${fileSizeStr}) stored & parsed. System synchronized: AI Readiness (${auto.readinessScore}%), Governance & Ethics (${auto.compliance.overallGrade}), Zero-Assumption Provenance (${auto.zeroAssumptionAudit.evidenceBackingScore}%).`);
               setTimeout(() => setAssessmentFeedback(null), 7000);
             }, 1600);
 
@@ -456,7 +678,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
         </div>
 
         {/* View Mode Switcher */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <button
             type="button"
             onClick={() => setViewMode('project')}
@@ -473,6 +695,34 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
             }}
           >
             Project Documents Vault
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (firstTimerDocumentsList.length > 0 && !selectedOnboarderDocKey) {
+                handleSelectOnboarderDocument(firstTimerDocumentsList[0].doc, firstTimerDocumentsList[0].project);
+              }
+              setViewMode('onboarders');
+            }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '7px 14px',
+              borderRadius: '8px',
+              fontSize: '0.78rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+              border: viewMode === 'onboarders' ? '1px solid #fbbf24' : '1px solid rgba(251, 191, 36, 0.45)',
+              background: viewMode === 'onboarders' ? 'rgba(251, 191, 36, 0.22)' : 'rgba(251, 191, 36, 0.08)',
+              color: '#fde68a',
+              boxShadow: viewMode === 'onboarders' ? '0 0 14px rgba(251, 191, 36, 0.25)' : 'none',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <BookOpen size={14} className="text-amber-400" />
+            <span>⚡ First-Timer / Onboarder Full Documents (Review & Grading: {firstTimerUploadsCount})</span>
           </button>
 
           <button
@@ -499,8 +749,585 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
         </div>
       </div>
 
-      {/* VIEW MODE 1: ALL UPLOADED DOCUMENTS (MASTER REPOSITORY) */}
-      {viewMode === 'all' ? (
+      {/* VIEW MODE 0: FIRST-TIMER / ONBOARDER FULL DOCUMENTS REVIEW & GRADING STUDIO */}
+      {viewMode === 'onboarders' ? (
+        <div className="glass-card" style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '18px',
+          border: '1px solid rgba(251, 191, 36, 0.4)',
+          background: 'linear-gradient(145deg, rgba(251, 191, 36, 0.04), rgba(15, 23, 42, 0.96))'
+        }}>
+          {/* Studio Header */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '12px',
+            borderBottom: '1px solid rgba(251, 191, 36, 0.25)',
+            paddingBottom: '14px'
+          }}>
+            <div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#fde68a', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <BookOpen size={14} />
+                <span>First-Timer & Onboarder Full Document Access • Review & Module Grading Studio</span>
+              </div>
+              <h2 style={{ fontSize: '1.18rem', fontWeight: 800, margin: '4px 0 0 0', color: '#fff' }}>
+                Full Documents Uploaded by First-Timers / Onboarders (Review & Grading Workspace)
+              </h2>
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: '2px 0 0 0' }}>
+                Read the complete multi-page statutory submissions uploaded by First-Timers and Onboarders side-by-side while reviewing, commenting, and grading Governance & Ethics and AI Readiness.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <div style={{ position: 'relative', width: '250px' }}>
+                <input
+                  type="text"
+                  placeholder="Filter onboarder documents or MDA..."
+                  value={onboarderListFilter}
+                  onChange={(e) => setOnboarderListFilter(e.target.value)}
+                  className="form-input"
+                  style={{ paddingLeft: '32px', fontSize: '0.76rem', height: '34px' }}
+                />
+                <Search style={{ position: 'absolute', left: '10px', top: '9px', width: '14px', height: '14px', color: 'var(--text-muted)' }} />
+              </div>
+
+              {activeOnboarderItem && (
+                <button
+                  type="button"
+                  onClick={() => handleDownloadFullDocument(activeOnboarderItem.doc, activeOnboarderItem.project)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '7px 14px',
+                    borderRadius: '8px',
+                    background: 'rgba(59, 130, 246, 0.16)',
+                    border: '1px solid rgba(59, 130, 246, 0.4)',
+                    color: '#93c5fd',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Download size={13} />
+                  <span>Download Full Document</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {inlineReviewFeedback && (
+            <div style={{
+              padding: '10px 14px',
+              borderRadius: '8px',
+              background: 'rgba(16, 185, 129, 0.18)',
+              border: '1px solid rgba(16, 185, 129, 0.45)',
+              color: '#a7f3d0',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <CheckCircle2 size={16} className="text-emerald-400" />
+              <span>{inlineReviewFeedback}</span>
+            </div>
+          )}
+
+          {/* 3-Column / Split Studio: Left (Onboarder Document Queue), Center (Full Multi-Page Document Reader), Right (Review & Grading Controls) */}
+          <div style={{ display: 'grid', gridTemplateColumns: '310px 1.35fr 1fr', gap: '16px', alignItems: 'start' }}>
+            {/* Column 1: First-Timer / Onboarder Uploaded Documents Queue */}
+            <div style={{
+              background: 'rgba(0, 0, 0, 0.3)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '10px',
+              padding: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px',
+              maxHeight: '720px',
+              overflowY: 'auto'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', color: '#fde68a', letterSpacing: '0.04em' }}>
+                  Onboarder Submissions ({filteredOnboarderDocuments.length})
+                </span>
+                <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>
+                  Click to Read & Grade
+                </span>
+              </div>
+
+              {filteredOnboarderDocuments.map(({ doc, project }) => {
+                const isSelected = activeOnboarderItem?.doc.id === doc.id && activeOnboarderItem?.project.id === project.id;
+                const sections = getFullDocumentSections(doc, project);
+                return (
+                  <div
+                    key={`${project.id}-${doc.id}`}
+                    onClick={() => handleSelectOnboarderDocument(doc, project)}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      border: isSelected ? '1px solid #fbbf24' : '1px solid rgba(255, 255, 255, 0.08)',
+                      background: isSelected ? 'rgba(251, 191, 36, 0.14)' : 'rgba(255, 255, 255, 0.02)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '5px',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
+                      <span style={{ fontSize: '0.78rem', fontWeight: 700, color: isSelected ? '#fde68a' : '#fff', lineHeight: 1.3 }}>
+                        {doc.fileName}
+                      </span>
+                      <span style={{
+                        fontSize: '0.62rem',
+                        padding: '1px 6px',
+                        borderRadius: '999px',
+                        fontWeight: 700,
+                        whiteSpace: 'nowrap',
+                        background: doc.reviewStatus === 'Reviewed & Verified' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(251, 191, 36, 0.2)',
+                        color: doc.reviewStatus === 'Reviewed & Verified' ? '#10b981' : '#fbbf24'
+                      }}>
+                        {doc.reviewStatus || 'Pending Review'}
+                      </span>
+                    </div>
+
+                    <div style={{ fontSize: '0.68rem', color: 'var(--ghana-emerald)', fontWeight: 700 }}>
+                      {project.projectCode} • {project.mdaCode}
+                    </div>
+                    <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)' }}>
+                      Uploader: <strong style={{ color: '#e2e8f0' }}>{doc.uploadedByName || 'First-Timer Onboarder'}</strong> ({doc.uploadedByRole || 'First-Timer / New User'})
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                      <span>{doc.pageCount || sections.length} Pages • {doc.fileSize || '1.8 MB'}</span>
+                      <span>Grade: <strong style={{ color: '#a7f3d0' }}>{project.compliance.overallGrade}</strong> ({project.readinessScore}%)</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Column 2: Complete Multi-Page Full Document Reader */}
+            {activeOnboarderItem ? (
+              <div style={{
+                background: 'rgba(0, 0, 0, 0.38)',
+                border: '1px solid rgba(16, 185, 129, 0.35)',
+                borderRadius: '10px',
+                padding: '16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                maxHeight: '720px',
+                overflow: 'hidden'
+              }}>
+                {/* Document Metadata Header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', flexWrap: 'wrap', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '10px' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.94rem', fontWeight: 800, color: '#fff' }}>
+                        {activeOnboarderItem.doc.fileName}
+                      </span>
+                      <span style={{
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        background: 'rgba(251, 191, 36, 0.18)',
+                        border: '1px solid rgba(251, 191, 36, 0.45)',
+                        color: '#fde68a',
+                        fontSize: '0.65rem',
+                        fontWeight: 700
+                      }}>
+                        ⚡ FULL ONBOARDER SUBMISSION
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '3px' }}>
+                      Project: <strong style={{ color: 'var(--ghana-emerald)' }}>{activeOnboarderItem.project.projectCode}</strong> ({activeOnboarderItem.project.name}) • Uploaded by <strong style={{ color: '#fde68a' }}>{activeOnboarderItem.doc.uploadedByName || 'Onboarder'}</strong> {activeOnboarderItem.doc.uploadedByEmail ? `<${activeOnboarderItem.doc.uploadedByEmail}>` : ''}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setInspectingItem(activeOnboarderItem)}
+                      style={{
+                        padding: '5px 10px',
+                        borderRadius: '6px',
+                        background: 'rgba(255,255,255,0.08)',
+                        border: '1px solid rgba(255,255,255,0.18)',
+                        color: '#fff',
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <Eye size={12} /> Full-Screen Reader
+                    </button>
+                  </div>
+                </div>
+
+                {/* Reader Mode Tabs & Search Bar */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => setOnboarderReaderMode('full')}
+                      style={{
+                        padding: '5px 10px',
+                        borderRadius: '6px',
+                        fontSize: '0.71rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        border: onboarderReaderMode === 'full' ? '1px solid var(--ghana-emerald)' : '1px solid var(--border-color)',
+                        background: onboarderReaderMode === 'full' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.04)',
+                        color: onboarderReaderMode === 'full' ? '#a7f3d0' : 'var(--text-secondary)'
+                      }}
+                    >
+                      Complete Full Document (All Pages)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setOnboarderReaderMode('sections')}
+                      style={{
+                        padding: '5px 10px',
+                        borderRadius: '6px',
+                        fontSize: '0.71rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        border: onboarderReaderMode === 'sections' ? '1px solid #fbbf24' : '1px solid var(--border-color)',
+                        background: onboarderReaderMode === 'sections' ? 'rgba(251, 191, 36, 0.2)' : 'rgba(255,255,255,0.04)',
+                        color: onboarderReaderMode === 'sections' ? '#fde68a' : 'var(--text-secondary)'
+                      }}
+                    >
+                      Page-by-Page Reader ({getFullDocumentSections(activeOnboarderItem.doc, activeOnboarderItem.project).length} Pages)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setOnboarderReaderMode('ocr')}
+                      style={{
+                        padding: '5px 10px',
+                        borderRadius: '6px',
+                        fontSize: '0.71rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        border: onboarderReaderMode === 'ocr' ? '1px solid #60a5fa' : '1px solid var(--border-color)',
+                        background: onboarderReaderMode === 'ocr' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.04)',
+                        color: onboarderReaderMode === 'ocr' ? '#93c5fd' : 'var(--text-secondary)'
+                      }}
+                    >
+                      Extracted OCR Summary
+                    </button>
+                  </div>
+
+                  <div style={{ position: 'relative', width: '200px' }}>
+                    <input
+                      type="text"
+                      placeholder="Search inside full document..."
+                      value={onboarderDocSearch}
+                      onChange={(e) => setOnboarderDocSearch(e.target.value)}
+                      className="form-input"
+                      style={{ paddingLeft: '28px', fontSize: '0.72rem', height: '30px' }}
+                    />
+                    <Search style={{ position: 'absolute', left: '8px', top: '8px', width: '13px', height: '13px', color: 'var(--text-muted)' }} />
+                  </div>
+                </div>
+
+                {/* Page selector pills when in Page-by-Page mode */}
+                {onboarderReaderMode === 'sections' && (
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {getFullDocumentSections(activeOnboarderItem.doc, activeOnboarderItem.project).map((sec, idx) => (
+                      <button
+                        key={sec.pageNumber}
+                        type="button"
+                        onClick={() => setOnboarderActiveSectionIdx(idx)}
+                        style={{
+                          padding: '4px 9px',
+                          borderRadius: '6px',
+                          fontSize: '0.68rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          border: onboarderActiveSectionIdx === idx ? '1px solid #fbbf24' : '1px solid rgba(255,255,255,0.12)',
+                          background: onboarderActiveSectionIdx === idx ? 'rgba(251, 191, 36, 0.22)' : 'rgba(255,255,255,0.03)',
+                          color: onboarderActiveSectionIdx === idx ? '#fde68a' : 'var(--text-secondary)'
+                        }}
+                      >
+                        Page {sec.pageNumber}: {sec.sectionTitle.substring(0, 24)}...
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Main Scrollable Full Document Content */}
+                <div style={{
+                  flex: 1,
+                  overflowY: 'auto',
+                  background: 'rgba(5, 10, 20, 0.85)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                  fontSize: '0.78rem',
+                  lineHeight: 1.65,
+                  color: '#e2e8f0',
+                  whiteSpace: 'pre-wrap'
+                }}>
+                  {(() => {
+                    const sections = getFullDocumentSections(activeOnboarderItem.doc, activeOnboarderItem.project);
+                    const activeSec = sections[onboarderActiveSectionIdx] || sections[0];
+                    const rawText =
+                      onboarderReaderMode === 'full'
+                        ? getFullDocumentText(activeOnboarderItem.doc, activeOnboarderItem.project)
+                        : onboarderReaderMode === 'sections' && activeSec
+                        ? `--- PAGE ${activeSec.pageNumber} OF ${sections.length}: ${activeSec.sectionTitle} ---\n\n${activeSec.content}`
+                        : getDocumentOcrText(activeOnboarderItem.doc.id, activeOnboarderItem.doc.fileName, activeOnboarderItem.project.name);
+
+                    if (!onboarderDocSearch.trim()) {
+                      return rawText;
+                    }
+                    const lines = rawText.split('\n');
+                    const matchingLines = lines.filter(line =>
+                      line.toLowerCase().includes(onboarderDocSearch.toLowerCase())
+                    );
+                    return matchingLines.length > 0
+                      ? `=== SEARCH MATCHES FOR "${onboarderDocSearch}" (${matchingLines.length} lines matched in Full Document) ===\n\n` +
+                          matchingLines.join('\n\n') +
+                          `\n\n=== COMPLETE DOCUMENT TRANSCRIPT BELOW ===\n\n` +
+                          rawText
+                      : `No exact matches for "${onboarderDocSearch}". Showing complete full document:\n\n` + rawText;
+                  })()}
+                </div>
+              </div>
+            ) : null}
+
+            {/* Column 3: Inline Review, Comment & Module Grading Panel */}
+            {activeOnboarderItem ? (
+              <div style={{
+                background: 'rgba(0, 0, 0, 0.35)',
+                border: '1px solid rgba(16, 185, 129, 0.35)',
+                borderRadius: '10px',
+                padding: '16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                maxHeight: '720px',
+                overflowY: 'auto'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '8px' }}>
+                  <div>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--ghana-emerald)', textTransform: 'uppercase' }}>
+                      Review & Module Grading
+                    </div>
+                    <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#fff' }}>
+                      Grade While Reading Full Document
+                    </div>
+                  </div>
+                  {canReviewAndGrade && (
+                    <button
+                      type="button"
+                      onClick={() => setReviewingItem(activeOnboarderItem)}
+                      style={{
+                        padding: '5px 10px',
+                        borderRadius: '6px',
+                        background: 'rgba(16, 185, 129, 0.2)',
+                        border: '1px solid rgba(16, 185, 129, 0.45)',
+                        color: '#a7f3d0',
+                        fontSize: '0.68rem',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Pop-Out Studio
+                    </button>
+                  )}
+                </div>
+
+                {canReviewAndGrade ? (
+                  <>
+                    {/* Verdict Selector */}
+                    <div>
+                      <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+                        1. Document Review Verdict
+                      </label>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                        {(['Approved', 'Changes Requested', 'Under Investigation'] as const).map(v => (
+                          <button
+                            key={v}
+                            type="button"
+                            onClick={() => setInlineVerdict(v)}
+                            style={{
+                              padding: '6px 4px',
+                              borderRadius: '6px',
+                              fontSize: '0.68rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              border: inlineVerdict === v ? '1px solid currentColor' : '1px solid var(--border-color)',
+                              background:
+                                inlineVerdict === v
+                                  ? v === 'Approved'
+                                    ? 'rgba(16, 185, 129, 0.22)'
+                                    : v === 'Changes Requested'
+                                    ? 'rgba(251, 191, 36, 0.22)'
+                                    : 'rgba(239, 68, 68, 0.22)'
+                                  : 'rgba(255,255,255,0.03)',
+                              color:
+                                v === 'Approved'
+                                  ? '#10b981'
+                                  : v === 'Changes Requested'
+                                  ? '#fbbf24'
+                                  : '#f87171'
+                            }}
+                          >
+                            {v}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Reviewer Comment */}
+                    <div>
+                      <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                        2. Reviewer Directive & Finding on Full Document
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={inlineComment}
+                        onChange={(e) => setInlineComment(e.target.value)}
+                        placeholder="Enter statutory review findings from the onboarder's full uploaded document..."
+                        className="form-input"
+                        style={{ width: '100%', fontSize: '0.74rem', padding: '8px', resize: 'vertical' }}
+                      />
+                    </div>
+
+                    {/* Module Grading Sliders */}
+                    <div style={{
+                      padding: '10px',
+                      borderRadius: '8px',
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      border: '1px solid var(--border-color)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', fontWeight: 700, color: '#fde68a', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={inlineEnableGrading}
+                            onChange={(e) => setInlineEnableGrading(e.target.checked)}
+                          />
+                          <span>3. Grade Modules from Full Document</span>
+                        </label>
+                        <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#10b981' }}>
+                          {inlineCalculatedGrade} ({inlineAvgCompliance}%)
+                        </span>
+                      </div>
+
+                      {inlineEnableGrading && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.7rem' }}>
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span>Ethics & Human Rights</span>
+                              <strong>{inlineEthics}%</strong>
+                            </div>
+                            <input type="range" min={0} max={100} value={inlineEthics} onChange={(e) => setInlineEthics(Number(e.target.value))} style={{ width: '100%' }} />
+                          </div>
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span>Act 843 Data Privacy</span>
+                              <strong>{inlineDataPrivacy}%</strong>
+                            </div>
+                            <input type="range" min={0} max={100} value={inlineDataPrivacy} onChange={(e) => setInlineDataPrivacy(Number(e.target.value))} style={{ width: '100%' }} />
+                          </div>
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span>Algorithmic Transparency</span>
+                              <strong>{inlineTransparency}%</strong>
+                            </div>
+                            <input type="range" min={0} max={100} value={inlineTransparency} onChange={(e) => setInlineTransparency(Number(e.target.value))} style={{ width: '100%' }} />
+                          </div>
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span>Bias & Fairness Audit</span>
+                              <strong>{inlineBiasAudit}%</strong>
+                            </div>
+                            <input type="range" min={0} max={100} value={inlineBiasAudit} onChange={(e) => setInlineBiasAudit(Number(e.target.value))} style={{ width: '100%' }} />
+                          </div>
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span>Cybersecurity Posture</span>
+                              <strong>{inlineCybersecurity}%</strong>
+                            </div>
+                            <input type="range" min={0} max={100} value={inlineCybersecurity} onChange={(e) => setInlineCybersecurity(Number(e.target.value))} style={{ width: '100%' }} />
+                          </div>
+                          <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '6px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#93c5fd' }}>
+                              <span>AI Readiness Score</span>
+                              <strong>{inlineReadiness}%</strong>
+                            </div>
+                            <input type="range" min={0} max={100} value={inlineReadiness} onChange={(e) => setInlineReadiness(Number(e.target.value))} style={{ width: '100%' }} />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleInlineSubmitReview(activeOnboarderItem.doc, activeOnboarderItem.project)}
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        background: 'linear-gradient(135deg, var(--ghana-emerald), #059669)',
+                        color: '#06130e',
+                        fontWeight: 800,
+                        fontSize: '0.78rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+                      }}
+                    >
+                      <Send size={14} />
+                      <span>Submit Full-Document Review & Grade</span>
+                    </button>
+                  </>
+                ) : (
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                    You can read and download the complete uploaded document here. Statutory module grading is reserved for Super Admin, Director General, Technical Director, and Technical Clearance Team.
+                  </div>
+                )}
+
+                {/* Previous Review Comments History on this Document */}
+                {activeOnboarderItem.doc.reviewerComments && activeOnboarderItem.doc.reviewerComments.length > 0 && (
+                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: '#93c5fd' }}>
+                      Recorded Review Directives ({activeOnboarderItem.doc.reviewerComments.length})
+                    </div>
+                    {activeOnboarderItem.doc.reviewerComments.map(c => (
+                      <div key={c.id} style={{ padding: '8px', borderRadius: '6px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', fontSize: '0.7rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, color: '#fde68a' }}>
+                          <span>{c.reviewerRole}: {c.reviewerName}</span>
+                          <span>{c.verdict}</span>
+                        </div>
+                        <div style={{ color: '#e2e8f0', marginTop: '3px', fontStyle: 'italic' }}>"{c.comment}"</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : viewMode === 'all' ? (
+        /* VIEW MODE 1: ALL UPLOADED DOCUMENTS (MASTER REPOSITORY) */
         <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
             <div>
@@ -512,7 +1339,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                 All Uploaded Documents Across National AI Registry
               </h2>
               <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: '2px 0 0 0' }}>
-                Super Admin can inspect full OCR content, cryptographic hashes, and compliance tags for all uploaded dossiers.
+                Super Admin can inspect full multi-page uploaded documents, OCR content, cryptographic hashes, and compliance tags for all uploaded dossiers.
               </p>
             </div>
 
@@ -590,10 +1417,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                   </tr>
                 ) : (
                   filteredAllDocuments.map(({ doc, project }) => {
-                    const isFT = doc.isFirstTimerUpload || 
-                      doc.uploadedByRole === 'First-Timer / New User' ||
-                      doc.id.includes('onboard') ||
-                      doc.signedBy?.includes('First-Timer / New User');
+                    const isFT = isDocFirstTimer(doc);
 
                     return (
                       <tr 
@@ -608,7 +1432,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                             <div>
                               <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{doc.fileName}</div>
                               <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                                Version {doc.version} • {doc.fileType.toUpperCase()} • {doc.uploadedAt}
+                                Version {doc.version} • {doc.fileType.toUpperCase()} • {doc.pageCount || 6} Pages • {doc.fileSize || '1.8 MB'} • {doc.uploadedAt}
                               </div>
                               {isFT && (
                                 <div style={{
@@ -624,7 +1448,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                                   fontWeight: 700,
                                   marginTop: '4px'
                                 }}>
-                                  <span>⚡ First-Timer Dossier: {doc.uploadedByName || 'Onboarder'}</span>
+                                  <span>⚡ First-Timer Full Dossier: {doc.uploadedByName || 'Onboarder'}</span>
                                   {doc.uploadedByEmail && (
                                     <span style={{ color: 'var(--text-muted)' }}>({doc.uploadedByEmail})</span>
                                   )}
@@ -715,7 +1539,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                                 }}
                               >
                                 <Award size={13} />
-                                <span>Review & Grade</span>
+                                <span>Review & Grade (Full Doc)</span>
                               </button>
                             )}
 
@@ -736,8 +1560,8 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                                 cursor: 'pointer'
                               }}
                             >
-                              <Eye size={13} />
-                              <span>Inspect</span>
+                              <BookOpen size={13} />
+                              <span>Read Full Doc</span>
                             </button>
 
                             <button
@@ -861,6 +1685,58 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
 
                   {/* List of documents for active project */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
+                    {/* Dedicated First-Timer / Onboarder Full Document Access Banner inside Project Vault */}
+                    <div style={{
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.14), rgba(16, 185, 129, 0.08))',
+                      border: '1px solid rgba(251, 191, 36, 0.4)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '10px',
+                      marginBottom: '6px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <BookOpen size={16} className="text-amber-400" />
+                        <div>
+                          <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#fde68a' }}>
+                            First-Timer & Onboarder Full Document Access (Review & Grading)
+                          </div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                            Full multi-page uploaded documents are preserved verbatim for side-by-side inspection while grading Governance & Ethics and AI Readiness.
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const projectFTDoc = activeProject.documents.find(d => isDocFirstTimer(d)) || activeProject.documents[0];
+                          if (projectFTDoc) {
+                            handleSelectOnboarderDocument(projectFTDoc, activeProject);
+                          }
+                          setViewMode('onboarders');
+                        }}
+                        style={{
+                          padding: '6px 12px',
+                          borderRadius: '6px',
+                          background: 'rgba(251, 191, 36, 0.22)',
+                          border: '1px solid rgba(251, 191, 36, 0.5)',
+                          color: '#fde68a',
+                          fontSize: '0.72rem',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px'
+                        }}
+                      >
+                        <BookOpen size={13} />
+                        <span>Open Onboarder Full Documents Studio ({firstTimerUploadsCount})</span>
+                      </button>
+                    </div>
+
                     <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
                       Uploaded Files ({activeProject.documents.length})
                     </div>
@@ -871,10 +1747,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                       </div>
                     ) : (
                       activeProject.documents.map(d => {
-                        const isFT = d.isFirstTimerUpload || 
-                          d.uploadedByRole === 'First-Timer / New User' ||
-                          d.id.includes('onboard') ||
-                          d.signedBy?.includes('First-Timer / New User');
+                        const isFT = isDocFirstTimer(d);
 
                         return (
                           <div 
@@ -909,7 +1782,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                                         fontSize: '0.64rem',
                                         fontWeight: 700
                                       }}>
-                                        ⚡ Onboarder Submission
+                                        ⚡ Onboarder Full Document
                                       </span>
                                     )}
                                     <span style={{
@@ -931,12 +1804,12 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                                     </span>
                                   </div>
                                   <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                                    Version {d.version} • Uploaded {d.uploadedAt} {d.uploadedByName ? `by ${d.uploadedByName}` : ''}
+                                    Version {d.version} • {d.pageCount || 6} Pages • {d.fileSize || '1.8 MB'} • Uploaded {d.uploadedAt} {d.uploadedByName ? `by ${d.uploadedByName}` : ''}
                                   </div>
                                 </div>
                               </div>
 
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                                 {canReviewAndGrade && (
                                   <button
                                     type="button"
@@ -959,7 +1832,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                                     }}
                                   >
                                     <Award size={12} />
-                                    <span>Review & Grade</span>
+                                    <span>Review & Grade (Full Doc)</span>
                                   </button>
                                 )}
 
@@ -976,9 +1849,35 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
+                                    setInspectReaderTab('full');
+                                    setInspectSectionIdx(0);
                                     setInspectingItem({ doc: d, project: activeProject });
                                   }}
-                                  title="Inspect full extracted OCR text"
+                                  title="Read complete uploaded document & extracted OCR text"
+                                  style={{
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                    background: 'rgba(59, 130, 246, 0.16)',
+                                    border: '1px solid rgba(59, 130, 246, 0.35)',
+                                    color: '#93c5fd',
+                                    fontSize: '0.7rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }}
+                                >
+                                  <BookOpen size={12} /> Read Full Document
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDownloadFullDocument(d, activeProject);
+                                  }}
+                                  title="Download full uploaded document"
                                   style={{
                                     padding: '4px 8px',
                                     borderRadius: '4px',
@@ -992,7 +1891,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                                     gap: '4px'
                                   }}
                                 >
-                                  <Eye size={12} /> Read OCR
+                                  <Download size={12} />
                                 </button>
                               </div>
                             </div>
@@ -1589,7 +2488,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
 
             {/* Selected Document Details & Signature Panel */}
             <div className="glass-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '240px' }}>
-              <h3 style={{ fontSize: '0.98rem', fontWeight: 700, marginBottom: '16px' }}>Digital Auditing Drawer</h3>
+              <h3 style={{ fontSize: '0.98rem', fontWeight: 700, marginBottom: '16px' }}>Digital Auditing & Full Document Drawer</h3>
               
               {selectedDoc ? (
                 <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
@@ -1597,10 +2496,33 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                     {selectedDoc.fileName}
                   </div>
                   <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                    Pre-signed URL: bucket/secure/{selectedDoc.id}.pdf
+                    Pre-signed URL: bucket/secure/{selectedDoc.id}.{selectedDoc.fileType || 'pdf'} • {selectedDoc.pageCount || 6} Pages • {selectedDoc.fileSize || '1.8 MB'}
                   </span>
+                  {selectedDoc.uploadedByName && (
+                    <div style={{ fontSize: '0.72rem', color: '#fde68a', marginTop: '4px', fontWeight: 600 }}>
+                      Uploaded by: {selectedDoc.uploadedByName} ({selectedDoc.uploadedByRole || 'Registry User'})
+                    </div>
+                  )}
 
-                  <div style={{ margin: '14px 0 10px 0' }}>
+                  {activeProject && (
+                    <div style={{
+                      marginTop: '10px',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      background: 'rgba(0, 0, 0, 0.35)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      maxHeight: '110px',
+                      overflowY: 'auto',
+                      fontFamily: 'monospace',
+                      fontSize: '0.68rem',
+                      color: '#cbd5e1',
+                      whiteSpace: 'pre-wrap'
+                    }}>
+                      {getFullDocumentText(selectedDoc, activeProject).substring(0, 620)}...
+                    </div>
+                  )}
+
+                  <div style={{ margin: '12px 0 10px 0' }}>
                     <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '8px' }}>
                       Authenticity Signatures ({selectedDoc.signedBy.length})
                     </div>
@@ -1621,15 +2543,21 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                   <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <button
                       type="button"
-                      onClick={() => activeProject && setInspectingItem({ doc: selectedDoc, project: activeProject })}
+                      onClick={() => {
+                        if (activeProject) {
+                          setInspectReaderTab('full');
+                          setInspectSectionIdx(0);
+                          setInspectingItem({ doc: selectedDoc, project: activeProject });
+                        }
+                      }}
                       style={{
                         padding: '8px',
                         borderRadius: '6px',
-                        background: 'rgba(255, 255, 255, 0.08)',
-                        border: '1px solid rgba(255, 255, 255, 0.15)',
-                        color: '#fff',
+                        background: 'rgba(59, 130, 246, 0.16)',
+                        border: '1px solid rgba(59, 130, 246, 0.35)',
+                        color: '#93c5fd',
                         fontSize: '0.78rem',
-                        fontWeight: 600,
+                        fontWeight: 700,
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
@@ -1637,8 +2565,31 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                         gap: '6px'
                       }}
                     >
-                      <Eye size={13} /> Inspect Full Document Dossier
+                      <BookOpen size={13} /> Read Complete Uploaded Document
                     </button>
+
+                    {canReviewAndGrade && activeProject && (
+                      <button
+                        type="button"
+                        onClick={() => setReviewingItem({ doc: selectedDoc, project: activeProject })}
+                        style={{
+                          padding: '8px',
+                          borderRadius: '6px',
+                          background: 'rgba(16, 185, 129, 0.2)',
+                          border: '1px solid rgba(16, 185, 129, 0.45)',
+                          color: '#a7f3d0',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <Award size={13} /> Review & Grade with Full Document
+                      </button>
+                    )}
 
                     <button
                       onClick={() => handleDigitalSign(selectedDoc.id)}
@@ -1655,7 +2606,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
               ) : (
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', textAlign: 'center', padding: '10px' }}>
                   <HelpCircle className="w-10 h-10 text-slate-500 mb-8" />
-                  <span>Select a document in the vault above to view signatures and verify authenticity.</span>
+                  <span>Select a document in the vault above to read its full uploaded content, view signatures, and verify authenticity.</span>
                 </div>
               )}
             </div>
@@ -1665,7 +2616,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
         </div>
       )}
 
-      {/* DOCUMENT INSPECTION MODAL (FULL OCR TEXT & REGULATORY ARTIFACT VIEWER) */}
+      {/* DOCUMENT INSPECTION MODAL (COMPLETE FULL UPLOADED DOCUMENT & MULTI-PAGE READER) */}
       {inspectingItem && (
         <div style={{
           position: 'fixed',
@@ -1679,19 +2630,19 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
           padding: '20px'
         }}>
           <div className="glass-card" style={{
-            maxWidth: '740px',
+            maxWidth: '940px',
             width: '100%',
-            maxHeight: '90vh',
+            maxHeight: '92vh',
             display: 'flex',
             flexDirection: 'column',
-            gap: '16px',
-            border: '1px solid rgba(16, 185, 129, 0.4)',
-            boxShadow: '0 25px 60px rgba(0, 0, 0, 0.6)',
+            gap: '14px',
+            border: '1px solid rgba(16, 185, 129, 0.45)',
+            boxShadow: '0 25px 60px rgba(0, 0, 0, 0.65)',
             padding: '24px',
             overflow: 'hidden'
           }}>
             {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', borderBottom: '1px solid var(--border-color)', paddingBottom: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', borderBottom: '1px solid var(--border-color)', paddingBottom: '14px', gap: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{
                   width: '42px',
@@ -1704,41 +2655,79 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                   justifyContent: 'center',
                   color: 'var(--ghana-emerald)'
                 }}>
-                  <FileText size={22} />
+                  <BookOpen size={22} />
                 </div>
                 <div>
-                  <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: '#fff' }}>
-                    {inspectingItem.doc.fileName}
-                  </h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: '#fff' }}>
+                      {inspectingItem.doc.fileName}
+                    </h3>
+                    {isDocFirstTimer(inspectingItem.doc) && (
+                      <span style={{
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        background: 'rgba(251, 191, 36, 0.18)',
+                        border: '1px solid rgba(251, 191, 36, 0.45)',
+                        color: '#fde68a',
+                        fontSize: '0.66rem',
+                        fontWeight: 700
+                      }}>
+                        ⚡ First-Timer / Onboarder Full Uploaded Document
+                      </span>
+                    )}
+                  </div>
                   <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                    Project: <strong style={{ color: 'var(--ghana-emerald)' }}>{inspectingItem.project.projectCode}</strong> — {inspectingItem.project.name}
+                    Project: <strong style={{ color: 'var(--ghana-emerald)' }}>{inspectingItem.project.projectCode}</strong> — {inspectingItem.project.name} • Uploaded by <strong style={{ color: '#fde68a' }}>{inspectingItem.doc.uploadedByName || 'Onboarder'}</strong> ({inspectingItem.doc.uploadedByRole || 'First-Timer / New User'})
                   </div>
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setInspectingItem(null)}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.08)',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  color: '#fff',
-                  borderRadius: '8px',
-                  padding: '6px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <X size={16} />
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => handleDownloadFullDocument(inspectingItem.doc, inspectingItem.project)}
+                  style={{
+                    background: 'rgba(59, 130, 246, 0.16)',
+                    border: '1px solid rgba(59, 130, 246, 0.4)',
+                    color: '#93c5fd',
+                    borderRadius: '8px',
+                    padding: '6px 12px',
+                    cursor: 'pointer',
+                    fontSize: '0.74rem',
+                    fontWeight: 700,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <Download size={14} />
+                  <span>Download Full Document</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setInspectingItem(null)}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.08)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    color: '#fff',
+                    borderRadius: '8px',
+                    padding: '6px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
             </div>
 
             {/* Metadata bar */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
+              gridTemplateColumns: 'repeat(5, 1fr)',
               gap: '10px',
               padding: '10px 14px',
               background: 'rgba(0, 0, 0, 0.3)',
@@ -1759,36 +2748,138 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                 <div style={{ fontWeight: 600, color: '#fff' }}>v{inspectingItem.doc.version} • {inspectingItem.doc.fileType.toUpperCase()}</div>
               </div>
               <div>
+                <span style={{ color: 'var(--text-muted)' }}>Pages & Size:</span>
+                <div style={{ fontWeight: 600, color: '#fde68a' }}>{inspectingItem.doc.pageCount || getFullDocumentSections(inspectingItem.doc, inspectingItem.project).length} Pages • {inspectingItem.doc.fileSize || '1.8 MB'}</div>
+              </div>
+              <div>
                 <span style={{ color: 'var(--text-muted)' }}>Integrity Seal:</span>
                 <div style={{ fontWeight: 600, color: '#10b981' }}>Act 843 Verified</div>
               </div>
             </div>
 
-            {/* Extracted OCR Text Content Viewer */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, minHeight: 0 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.76rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--ghana-emerald)', letterSpacing: '0.05em' }}>
-                  Extracted OCR Document Text
-                </span>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                  Indexed via MinIO & Tesseract OCR Pipeline
-                </span>
+            {/* Reader Mode Tabs & Search */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => setInspectReaderTab('full')}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    fontSize: '0.74rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    border: inspectReaderTab === 'full' ? '1px solid var(--ghana-emerald)' : '1px solid var(--border-color)',
+                    background: inspectReaderTab === 'full' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.04)',
+                    color: inspectReaderTab === 'full' ? '#a7f3d0' : 'var(--text-secondary)'
+                  }}
+                >
+                  Complete Full Document (All Pages)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInspectReaderTab('sections')}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    fontSize: '0.74rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    border: inspectReaderTab === 'sections' ? '1px solid #fbbf24' : '1px solid var(--border-color)',
+                    background: inspectReaderTab === 'sections' ? 'rgba(251, 191, 36, 0.2)' : 'rgba(255,255,255,0.04)',
+                    color: inspectReaderTab === 'sections' ? '#fde68a' : 'var(--text-secondary)'
+                  }}
+                >
+                  Page-by-Page Reader ({getFullDocumentSections(inspectingItem.doc, inspectingItem.project).length} Pages)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInspectReaderTab('ocr')}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    fontSize: '0.74rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    border: inspectReaderTab === 'ocr' ? '1px solid #60a5fa' : '1px solid var(--border-color)',
+                    background: inspectReaderTab === 'ocr' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.04)',
+                    color: inspectReaderTab === 'ocr' ? '#93c5fd' : 'var(--text-secondary)'
+                  }}
+                >
+                  Extracted OCR Summary
+                </button>
               </div>
 
+              <div style={{ position: 'relative', width: '240px' }}>
+                <input
+                  type="text"
+                  placeholder="Search inside full document..."
+                  value={inspectSearchQuery}
+                  onChange={(e) => setInspectSearchQuery(e.target.value)}
+                  className="form-input"
+                  style={{ paddingLeft: '30px', fontSize: '0.74rem', height: '32px' }}
+                />
+                <Search style={{ position: 'absolute', left: '9px', top: '9px', width: '13px', height: '13px', color: 'var(--text-muted)' }} />
+              </div>
+            </div>
+
+            {inspectReaderTab === 'sections' && (
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {getFullDocumentSections(inspectingItem.doc, inspectingItem.project).map((sec, idx) => (
+                  <button
+                    key={sec.pageNumber}
+                    type="button"
+                    onClick={() => setInspectSectionIdx(idx)}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      fontSize: '0.7rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      border: inspectSectionIdx === idx ? '1px solid #fbbf24' : '1px solid rgba(255,255,255,0.12)',
+                      background: inspectSectionIdx === idx ? 'rgba(251, 191, 36, 0.22)' : 'rgba(255,255,255,0.03)',
+                      color: inspectSectionIdx === idx ? '#fde68a' : 'var(--text-secondary)'
+                    }}
+                  >
+                    Page {sec.pageNumber}: {sec.sectionTitle}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Full Document Text Content Viewer */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, minHeight: 0 }}>
               <div style={{
                 flex: 1,
                 overflowY: 'auto',
-                background: 'rgba(0, 0, 0, 0.4)',
+                background: 'rgba(0, 0, 0, 0.45)',
                 border: '1px solid var(--border-color)',
                 borderRadius: '8px',
-                padding: '14px',
-                fontSize: '0.82rem',
-                lineHeight: 1.6,
+                padding: '16px',
+                fontSize: '0.8rem',
+                lineHeight: 1.65,
                 color: '#e2e8f0',
-                fontFamily: 'monospace',
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
                 whiteSpace: 'pre-wrap'
               }}>
-                {getDocumentOcrText(inspectingItem.doc.id, inspectingItem.doc.fileName, inspectingItem.project.name)}
+                {(() => {
+                  const sections = getFullDocumentSections(inspectingItem.doc, inspectingItem.project);
+                  const activeSec = sections[inspectSectionIdx] || sections[0];
+                  const content =
+                    inspectReaderTab === 'full'
+                      ? getFullDocumentText(inspectingItem.doc, inspectingItem.project)
+                      : inspectReaderTab === 'sections' && activeSec
+                      ? `--- PAGE ${activeSec.pageNumber} OF ${sections.length}: ${activeSec.sectionTitle} ---\n\n${activeSec.content}`
+                      : getDocumentOcrText(inspectingItem.doc.id, inspectingItem.doc.fileName, inspectingItem.project.name);
+
+                  if (!inspectSearchQuery.trim()) return content;
+                  const matched = content
+                    .split('\n')
+                    .filter(line => line.toLowerCase().includes(inspectSearchQuery.toLowerCase()));
+                  return matched.length > 0
+                    ? `=== MATCHING LINES FOR "${inspectSearchQuery}" (${matched.length}) ===\n\n${matched.join('\n\n')}\n\n=== FULL DOCUMENT BELOW ===\n\n${content}`
+                    : content;
+                })()}
               </div>
             </div>
 
@@ -1823,7 +2914,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                     }}
                   >
                     <Award size={14} />
-                    <span>Review, Grade & Comment</span>
+                    <span>Review, Grade & Comment (Side-by-Side Full Doc)</span>
                   </button>
                 )}
 
@@ -1833,7 +2924,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                   className="btn btn-primary"
                   style={{ padding: '8px 20px', fontSize: '0.8rem' }}
                 >
-                  Done Reading Dossier
+                  Done Reading Full Document
                 </button>
               </div>
             </div>
@@ -1848,6 +2939,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
           onClose={() => setReviewingItem(null)}
           document={reviewingItem.doc}
           project={reviewingItem.project}
+          allProjects={projects}
           session={session as any}
           onSaveReview={(projectId, docId, comment, comp, read, stat) => {
             if (onReviewDocument) {

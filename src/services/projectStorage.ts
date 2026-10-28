@@ -20,7 +20,22 @@ export function loadStoredProjects(): AIProject[] {
 
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed;
+      // Ensure pre-seeded onboarder documents from sampleProjects are merged if missing
+      const merged = parsed.map((proj: AIProject) => {
+        const sample = sampleProjects.find(s => s.id === proj.id);
+        if (!sample) return proj;
+        const existingIds = new Set((proj.documents || []).map(d => d.id));
+        const missingDocs = (sample.documents || []).filter(d => !existingIds.has(d.id));
+        if (missingDocs.length > 0) {
+          return {
+            ...proj,
+            documents: [...(proj.documents || []), ...missingDocs],
+            hasFirstTimerUpload: proj.hasFirstTimerUpload || sample.hasFirstTimerUpload
+          };
+        }
+        return proj;
+      });
+      return merged;
     }
   } catch (error) {
     console.error('Failed to load projects from localStorage:', error);

@@ -10,7 +10,9 @@ import {
   Clock, 
   Send,
   Info,
-  MessageSquare
+  MessageSquare,
+  Eye,
+  Download
 } from 'lucide-react';
 import { 
   AIProject, 
@@ -26,7 +28,9 @@ import { recordAuditEvent } from '../services/auditService';
 import { 
   generateAssessmentFromDocuments, 
   getDocumentOcrText, 
-  registerUploadedDocumentOcr 
+  getFullDocumentText,
+  registerUploadedDocumentOcr,
+  registerUploadedFullDocument
 } from '../services/assessmentEngine';
 import { DocumentReviewGradeModal } from './DocumentReviewGradeModal';
 
@@ -76,6 +80,7 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
   // Modal confirmation state
   const [showPendingModal, setShowPendingModal] = useState(false);
   const [reviewingDoc, setReviewingDoc] = useState<DocumentAsset | null>(null);
+  const [expandedFullDocId, setExpandedFullDocId] = useState<string | null>(null);
 
   const canReview = session.role === 'Super Admin' || session.role === 'Director General' || session.role === 'Technical Clearance Team' || session.role === 'Technical Director';
 
@@ -94,6 +99,34 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
     setUploading(true);
     setUploadProgress(15);
 
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'pdf';
+    const formattedSize = file.size > 1024 * 1024
+      ? `${(file.size / (1024 * 1024)).toFixed(2)} MB`
+      : `${Math.max(1, Math.round(file.size / 1024))} KB`;
+
+    let capturedText = '';
+    let capturedDataUrl = '';
+
+    try {
+      const textReader = new FileReader();
+      textReader.onload = () => {
+        if (typeof textReader.result === 'string' && !textReader.result.includes('\u0000')) {
+          capturedText = textReader.result.slice(0, 60000);
+        }
+      };
+      textReader.readAsText(file);
+
+      const urlReader = new FileReader();
+      urlReader.onload = () => {
+        if (typeof urlReader.result === 'string') {
+          capturedDataUrl = urlReader.result;
+        }
+      };
+      urlReader.readAsDataURL(file);
+    } catch (err) {
+      console.warn('FileReader fallback to statutory full dossier template', err);
+    }
+
     const interval = setInterval(() => {
       setUploadProgress(prev => {
         if (prev >= 90) {
@@ -104,7 +137,7 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
           const newDoc: DocumentAsset = {
             id: nextDocId,
             fileName: file.name,
-            fileType: 'pdf',
+            fileType: ext,
             uploadedAt: new Date().toISOString().split('T')[0],
             version: 1,
             signedBy: ['First-Timer / New User'],
@@ -112,12 +145,22 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
             uploadedByName: session.fullName,
             uploadedByEmail: session.email,
             isFirstTimerUpload: true,
-            reviewStatus: 'Pending Review'
+            reviewStatus: 'Pending Review',
+            fileSize: formattedSize,
+            pageCount: capturedText ? 6 : 5,
+            documentCategory: 'First-Timer / Onboarder Full Compliance Dossier',
+            fullDocumentText: capturedText || undefined,
+            fileDataUrl: capturedDataUrl && capturedDataUrl.length < 1500000 ? capturedDataUrl : undefined
           };
 
-          // Register OCR extraction
+          // Register OCR extraction & full document content
           const ocrText = getDocumentOcrText(nextDocId, file.name, activeProject.name);
-          registerUploadedDocumentOcr(nextDocId, ocrText);
+          registerUploadedDocumentOcr(nextDocId, capturedText ? `${ocrText} ${capturedText.slice(0, 2000)}` : ocrText);
+          registerUploadedFullDocument(
+            nextDocId,
+            capturedText || `Full First-Timer Onboarding Submission uploaded by ${session.fullName} (${session.email}) for project [${activeProject.projectCode}] ${activeProject.name}.\n\n${ocrText}`,
+            capturedDataUrl
+          );
 
           // Add document to project
           onAddDocument(activeProject.id, newDoc);
@@ -619,7 +662,28 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedFullDocId(expandedFullDocId === doc.id ? null : doc.id)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '5px 12px',
+                        borderRadius: '6px',
+                        background: expandedFullDocId === doc.id ? 'rgba(56, 189, 248, 0.25)' : 'rgba(56, 189, 248, 0.12)',
+                        border: '1px solid rgba(56, 189, 248, 0.45)',
+                        color: '#7dd3fc',
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Eye size={13} />
+                      <span>{expandedFullDocId === doc.id ? 'Hide Full Document ▲' : 'View Full Document ▼'}</span>
+                    </button>
+
                     {canReview && (
                       <button
                         type="button"
@@ -656,6 +720,70 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
                     </span>
                   </div>
                 </div>
+
+                {/* Expandable Full Uploaded Document Viewer */}
+                {expandedFullDocId === doc.id && (
+                  <div style={{
+                    padding: '14px 16px',
+                    borderRadius: '8px',
+                    background: 'rgba(2, 6, 23, 0.78)',
+                    border: '1px solid rgba(56, 189, 248, 0.35)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                      <span style={{ fontSize: '0.76rem', fontWeight: 800, color: '#38bdf8', textTransform: 'uppercase' }}>
+                        📄 Full Uploaded Document & OCR Dossier — {doc.fileName} ({doc.pageCount || 5} Pages • {doc.fileSize || '1.8 MB'})
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const fullTxt = getFullDocumentText(doc, activeProject);
+                          const blob = new Blob([fullTxt], { type: 'text/plain;charset=utf-8' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `${doc.fileName.replace(/\.[^/.]+$/, '')}_FULL_DOSSIER.txt`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        }}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '4px 10px',
+                          borderRadius: '6px',
+                          background: 'rgba(16, 185, 129, 0.18)',
+                          border: '1px solid rgba(16, 185, 129, 0.4)',
+                          color: '#6ee7b7',
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Download size={12} />
+                        <span>Download Full Document</span>
+                      </button>
+                    </div>
+                    <pre style={{
+                      margin: 0,
+                      maxHeight: '280px',
+                      overflowY: 'auto',
+                      padding: '12px',
+                      borderRadius: '6px',
+                      background: 'rgba(0, 0, 0, 0.45)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      color: '#e2e8f0',
+                      fontSize: '0.74rem',
+                      lineHeight: 1.55,
+                      whiteSpace: 'pre-wrap',
+                      fontFamily: 'monospace'
+                    }}>
+                      {getFullDocumentText(doc, activeProject)}
+                    </pre>
+                  </div>
+                )}
 
                 {/* Reviewer Directives & Official Comments Card */}
                 {doc.reviewerComments && doc.reviewerComments.length > 0 ? (

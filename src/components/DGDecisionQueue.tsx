@@ -10,7 +10,8 @@ import {
   FileCheck2,
   Stamp,
   AlertTriangle,
-  MessageSquare
+  MessageSquare,
+  BookOpen
 } from 'lucide-react';
 import { 
   AIProject, 
@@ -24,6 +25,7 @@ import { DGVerdictDecision, DGVerdictRecord } from '../data/verdictTypes';
 import { getDGVerdicts, recordDGVerdict } from '../services/verdictService';
 import { canPerformAction } from '../services/rbacPolicy';
 import { DocumentReviewGradeModal } from './DocumentReviewGradeModal';
+import { getFullDocumentText } from '../services/assessmentEngine';
 
 interface DGDecisionQueueProps {
   projects: AIProject[];
@@ -59,6 +61,7 @@ export const DGDecisionQueue: React.FC<DGDecisionQueueProps> = ({
   const [activeSubTab, setActiveSubTab] = useState<'queue' | 'history'>('queue');
   const [verdictHistory, setVerdictHistory] = useState<DGVerdictRecord[]>(() => getDGVerdicts());
   const [reviewingDoc, setReviewingDoc] = useState<DocumentAsset | null>(null);
+  const [expandedFullDocId, setExpandedFullDocId] = useState<string | null>(null);
 
   const canPassVerdict = canPerformAction(session.role, 'PASS_DG_VERDICT');
 
@@ -457,7 +460,28 @@ export const DGDecisionQueue: React.FC<DGDecisionQueueProps> = ({
                                 </div>
                               </div>
 
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedFullDocId(expandedFullDocId === doc.id ? null : doc.id)}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    padding: '5px 10px',
+                                    borderRadius: '6px',
+                                    background: expandedFullDocId === doc.id ? 'rgba(251, 191, 36, 0.22)' : 'rgba(59, 130, 246, 0.16)',
+                                    border: expandedFullDocId === doc.id ? '1px solid rgba(251, 191, 36, 0.5)' : '1px solid rgba(59, 130, 246, 0.35)',
+                                    color: expandedFullDocId === doc.id ? '#fde68a' : '#93c5fd',
+                                    fontSize: '0.72rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  <BookOpen size={13} />
+                                  <span>{expandedFullDocId === doc.id ? 'Hide Full Document' : 'Read Full Uploaded Document'}</span>
+                                </button>
+
                                 <button
                                   type="button"
                                   onClick={() => setReviewingDoc(doc)}
@@ -477,10 +501,29 @@ export const DGDecisionQueue: React.FC<DGDecisionQueueProps> = ({
                                   }}
                                 >
                                   <Award size={13} />
-                                  <span>Review, Grade & Comment</span>
+                                  <span>Review, Grade & Comment (Full Doc)</span>
                                 </button>
                               </div>
                             </div>
+
+                            {expandedFullDocId === doc.id && (
+                              <div style={{
+                                marginTop: '6px',
+                                padding: '12px 14px',
+                                borderRadius: '8px',
+                                background: 'rgba(5, 10, 20, 0.9)',
+                                border: '1px solid rgba(251, 191, 36, 0.35)',
+                                maxHeight: '280px',
+                                overflowY: 'auto',
+                                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                                fontSize: '0.74rem',
+                                lineHeight: 1.6,
+                                color: '#e2e8f0',
+                                whiteSpace: 'pre-wrap'
+                              }}>
+                                {getFullDocumentText(doc, selectedProject)}
+                              </div>
+                            )}
 
                             {/* Existing Reviewer Comments */}
                             {doc.reviewerComments && doc.reviewerComments.length > 0 && (
@@ -841,6 +884,7 @@ export const DGDecisionQueue: React.FC<DGDecisionQueueProps> = ({
           onClose={() => setReviewingDoc(null)}
           document={reviewingDoc}
           project={selectedProject}
+          allProjects={projects}
           session={session}
           onSaveReview={(projectId, docId, comment, comp, read, stat) => {
             if (onReviewDocument) {
