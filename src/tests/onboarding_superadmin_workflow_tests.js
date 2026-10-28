@@ -420,6 +420,68 @@ test('Director General final sign-off updates project status and exposes exact r
   );
 });
 
+test('Director General signing and approving final verdict increases Dashboard Total AI Projects count and Approved Budget', () => {
+  const isProjectApprovedByDG = (p) => {
+    if (p.dgFinalVerdict) {
+      return p.dgFinalVerdict.finalStatusLabel === 'Approved' || p.dgFinalVerdict.verdict === 'Approve';
+    }
+    if (p.reviewStatus) {
+      return p.reviewStatus === 'Approved';
+    }
+    return p.status === 'Active' || p.status === 'Completed';
+  };
+
+  let portfolio = [
+    { id: 'proj-6', name: 'LEAP Biometric Social Transfer Registry', status: 'Active', reviewStatus: 'Approved', budget: { totalAllocated: 12000000, utilized: 10800000 } },
+    { id: 'proj-1', name: 'GhanaPostGPS', status: 'Delayed', reviewStatus: 'Recommended', budget: { totalAllocated: 24000000, utilized: 21500000 } },
+    { id: 'proj-2', name: 'GhanaCard AFIS', status: 'Delayed', reviewStatus: 'Recommended', budget: { totalAllocated: 50000000, utilized: 47000000 } }
+  ];
+
+  const getDashboardTotals = (projectsList) => {
+    const approved = projectsList.filter(isProjectApprovedByDG);
+    return {
+      totalProjectsCount: approved.length,
+      totalBudget: approved.reduce((sum, p) => sum + p.budget.totalAllocated, 0)
+    };
+  };
+
+  const beforeApproval = getDashboardTotals(portfolio);
+  assert(beforeApproval.totalProjectsCount === 1, 'Before DG approval, only 1 project is counted in Approved Total AI Projects');
+  assert(beforeApproval.totalBudget === 12000000, 'Before DG approval, Approved Budget is GHS 12,000,000');
+
+  // Director General signs and approves proj-1 (GHS 24,000,000)
+  portfolio = portfolio.map(p => p.id === 'proj-1' ? {
+    ...p,
+    status: 'Active',
+    reviewStatus: 'Approved',
+    dgFinalVerdict: {
+      verdict: 'Approve',
+      finalStatusLabel: 'Approved',
+      reasons: 'Statutory approval granted under Act 771 and Act 843.'
+    }
+  } : p);
+
+  const afterFirstApproval = getDashboardTotals(portfolio);
+  assert(afterFirstApproval.totalProjectsCount === 2, 'After DG approves proj-1, Total AI Projects increases from 1 to 2 (+1)');
+  assert(afterFirstApproval.totalBudget === 36000000, 'After DG approves proj-1, Approved Budget increases from GHS 12M to GHS 36M (+GHS 24,000,000)');
+
+  // Director General signs and approves proj-2 (GHS 50,000,000)
+  portfolio = portfolio.map(p => p.id === 'proj-2' ? {
+    ...p,
+    status: 'Active',
+    reviewStatus: 'Approved',
+    dgFinalVerdict: {
+      verdict: 'Approve',
+      finalStatusLabel: 'Approved',
+      reasons: 'Biometric HSM audit verified; approved for national registry.'
+    }
+  } : p);
+
+  const afterSecondApproval = getDashboardTotals(portfolio);
+  assert(afterSecondApproval.totalProjectsCount === 3, 'After DG approves proj-2, Total AI Projects increases from 2 to 3 (+1)');
+  assert(afterSecondApproval.totalBudget === 86000000, 'After DG approves proj-2, Approved Budget increases from GHS 36M to GHS 86M (+GHS 50,000,000)');
+});
+
 const passed = tests.filter(t => t.passed).length;
 const total = tests.length;
 

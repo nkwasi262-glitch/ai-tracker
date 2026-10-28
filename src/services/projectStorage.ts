@@ -1,6 +1,6 @@
 import { AIProject, sampleProjects } from '../data/sampleProjects';
 
-const PROJECTS_STORAGE_KEY = 'gnaprms_projects_v1';
+const PROJECTS_STORAGE_KEY = 'gnaprms_projects_v2';
 
 /**
  * Loads registered projects from localStorage, falling back to sampleProjects if empty.

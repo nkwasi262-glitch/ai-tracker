@@ -149,7 +149,11 @@ function App() {
           const updatedDocs = [newDoc, ...p.documents];
           const tempProject = { ...p, documents: updatedDocs };
           const auto = generateAssessmentFromDocuments(tempProject, session || undefined);
-          const newReviewStatus: ReviewWorkflowStatus = p.reviewStatus === 'Approved' ? 'Approved' : 'Under Technical Review';
+          const newReviewStatus: ReviewWorkflowStatus = isFromFirstTimer
+            ? 'Recommended'
+            : p.reviewStatus === 'Approved'
+            ? 'Approved'
+            : 'Under Technical Review';
           const updatedProj: AIProject = {
             ...p,
             documents: updatedDocs,
@@ -158,7 +162,9 @@ function App() {
             autoAssessment: auto.details,
             zeroAssumptionAudit: auto.zeroAssumptionAudit,
             hasFirstTimerUpload: isFromFirstTimer || p.hasFirstTimerUpload,
-            reviewStatus: newReviewStatus
+            reviewStatus: newReviewStatus,
+            dgFinalVerdict: isFromFirstTimer ? undefined : p.dgFinalVerdict,
+            status: isFromFirstTimer ? 'Delayed' : p.status
           };
           return updatedProj;
         }
@@ -242,7 +248,8 @@ function App() {
   const handleUpdateProjectReviewStatus = (
     projectId: string, 
     newReviewStatus: ReviewWorkflowStatus, 
-    notes?: string
+    notes?: string,
+    approvedBudgetAmount?: number
   ) => {
     setProjects(prev => {
       const updated = prev.map(p => {
@@ -297,11 +304,33 @@ function App() {
               }
             : p.dgFinalVerdict;
 
+          let nextBudget = { ...p.budget };
+          if (newReviewStatus === 'Approved') {
+            const targetAllocated =
+              approvedBudgetAmount && approvedBudgetAmount > 0
+                ? approvedBudgetAmount
+                : p.budget.totalAllocated > 0
+                ? p.budget.totalAllocated
+                : 12000000;
+            const nextDisbursed =
+              p.budget.disbursed > 0 ? p.budget.disbursed : Math.round(targetAllocated * 0.5);
+            const nextUtilized =
+              p.budget.utilized > 0 ? p.budget.utilized : Math.round(targetAllocated * 0.35);
+            nextBudget = {
+              ...p.budget,
+              totalAllocated: targetAllocated,
+              disbursed: nextDisbursed,
+              utilized: nextUtilized,
+              remaining: Math.max(0, targetAllocated - nextDisbursed)
+            };
+          }
+
           return {
             ...p,
             reviewStatus: newReviewStatus,
             status: nextOperationalStatus,
             dgFinalVerdict: nextDgFinalVerdict,
+            budget: nextBudget,
             technicalReview: notes ? {
               reviewerName: session?.fullName,
               reviewerRole: session?.role,
@@ -346,7 +375,7 @@ function App() {
             return d;
           });
 
-          const effectiveReviewStatus = newProjectStatus || p.reviewStatus;
+          let effectiveReviewStatus = newProjectStatus || p.reviewStatus;
           const isDGRole = session?.role === 'Director General' || session?.role === 'Super Admin';
           let updatedDgVerdict = p.dgFinalVerdict;
           let updatedOpStatus = p.status;
@@ -365,6 +394,13 @@ function App() {
                 : mappedDecision === 'Reject'
                 ? 'Rejected'
                 : 'Requires More Understanding';
+
+            effectiveReviewStatus =
+              mappedDecision === 'Approve'
+                ? 'Approved'
+                : mappedDecision === 'Reject'
+                ? 'Rejected'
+                : 'Returned';
 
             updatedOpStatus =
               mappedDecision === 'Approve'

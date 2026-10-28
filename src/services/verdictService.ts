@@ -1,26 +1,26 @@
 import { DGVerdictRecord, DGVerdictDecision } from '../data/verdictTypes';
 import { recordAuditEvent } from './auditService';
 
-const VERDICTS_STORAGE_KEY = 'gnaprms_dg_verdicts_v2';
+const VERDICTS_STORAGE_KEY = 'gnaprms_dg_verdicts_v3';
 
 const SEED_VERDICTS: DGVerdictRecord[] = [
   {
     id: 'verd-001',
-    projectId: 'proj-1',
-    projectCode: 'GN-AI-2026-001',
-    projectName: 'GhanaPostGPS (National Digital Addressing System)',
-    mda: 'Ministry of Communications and Digitalisation (MoCD)',
+    projectId: 'proj-6',
+    projectCode: 'GN-AI-2026-006',
+    projectName: 'LEAP Biometric Social Transfer Registry',
+    mda: 'Ministry of Gender, Children and Social Protection',
     verdict: 'Approve',
     finalStatusLabel: 'Approved',
-    mandatoryComments: 'Statutory compliance satisfied under NITA Act 771 and Data Protection Act 843. Approved for operational continuous monitoring across all 16 regions.',
+    mandatoryComments: 'Statutory compliance satisfied under NITA Act 771 and Data Protection Act 843. Biometric social transfer registry approved for operational deployment and MoF treasury warrant release.',
     reviewedByName: 'Hon. Director General',
     reviewedByRole: 'Director General',
     reviewedByEmail: 'dg@nita.gov.gh',
     timestamp: '2026-09-30T14:20:10Z',
-    technicalRecommendationSummary: 'Technical clearance validated. 94% ethical compliance score.',
-    complianceGradeAtReview: 'Excellent',
+    technicalRecommendationSummary: 'Technical clearance validated. 92% ethical compliance score.',
+    complianceGradeAtReview: 'Good',
     clearanceOfficer: 'Ing. Emmanuel Darko (Technical Director)',
-    signatureSeal: 'DG-SEAL-NITA-2026-001A9F'
+    signatureSeal: 'DG-SEAL-NITA-2026-006A9F'
   },
   {
     id: 'verd-002',

@@ -11,7 +11,7 @@ import {
   Edit3,
   Trash2
 } from 'lucide-react';
-import { AIProject, formatNumberToWords, computeZeroAssumptionSummary } from '../data/sampleProjects';
+import { AIProject, formatNumberToWords, computeZeroAssumptionSummary, isProjectApprovedByDG } from '../data/sampleProjects';
 import { UserSession } from '../data/authTypes';
 import { recordAuditEvent } from '../services/auditService';
 import { canPerformAction } from '../services/rbacPolicy';
@@ -99,22 +99,23 @@ export const FinanceMinisterView: React.FC<FinanceMinisterViewProps> = ({ projec
 
   const canVerifyExpenditure = canPerformAction(session.role, 'VERIFY_FINANCIAL_EXPENDITURE');
   const zeroMetrics = computeZeroAssumptionSummary(projects);
+  const approvedProjects = projects.filter(isProjectApprovedByDG);
 
-  // Financial calculations
-  const totalAllocated = projects.reduce((acc, p) => acc + p.budget.totalAllocated, 0);
-  const totalDisbursed = projects.reduce((acc, p) => acc + p.budget.disbursed, 0);
-  const totalUtilized = projects.reduce((acc, p) => acc + p.budget.utilized, 0);
-  const totalRemaining = projects.reduce((acc, p) => acc + p.budget.remaining, 0);
+  // Financial calculations (DG-Approved National Portfolio)
+  const totalAllocated = approvedProjects.reduce((acc, p) => acc + p.budget.totalAllocated, 0);
+  const totalDisbursed = approvedProjects.reduce((acc, p) => acc + p.budget.disbursed, 0);
+  const totalUtilized = approvedProjects.reduce((acc, p) => acc + p.budget.utilized, 0);
+  const totalRemaining = approvedProjects.reduce((acc, p) => acc + p.budget.remaining, 0);
   const utilizationRate = totalAllocated > 0 ? (totalUtilized / totalAllocated) * 100 : 0;
   const disbursementRate = totalAllocated > 0 ? (totalDisbursed / totalAllocated) * 100 : 0;
 
   // Breakdown by funding source
   const fundingSources = ['Government', 'Development Partners', 'Donors', 'Private Sector', 'Research Grants'];
   const fundingBreakdown = fundingSources.map(source => {
-    const allocated = projects
+    const allocated = approvedProjects
       .filter(p => p.budget.primaryFundingSource === source)
       .reduce((acc, p) => acc + p.budget.totalAllocated, 0);
-    const count = projects.filter(p => p.budget.primaryFundingSource === source).length;
+    const count = approvedProjects.filter(p => p.budget.primaryFundingSource === source).length;
     return {
       source,
       allocated,

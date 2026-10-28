@@ -151,29 +151,45 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
     };
   };
 
-  const activeProjectsList = projects.filter(p => p.status === 'Active');
-  const delayedProjectsList = projects.filter(p => p.status === 'Delayed');
-  const completedProjectsList = projects.filter(p => p.status === 'Completed');
+  // Determine whether a project is part of the Official DG-Approved Portfolio
+  const isProjectApproved = (p: AIProject) => {
+    const v = resolveProjectDGVerdict(p);
+    if (v.hasFinalVerdict) {
+      return v.statusLabel === 'Approved';
+    }
+    if (p.reviewStatus && p.reviewStatus !== 'Approved') {
+      return false;
+    }
+    return p.status === 'Active' || p.status === 'Completed';
+  };
+
+  const approvedPortfolioProjects = projects.filter(isProjectApproved);
+  const pendingApprovalProjects = projects.filter(p => !isProjectApproved(p) && resolveProjectDGVerdict(p).statusLabel !== 'Rejected');
+  const pendingApprovalBudget = pendingApprovalProjects.reduce((acc, p) => acc + p.budget.totalAllocated, 0);
+
+  const activeProjectsList = approvedPortfolioProjects.filter(p => p.status === 'Active');
+  const delayedProjectsList = projects.filter(p => p.status === 'Delayed' || resolveProjectDGVerdict(p).statusLabel === 'Requires More Understanding');
+  const completedProjectsList = approvedPortfolioProjects.filter(p => p.status === 'Completed');
 
   // DG Verdict Counts across filtered sector projects
   const dgApprovedProjects = projects.filter(p => resolveProjectDGVerdict(p).statusLabel === 'Approved');
   const dgRequiresUnderstandingProjects = projects.filter(p => resolveProjectDGVerdict(p).statusLabel === 'Requires More Understanding');
   const dgRejectedProjects = projects.filter(p => resolveProjectDGVerdict(p).statusLabel === 'Rejected');
 
-  // Calculates KPI values
-  const totalProjectsCount = projects.length;
-  const activeProjectsCount = projects.filter(p => p.status === 'Active').length;
-  const delayedProjectsCount = projects.filter(p => p.status === 'Delayed').length;
+  // Calculates KPI values based on DG-Approved Portfolio (so signing & approving a project immediately increases Total AI Projects & Approved Budget)
+  const totalProjectsCount = approvedPortfolioProjects.length;
+  const activeProjectsCount = activeProjectsList.length;
+  const delayedProjectsCount = delayedProjectsList.length;
   
-  const totalBudget = projects.reduce((acc, p) => acc + p.budget.totalAllocated, 0);
-  const totalUtilized = projects.reduce((acc, p) => acc + p.budget.utilized, 0);
+  const totalBudget = approvedPortfolioProjects.reduce((acc, p) => acc + p.budget.totalAllocated, 0);
+  const totalUtilized = approvedPortfolioProjects.reduce((acc, p) => acc + p.budget.utilized, 0);
   const budgetUtilizationRate = totalBudget > 0 ? (totalUtilized / totalBudget) * 100 : 0;
 
   const avgReadiness = totalProjectsCount > 0 
-    ? projects.reduce((acc, p) => acc + p.readinessScore, 0) / totalProjectsCount 
+    ? approvedPortfolioProjects.reduce((acc, p) => acc + p.readinessScore, 0) / totalProjectsCount 
     : 0;
   const avgCompliance = totalProjectsCount > 0 
-    ? projects.reduce((acc, p) => {
+    ? approvedPortfolioProjects.reduce((acc, p) => {
         const s = p.compliance;
         const weightedScore = (s.fairness * 0.20) + (s.transparency * 0.25) + (s.privacy * 0.20) + (s.security * 0.35);
         return acc + weightedScore;
@@ -188,8 +204,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
     ? projects 
     : projects.filter(p => p.sector === selectedSector);
 
-  // 1. Data formulation for Budgets Chart
-  const budgetChartData = filteredProjects.map(p => ({
+  const approvedFilteredProjects = filteredProjects.filter(isProjectApproved);
+
+  // 1. Data formulation for Budgets Chart (DG-Approved Portfolio)
+  const budgetChartData = approvedFilteredProjects.map(p => ({
     name: p.mdaCode,
     Approved: p.budget.totalAllocated / 1000000, // GHS Millions for graph scaling
     Utilized: p.budget.utilized / 1000000,
@@ -201,7 +219,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
 
   // 2. Data formulation for Sectors (Radar)
   const sectorCounts: { [key: string]: number } = {};
-  projects.forEach(p => {
+  approvedPortfolioProjects.forEach(p => {
     sectorCounts[p.sector] = (sectorCounts[p.sector] || 0) + 1;
   });
   const sectorChartData = Object.keys(sectorCounts).map(sector => ({
@@ -412,13 +430,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
           onClick={() => setShowProjectsTooltip(!showProjectsTooltip)}
         >
           <div>
-            <div className="kpi-title">Total AI Projects</div>
+            <div className="kpi-title">Total AI Projects (Approved)</div>
             <div className="kpi-value">{totalProjectsCount}</div>
             <div className="kpi-sub">
               <span style={{ color: 'var(--ghana-emerald)' }}>Active: {activeProjectsCount}</span> | Delayed: {delayedProjectsCount}
             </div>
             <div style={{ fontSize: '0.68rem', marginTop: '6px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-              <span style={{ color: '#10b981', fontWeight: 700 }}>✓ DG Approved: {dgApprovedProjects.length}</span>
+              <span style={{ color: '#10b981', fontWeight: 700 }}>✓ DG Signed: {dgApprovedProjects.length}</span>
+              <span style={{ color: '#38bdf8', fontWeight: 700 }}>• Pending DG Approval: {pendingApprovalProjects.length}</span>
               <span style={{ color: '#fbbf24', fontWeight: 700 }}>• Needs Understanding: {dgRequiresUnderstandingProjects.length}</span>
               <span style={{ color: '#ef4444', fontWeight: 700 }}>• Rejected: {dgRejectedProjects.length}</span>
             </div>
@@ -538,6 +557,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
           <div className="kpi-sub" style={{ fontSize: '0.72rem', marginTop: '2px' }}>
             Utilization Rate: <span style={{ color: 'var(--ghana-gold)' }}>{budgetUtilizationRate.toFixed(1)}%</span>
           </div>
+          {pendingApprovalBudget > 0 && (
+            <div style={{ fontSize: '0.68rem', marginTop: '5px', color: '#38bdf8', fontWeight: 700 }}>
+              +GHS {pendingApprovalBudget.toLocaleString('en-US')} awaiting DG sign-off ({pendingApprovalProjects.length} projects)
+            </div>
+          )}
           <DollarSign className="kpi-icon-wrapper" />
         </div>
 
@@ -791,6 +815,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
                     </h4>
                     <div style={{ fontSize: '0.73rem', color: 'var(--text-secondary)' }}>
                       {project.mda} ({project.mdaCode}) • Sector: <strong style={{ color: '#e2e8f0' }}>{project.sector}</strong>
+                    </div>
+                    <div style={{ fontSize: '0.73rem', marginTop: '4px', color: isProjectApproved(project) ? '#10b981' : '#fbbf24', fontWeight: 700 }}>
+                      Budget Allocation: GHS {project.budget.totalAllocated.toLocaleString('en-US')} ({isProjectApproved(project) ? '✓ Included in Approved Budget' : isRejected ? '✕ Excluded (Rejected)' : '⏳ Pending DG Approval'})
                     </div>
                   </div>
 

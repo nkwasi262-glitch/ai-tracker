@@ -19,7 +19,9 @@ import {
   DocumentAsset,
   DocumentReviewComment,
   ComplianceScore,
-  ReviewWorkflowStatus 
+  ReviewWorkflowStatus,
+  formatNumberToWords,
+  isProjectApprovedByDG
 } from '../data/sampleProjects';
 import { UserSession } from '../data/authTypes';
 import { DGVerdictDecision, DGVerdictRecord } from '../data/verdictTypes';
@@ -31,7 +33,7 @@ import { getFullDocumentText, downloadOriginalDocument, getRealDocumentPreviewUr
 interface DGDecisionQueueProps {
   projects: AIProject[];
   session: UserSession;
-  onUpdateProjectStatus: (projectId: string, newReviewStatus: ReviewWorkflowStatus, notes?: string) => void;
+  onUpdateProjectStatus: (projectId: string, newReviewStatus: ReviewWorkflowStatus, notes?: string, approvedBudgetAmount?: number) => void;
   onReviewDocument?: (
     projectId: string,
     docId: string,
@@ -58,6 +60,7 @@ export const DGDecisionQueue: React.FC<DGDecisionQueueProps> = ({
   // Verdict state
   const [verdict, setVerdict] = useState<DGVerdictDecision>('Approve');
   const [mandatoryComments, setMandatoryComments] = useState('');
+  const [approvedBudgetInput, setApprovedBudgetInput] = useState<number>(selectedProject?.budget?.totalAllocated || 12000000);
   const [submitting, setSubmitting] = useState(false);
   const [successFeedback, setSuccessFeedback] = useState<string | null>(null);
   const [activeSubTab, setActiveSubTab] = useState<'queue' | 'history'>('queue');
@@ -65,7 +68,15 @@ export const DGDecisionQueue: React.FC<DGDecisionQueueProps> = ({
   const [reviewingDoc, setReviewingDoc] = useState<DocumentAsset | null>(null);
   const [expandedFullDocId, setExpandedFullDocId] = useState<string | null>(null);
 
+  React.useEffect(() => {
+    if (selectedProject) {
+      setApprovedBudgetInput(selectedProject.budget?.totalAllocated || 12000000);
+    }
+  }, [selectedProject?.id]);
+
   const canPassVerdict = canPerformAction(session.role, 'PASS_DG_VERDICT');
+  const currentApprovedProjects = projects.filter(isProjectApprovedByDG);
+  const currentApprovedBudget = currentApprovedProjects.reduce((acc, p) => acc + (p.budget?.totalAllocated || 0), 0);
 
   const handleExecuteVerdict = (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,6 +88,13 @@ export const DGDecisionQueue: React.FC<DGDecisionQueueProps> = ({
     }
 
     setSubmitting(true);
+
+    const effectiveBudgetToApprove =
+      verdict === 'Approve' && approvedBudgetInput > 0
+        ? approvedBudgetInput
+        : selectedProject.budget.totalAllocated;
+
+    const wasAlreadyApproved = isProjectApprovedByDG(selectedProject);
 
     // Record formal verdict
     const newRecord = recordDGVerdict({
@@ -94,16 +112,23 @@ export const DGDecisionQueue: React.FC<DGDecisionQueueProps> = ({
       clearanceOfficer: selectedProject.technicalReview?.reviewerName || 'Technical Clearance Team'
     });
 
-    // Update project state in central registry (including DG final verdict & reasons for the Dashboard)
+    // Update project state in central registry (including DG final verdict, reasons & approved budget for the Dashboard)
     let targetStatus: AIProject['reviewStatus'] = 'Approved';
     if (verdict === 'Reject') targetStatus = 'Rejected';
     if (verdict === 'Return for Further Review') targetStatus = 'Returned';
 
-    onUpdateProjectStatus(selectedProject.id, targetStatus, mandatoryComments.trim());
+    onUpdateProjectStatus(selectedProject.id, targetStatus, mandatoryComments.trim(), effectiveBudgetToApprove);
+
+    const nextTotalProjects = verdict === 'Approve' && !wasAlreadyApproved
+      ? currentApprovedProjects.length + 1
+      : currentApprovedProjects.length;
+    const nextTotalBudget = verdict === 'Approve' && !wasAlreadyApproved
+      ? currentApprovedBudget + effectiveBudgetToApprove
+      : currentApprovedBudget;
 
     const statusDisplayLabel =
       verdict === 'Approve'
-        ? 'APPROVED (ACTIVE ON DASHBOARD)'
+        ? `APPROVED — Total Projects increased to ${nextTotalProjects} & Approved Budget increased to GHS ${nextTotalBudget.toLocaleString('en-US')} (+GHS ${effectiveBudgetToApprove.toLocaleString('en-US')})`
         : verdict === 'Reject'
         ? 'REJECTED (REASONS PUBLISHED ON DASHBOARD)'
         : 'REQUIRES MORE UNDERSTANDING (REASONS PUBLISHED ON DASHBOARD)';
@@ -863,6 +888,82 @@ export const DGDecisionQueue: React.FC<DGDecisionQueueProps> = ({
                         </label>
                       </div>
                     </div>
+
+                    {/* Authorized Budget & Live Dashboard Impact Preview when Approving */}
+                    {verdict === 'Approve' && (
+                      <div style={{
+                        padding: '14px 16px',
+                        borderRadius: '10px',
+                        background: 'rgba(16, 185, 129, 0.08)',
+                        border: '1px solid rgba(16, 185, 129, 0.35)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                          <div>
+                            <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#6ee7b7', textTransform: 'uppercase' }}>
+                              ✓ Statutory Budget Allocation & Dashboard Portfolio Impact
+                            </div>
+                            <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                              Confirm or adjust the project's approved budget allocation (GHS). Upon signing, this project and its budget will be added to the National AI Dashboard.
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#a7f3d0' }}>Approved Budget (GHS):</span>
+                            <input
+                              type="number"
+                              min={0}
+                              step={100000}
+                              value={approvedBudgetInput}
+                              onChange={(e) => setApprovedBudgetInput(Math.max(0, Number(e.target.value)))}
+                              style={{
+                                width: '170px',
+                                padding: '6px 10px',
+                                borderRadius: '6px',
+                                background: 'rgba(0,0,0,0.4)',
+                                border: '1px solid rgba(16, 185, 129, 0.5)',
+                                color: '#fff',
+                                fontWeight: 800,
+                                fontSize: '0.84rem'
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                          gap: '10px',
+                          paddingTop: '8px',
+                          borderTop: '1px solid rgba(16, 185, 129, 0.2)',
+                          fontSize: '0.75rem'
+                        }}>
+                          <div style={{ color: '#cbd5e1' }}>
+                            Dashboard Total AI Projects:{' '}
+                            <strong style={{ color: '#fff' }}>{currentApprovedProjects.length}</strong>
+                            {' → '}
+                            <strong style={{ color: '#10b981' }}>
+                              {isProjectApprovedByDG(selectedProject) ? currentApprovedProjects.length : currentApprovedProjects.length + 1}
+                              {!isProjectApprovedByDG(selectedProject) ? ' (+1 Project)' : ' (Already Active)'}
+                            </strong>
+                          </div>
+                          <div style={{ color: '#cbd5e1' }}>
+                            Dashboard Approved Budget:{' '}
+                            <strong style={{ color: '#fff' }}>GHS {currentApprovedBudget.toLocaleString('en-US')}</strong>
+                            {' → '}
+                            <strong style={{ color: '#10b981' }}>
+                              GHS {(
+                                isProjectApprovedByDG(selectedProject)
+                                  ? currentApprovedBudget - selectedProject.budget.totalAllocated + approvedBudgetInput
+                                  : currentApprovedBudget + approvedBudgetInput
+                              ).toLocaleString('en-US')}
+                              {' '}(+{formatNumberToWords(approvedBudgetInput)} GHS)
+                            </strong>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Mandatory Comments / Reasons */}
                     <div>

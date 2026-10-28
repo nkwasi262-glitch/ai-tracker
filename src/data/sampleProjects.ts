@@ -196,7 +196,7 @@ export const sampleProjects: AIProject[] = [
     category: "Smart Cities",
     sector: "Local Government",
     stage: "Operational",
-    status: "Active",
+    status: "Delayed",
     startDate: "2017-10-18",
     endDate: "2028-12-31",
     expectedCompletionDate: "2028-12-31",
@@ -280,23 +280,13 @@ export const sampleProjects: AIProject[] = [
       }
     ],
     hasFirstTimerUpload: true,
-    reviewStatus: "Approved",
-    dgFinalVerdict: {
-      verdict: "Approve",
-      finalStatusLabel: "Approved",
-      reasons: "Statutory compliance satisfied under NITA Act 771 and Data Protection Act 843. Approved for operational continuous monitoring across all 16 regions.",
-      signedByName: "Hon. Director General",
-      signedByRole: "Director General",
-      signedByEmail: "dg@nita.gov.gh",
-      signedAt: "2026-09-30T14:20:10Z",
-      signatureSeal: "DG-SEAL-NITA-2026-001A9F"
-    },
+    reviewStatus: "Recommended",
     technicalReview: {
       reviewerName: "Ing. Emmanuel Darko",
       reviewerRole: "Technical Director",
       reviewerEmail: "e.darko@mocd.gov.gh",
       reviewedAt: "2026-09-28T10:00:00Z",
-      recommendationNotes: "Full architectural conformance verified. Deployed nationally under MoCD supervision."
+      recommendationNotes: "Full architectural conformance verified. Recommended for Director General final statutory sign-off and budget release."
     },
     dpcCertificateNumber: "GH-DPC-2026-092",
     zeroAssumptionAudit: {
@@ -320,7 +310,7 @@ export const sampleProjects: AIProject[] = [
     category: "Computer Vision",
     sector: "Security",
     stage: "Operational",
-    status: "Active",
+    status: "Delayed",
     startDate: "2018-06-04",
     endDate: "2029-12-31",
     expectedCompletionDate: "2029-12-31",
@@ -424,7 +414,7 @@ export const sampleProjects: AIProject[] = [
     category: "Predictive Analytics",
     sector: "Agriculture",
     stage: "Deployment",
-    status: "Active",
+    status: "Delayed",
     startDate: "2020-09-01",
     endDate: "2027-12-31",
     expectedCompletionDate: "2027-11-30",
@@ -758,6 +748,17 @@ export const sampleProjects: AIProject[] = [
     documents: [
       { id: "doc-6-1", fileName: "LEAP_Social_Inclusivity_Charter.pdf", fileType: "pdf", uploadedAt: "2021-03-12", version: 1, signedBy: ["Minister of Gender", "Director of Social Welfare"] }
     ],
+    reviewStatus: "Approved",
+    dgFinalVerdict: {
+      verdict: "Approve",
+      finalStatusLabel: "Approved",
+      reasons: "Statutory compliance satisfied under NITA Act 771 and Data Protection Act 843. Biometric social transfer registry approved for operational deployment and MoF treasury warrant release.",
+      signedByName: "Hon. Director General",
+      signedByRole: "Director General",
+      signedByEmail: "dg@nita.gov.gh",
+      signedAt: "2026-09-30T14:20:10Z",
+      signatureSeal: "DG-SEAL-NITA-2026-006A9F"
+    },
     dpcCertificateNumber: "GH-DPC-2026-440",
     zeroAssumptionAudit: {
       isFullyVerified: true,
@@ -1180,17 +1181,28 @@ export function formatNumberToWords(num: number): string {
   return wordResult.trim();
 }
 
-export function computeZeroAssumptionSummary(projects: AIProject[]) {
-  const total = projects.length;
-  const verifiedCount = projects.filter(p => p.budget?.verificationStatus === 'MoF Audited & Verified' && !p.budget?.hasAssumptionsFlag).length;
-  const unverifiedCount = projects.filter(p => p.budget?.verificationStatus === 'Self-Reported (Unverified)' || p.budget?.hasAssumptionsFlag).length;
-  const flaggedCount = projects.filter(p => p.budget?.verificationStatus === 'Flagged Discrepancy').length;
+export function isProjectApprovedByDG(p: AIProject): boolean {
+  if (p.dgFinalVerdict) {
+    return p.dgFinalVerdict.finalStatusLabel === 'Approved' || p.dgFinalVerdict.verdict === 'Approve';
+  }
+  if (p.reviewStatus) {
+    return p.reviewStatus === 'Approved';
+  }
+  return p.status === 'Active' || p.status === 'Completed';
+}
 
-  const totalAllocated = projects.reduce((acc, p) => acc + (p.budget?.totalAllocated || 0), 0);
-  const verifiedDisbursed = projects
+export function computeZeroAssumptionSummary(projects: AIProject[]) {
+  const approvedProjects = projects.filter(isProjectApprovedByDG);
+  const total = approvedProjects.length;
+  const verifiedCount = approvedProjects.filter(p => p.budget?.verificationStatus === 'MoF Audited & Verified' && !p.budget?.hasAssumptionsFlag).length;
+  const unverifiedCount = approvedProjects.filter(p => p.budget?.verificationStatus === 'Self-Reported (Unverified)' || p.budget?.hasAssumptionsFlag).length;
+  const flaggedCount = projects.filter(p => p.budget?.verificationStatus === 'Flagged Discrepancy' || p.reviewStatus === 'Rejected').length;
+
+  const totalAllocated = approvedProjects.reduce((acc, p) => acc + (p.budget?.totalAllocated || 0), 0);
+  const verifiedDisbursed = approvedProjects
     .filter(p => p.budget?.verificationStatus === 'MoF Audited & Verified')
     .reduce((acc, p) => acc + (p.budget?.disbursed || 0), 0);
-  const unverifiedDisbursed = projects
+  const unverifiedDisbursed = approvedProjects
     .filter(p => p.budget?.verificationStatus !== 'MoF Audited & Verified')
     .reduce((acc, p) => acc + (p.budget?.disbursed || 0), 0);
 
