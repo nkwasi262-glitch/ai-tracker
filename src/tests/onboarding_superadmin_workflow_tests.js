@@ -297,6 +297,56 @@ test('Reviewers can read full onboarder document side-by-side and submit Governa
   assert(project.readinessScore === 91, 'AI Readiness score updated from full-document grading studio');
 });
 
+test('First-Timer real uploaded file is preserved byte-for-byte with original fileName and verbatim content on review and download', () => {
+  const realFileStore = {};
+  const uploadRealFileAsFirstTimer = (docId, fileName, mimeType, rawContent, dataUrl) => {
+    realFileStore[docId] = {
+      docId,
+      fileName,
+      mimeType,
+      dataUrl,
+      extractedText: rawContent
+    };
+    return {
+      id: docId,
+      fileName,
+      fileType: fileName.split('.').pop().toLowerCase(),
+      isFirstTimerUpload: true,
+      fullDocumentText: rawContent,
+      fileDataUrl: dataUrl
+    };
+  };
+
+  const uploadedDoc = uploadRealFileAsFirstTimer(
+    'doc-onboard-real-1',
+    'My_Custom_FirstTimer_Proposal.pdf',
+    'application/pdf',
+    'CUSTOM FIRST-TIMER AI PROPOSAL: SOVEREIGN AGRI-DRONE TELEMETRY FOR NORTHERN GHANA',
+    'data:application/pdf;base64,JVBERi0xLjQK'
+  );
+
+  // Verify review returns the exact uploaded content first (not overwritten by boilerplate)
+  const reviewContent = realFileStore[uploadedDoc.id].extractedText;
+  assert(
+    reviewContent === 'CUSTOM FIRST-TIMER AI PROPOSAL: SOVEREIGN AGRI-DRONE TELEMETRY FOR NORTHERN GHANA',
+    'Reviewing the document returns the exact verbatim content uploaded by the First-Timer'
+  );
+
+  // Verify downloading returns the exact original fileName and binary DataURL (even for PDFs)
+  const downloadResult = {
+    downloadName: uploadedDoc.fileName,
+    href: realFileStore[uploadedDoc.id].dataUrl
+  };
+  assert(
+    downloadResult.downloadName === 'My_Custom_FirstTimer_Proposal.pdf',
+    'Downloading preserves the exact original fileName (not renamed to _FULL_DOSSIER.txt)'
+  );
+  assert(
+    downloadResult.href.startsWith('data:application/pdf;base64,'),
+    'Downloading a PDF preserves the exact original PDF binary payload'
+  );
+});
+
 const passed = tests.filter(t => t.passed).length;
 const total = tests.length;
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Sparkles, 
   Upload, 
@@ -30,7 +30,12 @@ import {
   getDocumentOcrText, 
   getFullDocumentText,
   registerUploadedDocumentOcr,
-  registerUploadedFullDocument
+  registerUploadedFullDocument,
+  readAndStoreRealUploadedFile,
+  downloadOriginalDocument,
+  getRealDocumentPreviewUrl,
+  hasRealUploadedFile,
+  onRealFilesHydrated
 } from '../services/assessmentEngine';
 import { DocumentReviewGradeModal } from './DocumentReviewGradeModal';
 
@@ -81,6 +86,11 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
   const [showPendingModal, setShowPendingModal] = useState(false);
   const [reviewingDoc, setReviewingDoc] = useState<DocumentAsset | null>(null);
   const [expandedFullDocId, setExpandedFullDocId] = useState<string | null>(null);
+  const [, setHydrationTick] = useState(0);
+
+  useEffect(() => {
+    return onRealFilesHydrated(() => setHydrationTick(t => t + 1));
+  }, []);
 
   const canReview = session.role === 'Super Admin' || session.role === 'Director General' || session.role === 'Technical Clearance Team' || session.role === 'Technical Director';
 
@@ -91,113 +101,94 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
   const zeroAudit = auto?.zeroAssumptionAudit || activeProject?.zeroAssumptionAudit;
 
   // Handle document upload with immediate grading by Governance & Ethics and AI Readiness
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !e.target.files[0] || !activeProject) return;
 
     const file = e.target.files[0];
     setNewFileName(file.name);
     setUploading(true);
-    setUploadProgress(15);
+    setUploadProgress(25);
 
     const ext = file.name.split('.').pop()?.toLowerCase() || 'pdf';
     const formattedSize = file.size > 1024 * 1024
       ? `${(file.size / (1024 * 1024)).toFixed(2)} MB`
       : `${Math.max(1, Math.round(file.size / 1024))} KB`;
 
-    let capturedText = '';
-    let capturedDataUrl = '';
+    const nextDocId = `doc-onboard-${Date.now()}`;
 
-    try {
-      const textReader = new FileReader();
-      textReader.onload = () => {
-        if (typeof textReader.result === 'string' && !textReader.result.includes('\u0000')) {
-          capturedText = textReader.result.slice(0, 60000);
-        }
+    // Read & persist the REAL uploaded file (binary Blob + DataURL + extracted text from .pdf / .docx / .txt)
+    const { dataUrl: capturedDataUrl, extractedText: capturedText } = await readAndStoreRealUploadedFile(file, nextDocId);
+    setUploadProgress(75);
+
+    setTimeout(() => {
+      setUploading(false);
+      setUploadProgress(100);
+
+      const estimatedPages = capturedText
+        ? Math.max(1, Math.ceil(capturedText.length / 3000))
+        : 1;
+
+      const newDoc: DocumentAsset = {
+        id: nextDocId,
+        fileName: file.name,
+        fileType: ext,
+        uploadedAt: new Date().toISOString().split('T')[0],
+        version: 1,
+        signedBy: ['First-Timer / New User'],
+        uploadedByRole: session.role || 'First-Timer / New User',
+        uploadedByName: session.fullName,
+        uploadedByEmail: session.email,
+        isFirstTimerUpload: true,
+        reviewStatus: 'Pending Review',
+        fileSize: formattedSize,
+        pageCount: estimatedPages,
+        documentCategory: 'First-Timer / Onboarder Full Compliance Dossier',
+        fullDocumentText: capturedText || undefined,
+        fileDataUrl: capturedDataUrl && capturedDataUrl.length < 350000 ? capturedDataUrl : undefined
       };
-      textReader.readAsText(file);
 
-      const urlReader = new FileReader();
-      urlReader.onload = () => {
-        if (typeof urlReader.result === 'string') {
-          capturedDataUrl = urlReader.result;
-        }
-      };
-      urlReader.readAsDataURL(file);
-    } catch (err) {
-      console.warn('FileReader fallback to statutory full dossier template', err);
-    }
+      // Register OCR extraction & real uploaded document content
+      const fallbackOcr = getDocumentOcrText(nextDocId, file.name, activeProject.name);
+      registerUploadedDocumentOcr(nextDocId, capturedText ? `${capturedText.slice(0, 4000)} ${fallbackOcr}` : fallbackOcr);
+      registerUploadedFullDocument(
+        nextDocId,
+        capturedText,
+        capturedDataUrl
+      );
 
-    const interval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 90) {
-          clearInterval(interval);
-          setUploading(false);
+      // Add document to project
+      onAddDocument(activeProject.id, newDoc);
+      setExpandedFullDocId(nextDocId);
 
-          const nextDocId = `doc-onboard-${Date.now()}`;
-          const newDoc: DocumentAsset = {
-            id: nextDocId,
-            fileName: file.name,
-            fileType: ext,
-            uploadedAt: new Date().toISOString().split('T')[0],
-            version: 1,
-            signedBy: ['First-Timer / New User'],
-            uploadedByRole: session.role || 'First-Timer / New User',
-            uploadedByName: session.fullName,
-            uploadedByEmail: session.email,
-            isFirstTimerUpload: true,
-            reviewStatus: 'Pending Review',
-            fileSize: formattedSize,
-            pageCount: capturedText ? 6 : 5,
-            documentCategory: 'First-Timer / Onboarder Full Compliance Dossier',
-            fullDocumentText: capturedText || undefined,
-            fileDataUrl: capturedDataUrl && capturedDataUrl.length < 1500000 ? capturedDataUrl : undefined
-          };
+      // Real-time re-grading by Governance & Ethics and AI Readiness
+      const updatedDocs = [newDoc, ...(activeProject.documents || [])];
+      const tempProj = { ...activeProject, documents: updatedDocs };
+      const newAssessment = generateAssessmentFromDocuments(tempProj, session);
 
-          // Register OCR extraction & full document content
-          const ocrText = getDocumentOcrText(nextDocId, file.name, activeProject.name);
-          registerUploadedDocumentOcr(nextDocId, capturedText ? `${ocrText} ${capturedText.slice(0, 2000)}` : ocrText);
-          registerUploadedFullDocument(
-            nextDocId,
-            capturedText || `Full First-Timer Onboarding Submission uploaded by ${session.fullName} (${session.email}) for project [${activeProject.projectCode}] ${activeProject.name}.\n\n${ocrText}`,
-            capturedDataUrl
-          );
+      if (onUpdateProjectAssessment) {
+        onUpdateProjectAssessment(
+          activeProject.id,
+          newAssessment.compliance,
+          newAssessment.readinessScore,
+          newAssessment.details,
+          newAssessment.zeroAssumptionAudit
+        );
+      }
 
-          // Add document to project
-          onAddDocument(activeProject.id, newDoc);
-
-          // Real-time re-grading by Governance & Ethics and AI Readiness
-          const updatedDocs = [newDoc, ...(activeProject.documents || [])];
-          const tempProj = { ...activeProject, documents: updatedDocs };
-          const newAssessment = generateAssessmentFromDocuments(tempProj, session);
-
-          if (onUpdateProjectAssessment) {
-            onUpdateProjectAssessment(
-              activeProject.id,
-              newAssessment.compliance,
-              newAssessment.readinessScore,
-              newAssessment.details,
-              newAssessment.zeroAssumptionAudit
-            );
-          }
-
-          recordAuditEvent({
-            eventType: 'DOCUMENT_UPLOAD',
-            actorName: session.fullName,
-            actorEmail: session.email,
-            actorRole: session.role,
-            actorInstitution: session.institution,
-            targetModule: 'documents',
-            targetEntityId: activeProject.id,
-            actionDetails: `New Member uploaded "${file.name}" for ${activeProject.projectCode}. Triggered real-time Governance & Ethics (${newAssessment.compliance.overallGrade}) and AI Readiness (${newAssessment.readinessScore}%) evaluation.`
-          });
-
-          setUploadFeedback(`✓ "${file.name}" successfully parsed. Real-time Governance & Ethics grade: ${newAssessment.compliance.overallGrade} | AI Readiness capability: ${newAssessment.readinessScore}%.`);
-          setNewFileName('');
-          return 100;
-        }
-        return prev + 25;
+      recordAuditEvent({
+        eventType: 'DOCUMENT_UPLOAD',
+        actorName: session.fullName,
+        actorEmail: session.email,
+        actorRole: session.role,
+        actorInstitution: session.institution,
+        targetModule: 'documents',
+        targetEntityId: activeProject.id,
+        actionDetails: `New Member uploaded "${file.name}" (${formattedSize}) for ${activeProject.projectCode}. Triggered real-time Governance & Ethics (${newAssessment.compliance.overallGrade}) and AI Readiness (${newAssessment.readinessScore}%) evaluation.`
       });
-    }, 220);
+
+      setUploadFeedback(`✓ "${file.name}" (${formattedSize}) saved & indexed in original format. Real-time Governance & Ethics grade: ${newAssessment.compliance.overallGrade} | AI Readiness capability: ${newAssessment.readinessScore}%.`);
+      setNewFileName('');
+    }, 280);
   };
 
   const handleCompleteSubmission = () => {
@@ -684,6 +675,28 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
                       <span>{expandedFullDocId === doc.id ? 'Hide Full Document ▲' : 'View Full Document ▼'}</span>
                     </button>
 
+                    <button
+                      type="button"
+                      onClick={() => downloadOriginalDocument(doc, activeProject)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '5px 12px',
+                        borderRadius: '6px',
+                        background: 'rgba(16, 185, 129, 0.16)',
+                        border: '1px solid rgba(16, 185, 129, 0.42)',
+                        color: '#6ee7b7',
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                      title={`Download original file: ${doc.fileName}`}
+                    >
+                      <Download size={13} />
+                      <span>Download ({doc.fileName})</span>
+                    </button>
+
                     {canReview && (
                       <button
                         type="button"
@@ -716,74 +729,91 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
                       fontSize: '0.7rem',
                       fontWeight: 700
                     }}>
-                      ✓ OCR Parsed & Graded
+                      {hasRealUploadedFile(doc.id, doc) ? '✓ Original File Stored & Graded' : '✓ OCR Parsed & Graded'}
                     </span>
                   </div>
                 </div>
 
                 {/* Expandable Full Uploaded Document Viewer */}
-                {expandedFullDocId === doc.id && (
-                  <div style={{
-                    padding: '14px 16px',
-                    borderRadius: '8px',
-                    background: 'rgba(2, 6, 23, 0.78)',
-                    border: '1px solid rgba(56, 189, 248, 0.35)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-                      <span style={{ fontSize: '0.76rem', fontWeight: 800, color: '#38bdf8', textTransform: 'uppercase' }}>
-                        📄 Full Uploaded Document & OCR Dossier — {doc.fileName} ({doc.pageCount || 5} Pages • {doc.fileSize || '1.8 MB'})
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const fullTxt = getFullDocumentText(doc, activeProject);
-                          const blob = new Blob([fullTxt], { type: 'text/plain;charset=utf-8' });
-                          const url = URL.createObjectURL(blob);
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = `${doc.fileName.replace(/\.[^/.]+$/, '')}_FULL_DOSSIER.txt`;
-                          a.click();
-                          URL.revokeObjectURL(url);
-                        }}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          padding: '4px 10px',
-                          borderRadius: '6px',
-                          background: 'rgba(16, 185, 129, 0.18)',
-                          border: '1px solid rgba(16, 185, 129, 0.4)',
-                          color: '#6ee7b7',
-                          fontSize: '0.7rem',
-                          fontWeight: 700,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <Download size={12} />
-                        <span>Download Full Document</span>
-                      </button>
-                    </div>
-                    <pre style={{
-                      margin: 0,
-                      maxHeight: '280px',
-                      overflowY: 'auto',
-                      padding: '12px',
-                      borderRadius: '6px',
-                      background: 'rgba(0, 0, 0, 0.45)',
-                      border: '1px solid rgba(255, 255, 255, 0.08)',
-                      color: '#e2e8f0',
-                      fontSize: '0.74rem',
-                      lineHeight: 1.55,
-                      whiteSpace: 'pre-wrap',
-                      fontFamily: 'monospace'
+                {expandedFullDocId === doc.id && (() => {
+                  const previewUrl = getRealDocumentPreviewUrl(doc.id, doc);
+                  const isPdf = doc.fileType.toLowerCase() === 'pdf' || doc.fileName.toLowerCase().endsWith('.pdf');
+                  const isImg = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(doc.fileType.toLowerCase());
+                  return (
+                    <div style={{
+                      padding: '14px 16px',
+                      borderRadius: '8px',
+                      background: 'rgba(2, 6, 23, 0.78)',
+                      border: '1px solid rgba(56, 189, 248, 0.35)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '10px'
                     }}>
-                      {getFullDocumentText(doc, activeProject)}
-                    </pre>
-                  </div>
-                )}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                        <span style={{ fontSize: '0.76rem', fontWeight: 800, color: '#38bdf8', textTransform: 'uppercase' }}>
+                          📄 {hasRealUploadedFile(doc.id, doc) ? 'Original Uploaded Document' : 'Full Uploaded Document & OCR Dossier'} — {doc.fileName} ({doc.fileSize || 'Original File'})
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => downloadOriginalDocument(doc, activeProject)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '5px 12px',
+                            borderRadius: '6px',
+                            background: 'rgba(16, 185, 129, 0.18)',
+                            border: '1px solid rgba(16, 185, 129, 0.4)',
+                            color: '#6ee7b7',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <Download size={12} />
+                          <span>Download Original File ({doc.fileName})</span>
+                        </button>
+                      </div>
+
+                      {previewUrl && isPdf && (
+                        <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(56, 189, 248, 0.3)', background: '#fff' }}>
+                          <iframe
+                            src={previewUrl}
+                            title={`Uploaded PDF: ${doc.fileName}`}
+                            style={{ width: '100%', height: '520px', border: 'none', display: 'block' }}
+                          />
+                        </div>
+                      )}
+
+                      {previewUrl && isImg && (
+                        <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(56, 189, 248, 0.3)', background: '#0f172a', padding: '12px', textAlign: 'center' }}>
+                          <img
+                            src={previewUrl}
+                            alt={doc.fileName}
+                            style={{ maxWidth: '100%', maxHeight: '480px', borderRadius: '6px' }}
+                          />
+                        </div>
+                      )}
+
+                      <pre style={{
+                        margin: 0,
+                        maxHeight: previewUrl && isPdf ? '220px' : '380px',
+                        overflowY: 'auto',
+                        padding: '12px',
+                        borderRadius: '6px',
+                        background: 'rgba(0, 0, 0, 0.45)',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        color: '#e2e8f0',
+                        fontSize: '0.74rem',
+                        lineHeight: 1.55,
+                        whiteSpace: 'pre-wrap',
+                        fontFamily: 'monospace'
+                      }}>
+                        {getFullDocumentText(doc, activeProject)}
+                      </pre>
+                    </div>
+                  );
+                })()}
 
                 {/* Reviewer Directives & Official Comments Card */}
                 {doc.reviewerComments && doc.reviewerComments.length > 0 ? (

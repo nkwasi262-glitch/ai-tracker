@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Upload, 
   Search, 
@@ -41,7 +41,11 @@ import {
   getFullDocumentSections,
   getFullDocumentText,
   registerUploadedDocumentOcr,
-  registerUploadedFullDocument
+  registerUploadedFullDocument,
+  readAndStoreRealUploadedFile,
+  downloadOriginalDocument,
+  getRealDocumentPreviewUrl,
+  onRealFilesHydrated
 } from '../services/assessmentEngine';
 import { DocumentReviewGradeModal } from './DocumentReviewGradeModal';
 
@@ -223,28 +227,14 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
     setInlineProjectStatus(project.reviewStatus || 'Under Technical Review');
   };
 
-  // Download full uploaded document (original uploaded file DataURL or complete statutory transcript)
+  const [, setHydrationTick] = useState(0);
+  useEffect(() => {
+    return onRealFilesHydrated(() => setHydrationTick(t => t + 1));
+  }, []);
+
+  // Download full uploaded document (always downloads the exact original uploaded file)
   const handleDownloadFullDocument = (doc: DocumentAsset, project: AIProject) => {
-    const fullText = getFullDocumentText(doc, project);
-    if (doc.fileDataUrl) {
-      const a = document.createElement('a');
-      a.href = doc.fileDataUrl;
-      a.download = doc.fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      return;
-    }
-    const blob = new Blob([fullText], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    const baseName = doc.fileName.replace(/\.[^/.]+$/, '');
-    a.download = `${baseName}_FULL_UPLOADED_DOCUMENT.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    downloadOriginalDocument(doc, project);
   };
 
   // Compute live inline overall grade
@@ -364,134 +354,97 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
 
   const searchResults = handleOcrSearch();
 
-  // Handles file upload sequence and captures full uploaded document content via FileReader
-  const triggerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handles file upload sequence and captures the REAL uploaded document content & binary
+  const triggerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0] && activeProject) {
       const file = e.target.files[0];
       setNewFileName(file.name);
       setUploading(true);
-      setUploadProgress(10);
+      setUploadProgress(20);
 
       const fileSizeStr =
         file.size >= 1024 * 1024
           ? `${(file.size / (1024 * 1024)).toFixed(2)} MB`
           : `${Math.max(1, Math.round(file.size / 1024))} KB`;
 
-      let capturedRawText = '';
-      let capturedDataUrl = '';
+      const nextDocId = `doc-new-${Date.now()}`;
+      const ext = (file.name.split('.').pop() || 'pdf').toLowerCase();
+      const resolvedType: 'pdf' | 'docx' | 'xlsx' | string =
+        ext === 'docx' || ext === 'doc' ? 'docx' : ext === 'xlsx' || ext === 'xls' ? 'xlsx' : ext;
 
-      if (typeof FileReader !== 'undefined') {
-        try {
-          const textReader = new FileReader();
-          textReader.onload = () => {
-            if (typeof textReader.result === 'string') {
-              capturedRawText = textReader.result;
-            }
-          };
-          textReader.readAsText(file);
+      const { dataUrl: capturedDataUrl, extractedText: capturedText } = await readAndStoreRealUploadedFile(file, nextDocId);
+      setUploadProgress(80);
+      setUploading(false);
+      setOcrWorking(true);
 
-          const urlReader = new FileReader();
-          urlReader.onload = () => {
-            if (typeof urlReader.result === 'string') {
-              capturedDataUrl = urlReader.result;
-            }
-          };
-          urlReader.readAsDataURL(file);
-        } catch {
-          // Ignore FileReader errors in non-browser environments
+      setTimeout(() => {
+        setOcrWorking(false);
+        setUploadProgress(100);
+
+        const estimatedPages = capturedText
+          ? Math.max(1, Math.ceil(capturedText.length / 3000))
+          : 1;
+
+        const doc: DocumentAsset = {
+          id: nextDocId,
+          fileName: file.name,
+          fileType: resolvedType,
+          fileSize: fileSizeStr,
+          pageCount: estimatedPages,
+          documentCategory: isFirstTimer
+            ? 'First-Timer / Onboarder Full Submission Dossier'
+            : 'Institutional Compliance & Technical Dossier',
+          uploadedAt: new Date().toISOString().split('T')[0],
+          version: 1,
+          signedBy: [currentRole],
+          uploadedByRole: session?.role || currentRole,
+          uploadedByName: session?.fullName || 'Registry User',
+          uploadedByEmail: session?.email || '',
+          isFirstTimerUpload: isFirstTimer,
+          reviewStatus: 'Pending Review',
+          fullDocumentText: capturedText || undefined,
+          fileDataUrl: capturedDataUrl && capturedDataUrl.length < 350000 ? capturedDataUrl : undefined
+        };
+
+        registerUploadedFullDocument(nextDocId, capturedText, capturedDataUrl || undefined);
+
+        // Register OCR text for the newly uploaded document
+        const simulatedOcr = getDocumentOcrText(nextDocId, file.name, activeProject.name);
+        registerUploadedDocumentOcr(nextDocId, capturedText ? `${capturedText.slice(0, 4000)} ${simulatedOcr}` : simulatedOcr);
+
+        onAddDocument(selectedProjectId, doc);
+        setNewFileName('');
+
+        // Auto-generate assessments immediately upon document upload
+        const updatedDocs = [doc, ...activeProject.documents];
+        const tempProject = { ...activeProject, documents: updatedDocs };
+        const auto = generateAssessmentFromDocuments(tempProject, session);
+        if (onUpdateProjectAssessment) {
+          onUpdateProjectAssessment(
+            activeProject.id,
+            auto.compliance,
+            auto.readinessScore,
+            auto.details,
+            auto.zeroAssumptionAudit
+          );
         }
-      }
 
-      const uploadInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(uploadInterval);
-            setUploading(false);
-            setOcrWorking(true);
-            
-            setTimeout(() => {
-              setOcrWorking(false);
-              const nextDocId = `doc-new-${Date.now()}`;
-              const ext = (file.name.split('.').pop() || 'pdf').toLowerCase();
-              const resolvedType: 'pdf' | 'docx' | 'xlsx' =
-                ext === 'docx' || ext === 'doc' ? 'docx' : ext === 'xlsx' || ext === 'xls' ? 'xlsx' : 'pdf';
+        if (session) {
+          recordAuditEvent({
+            eventType: 'DOCUMENT_UPLOAD',
+            actorName: session.fullName,
+            actorEmail: session.email,
+            actorRole: session.role,
+            actorInstitution: session.institution,
+            targetModule: 'documents',
+            targetEntityId: activeProject.id,
+            actionDetails: `Full Document "${file.name}" (${fileSizeStr}) uploaded by ${session.role} for project ${activeProject.projectCode}. Exact original file stored & indexed for Review & Grading.`
+          });
+        }
 
-              const readableUploadedBody =
-                capturedRawText && !capturedRawText.startsWith('%PDF') && capturedRawText.replace(/[^\x20-\x7E\r\n\t]/g, '').length > 40
-                  ? capturedRawText
-                  : '';
-
-              const doc: DocumentAsset = {
-                id: nextDocId,
-                fileName: file.name,
-                fileType: resolvedType,
-                fileSize: fileSizeStr,
-                pageCount: 6,
-                documentCategory: isFirstTimer
-                  ? 'First-Timer / Onboarder Full Submission Dossier'
-                  : 'Institutional Compliance & Technical Dossier',
-                uploadedAt: new Date().toISOString().split('T')[0],
-                version: 1,
-                signedBy: [currentRole],
-                uploadedByRole: session?.role || currentRole,
-                uploadedByName: session?.fullName || 'Registry User',
-                uploadedByEmail: session?.email || '',
-                isFirstTimerUpload: isFirstTimer,
-                reviewStatus: 'Pending Review',
-                fileDataUrl: capturedDataUrl || undefined
-              };
-
-              // Register full multi-page statutory document + verbatim uploaded content
-              const fullStatutoryDocText = getFullDocumentText(
-                { ...doc, fullDocumentText: readableUploadedBody || undefined },
-                activeProject
-              );
-              doc.fullDocumentText = fullStatutoryDocText;
-              registerUploadedFullDocument(nextDocId, fullStatutoryDocText, capturedDataUrl || undefined);
-
-              // Register OCR text for the newly uploaded document
-              const simulatedOcr = getDocumentOcrText(nextDocId, file.name, activeProject.name);
-              registerUploadedDocumentOcr(nextDocId, simulatedOcr);
-
-              onAddDocument(selectedProjectId, doc);
-              setNewFileName('');
-
-              // Auto-generate assessments immediately upon document upload
-              const updatedDocs = [doc, ...activeProject.documents];
-              const tempProject = { ...activeProject, documents: updatedDocs };
-              const auto = generateAssessmentFromDocuments(tempProject, session);
-              if (onUpdateProjectAssessment) {
-                onUpdateProjectAssessment(
-                  activeProject.id,
-                  auto.compliance,
-                  auto.readinessScore,
-                  auto.details,
-                  auto.zeroAssumptionAudit
-                );
-              }
-
-              if (session) {
-                recordAuditEvent({
-                  eventType: 'DOCUMENT_UPLOAD',
-                  actorName: session.fullName,
-                  actorEmail: session.email,
-                  actorRole: session.role,
-                  actorInstitution: session.institution,
-                  targetModule: 'documents',
-                  targetEntityId: activeProject.id,
-                  actionDetails: `Full Document "${file.name}" (${fileSizeStr}) uploaded by ${session.role} for project ${activeProject.projectCode}. Full document indexed for Review & Grading and automated regulatory assessment.`
-                });
-              }
-
-              setAssessmentFeedback(`✓ Full Document "${file.name}" (${fileSizeStr}) stored & parsed. System synchronized: AI Readiness (${auto.readinessScore}%), Governance & Ethics (${auto.compliance.overallGrade}), Zero-Assumption Provenance (${auto.zeroAssumptionAudit.evidenceBackingScore}%).`);
-              setTimeout(() => setAssessmentFeedback(null), 7000);
-            }, 1600);
-
-            return 100;
-          }
-          return prev + 25;
-        });
-      }, 250);
+        setAssessmentFeedback(`✓ Original Document "${file.name}" (${fileSizeStr}) stored & parsed. System synchronized: AI Readiness (${auto.readinessScore}%), Governance & Ethics (${auto.compliance.overallGrade}), Zero-Assumption Provenance (${auto.zeroAssumptionAudit.evidenceBackingScore}%).`);
+        setTimeout(() => setAssessmentFeedback(null), 7000);
+      }, 450);
     }
   };
 
@@ -1063,32 +1016,21 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                 )}
 
                 {/* Main Scrollable Full Document Content */}
-                <div style={{
-                  flex: 1,
-                  overflowY: 'auto',
-                  background: 'rgba(5, 10, 20, 0.85)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  borderRadius: '8px',
-                  padding: '16px',
-                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                  fontSize: '0.78rem',
-                  lineHeight: 1.65,
-                  color: '#e2e8f0',
-                  whiteSpace: 'pre-wrap'
-                }}>
-                  {(() => {
-                    const sections = getFullDocumentSections(activeOnboarderItem.doc, activeOnboarderItem.project);
-                    const activeSec = sections[onboarderActiveSectionIdx] || sections[0];
-                    const rawText =
-                      onboarderReaderMode === 'full'
-                        ? getFullDocumentText(activeOnboarderItem.doc, activeOnboarderItem.project)
-                        : onboarderReaderMode === 'sections' && activeSec
-                        ? `--- PAGE ${activeSec.pageNumber} OF ${sections.length}: ${activeSec.sectionTitle} ---\n\n${activeSec.content}`
-                        : getDocumentOcrText(activeOnboarderItem.doc.id, activeOnboarderItem.doc.fileName, activeOnboarderItem.project.name);
+                {(() => {
+                  const previewUrl = getRealDocumentPreviewUrl(activeOnboarderItem.doc.id, activeOnboarderItem.doc);
+                  const isPdf = activeOnboarderItem.doc.fileType.toLowerCase() === 'pdf' || activeOnboarderItem.doc.fileName.toLowerCase().endsWith('.pdf');
+                  const isImg = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(activeOnboarderItem.doc.fileType.toLowerCase());
+                  const sections = getFullDocumentSections(activeOnboarderItem.doc, activeOnboarderItem.project);
+                  const activeSec = sections[onboarderActiveSectionIdx] || sections[0];
+                  const rawText =
+                    onboarderReaderMode === 'full'
+                      ? getFullDocumentText(activeOnboarderItem.doc, activeOnboarderItem.project)
+                      : onboarderReaderMode === 'sections' && activeSec
+                      ? `--- PAGE ${activeSec.pageNumber} OF ${sections.length}: ${activeSec.sectionTitle} ---\n\n${activeSec.content}`
+                      : getDocumentOcrText(activeOnboarderItem.doc.id, activeOnboarderItem.doc.fileName, activeOnboarderItem.project.name);
 
-                    if (!onboarderDocSearch.trim()) {
-                      return rawText;
-                    }
+                  const displayStr = (() => {
+                    if (!onboarderDocSearch.trim()) return rawText;
                     const lines = rawText.split('\n');
                     const matchingLines = lines.filter(line =>
                       line.toLowerCase().includes(onboarderDocSearch.toLowerCase())
@@ -1099,8 +1041,42 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                           `\n\n=== COMPLETE DOCUMENT TRANSCRIPT BELOW ===\n\n` +
                           rawText
                       : `No exact matches for "${onboarderDocSearch}". Showing complete full document:\n\n` + rawText;
-                  })()}
-                </div>
+                  })();
+
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, minHeight: 0 }}>
+                      {onboarderReaderMode === 'full' && previewUrl && isPdf && (
+                        <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(56, 189, 248, 0.35)', background: '#fff' }}>
+                          <iframe
+                            src={previewUrl}
+                            title={`Uploaded PDF: ${activeOnboarderItem.doc.fileName}`}
+                            style={{ width: '100%', height: '460px', border: 'none', display: 'block' }}
+                          />
+                        </div>
+                      )}
+                      {onboarderReaderMode === 'full' && previewUrl && isImg && (
+                        <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(56, 189, 248, 0.35)', background: '#0f172a', padding: '12px', textAlign: 'center' }}>
+                          <img src={previewUrl} alt={activeOnboarderItem.doc.fileName} style={{ maxWidth: '100%', maxHeight: '420px', borderRadius: '6px' }} />
+                        </div>
+                      )}
+                      <div style={{
+                        flex: 1,
+                        overflowY: 'auto',
+                        background: 'rgba(5, 10, 20, 0.85)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        borderRadius: '8px',
+                        padding: '16px',
+                        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                        fontSize: '0.78rem',
+                        lineHeight: 1.65,
+                        color: '#e2e8f0',
+                        whiteSpace: 'pre-wrap'
+                      }}>
+                        {displayStr}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             ) : null}
 
@@ -2848,30 +2824,21 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
             )}
 
             {/* Full Document Text Content Viewer */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, minHeight: 0 }}>
-              <div style={{
-                flex: 1,
-                overflowY: 'auto',
-                background: 'rgba(0, 0, 0, 0.45)',
-                border: '1px solid var(--border-color)',
-                borderRadius: '8px',
-                padding: '16px',
-                fontSize: '0.8rem',
-                lineHeight: 1.65,
-                color: '#e2e8f0',
-                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                whiteSpace: 'pre-wrap'
-              }}>
-                {(() => {
-                  const sections = getFullDocumentSections(inspectingItem.doc, inspectingItem.project);
-                  const activeSec = sections[inspectSectionIdx] || sections[0];
-                  const content =
-                    inspectReaderTab === 'full'
-                      ? getFullDocumentText(inspectingItem.doc, inspectingItem.project)
-                      : inspectReaderTab === 'sections' && activeSec
-                      ? `--- PAGE ${activeSec.pageNumber} OF ${sections.length}: ${activeSec.sectionTitle} ---\n\n${activeSec.content}`
-                      : getDocumentOcrText(inspectingItem.doc.id, inspectingItem.doc.fileName, inspectingItem.project.name);
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, minHeight: 0 }}>
+              {(() => {
+                const previewUrl = getRealDocumentPreviewUrl(inspectingItem.doc.id, inspectingItem.doc);
+                const isPdf = inspectingItem.doc.fileType.toLowerCase() === 'pdf' || inspectingItem.doc.fileName.toLowerCase().endsWith('.pdf');
+                const isImg = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(inspectingItem.doc.fileType.toLowerCase());
+                const sections = getFullDocumentSections(inspectingItem.doc, inspectingItem.project);
+                const activeSec = sections[inspectSectionIdx] || sections[0];
+                const content =
+                  inspectReaderTab === 'full'
+                    ? getFullDocumentText(inspectingItem.doc, inspectingItem.project)
+                    : inspectReaderTab === 'sections' && activeSec
+                    ? `--- PAGE ${activeSec.pageNumber} OF ${sections.length}: ${activeSec.sectionTitle} ---\n\n${activeSec.content}`
+                    : getDocumentOcrText(inspectingItem.doc.id, inspectingItem.doc.fileName, inspectingItem.project.name);
 
+                const displayStr = (() => {
                   if (!inspectSearchQuery.trim()) return content;
                   const matched = content
                     .split('\n')
@@ -2879,8 +2846,42 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                   return matched.length > 0
                     ? `=== MATCHING LINES FOR "${inspectSearchQuery}" (${matched.length}) ===\n\n${matched.join('\n\n')}\n\n=== FULL DOCUMENT BELOW ===\n\n${content}`
                     : content;
-                })()}
-              </div>
+                })();
+
+                return (
+                  <>
+                    {inspectReaderTab === 'full' && previewUrl && isPdf && (
+                      <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(56, 189, 248, 0.35)', background: '#fff' }}>
+                        <iframe
+                          src={previewUrl}
+                          title={`Uploaded PDF: ${inspectingItem.doc.fileName}`}
+                          style={{ width: '100%', height: '480px', border: 'none', display: 'block' }}
+                        />
+                      </div>
+                    )}
+                    {inspectReaderTab === 'full' && previewUrl && isImg && (
+                      <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(56, 189, 248, 0.35)', background: '#0f172a', padding: '12px', textAlign: 'center' }}>
+                        <img src={previewUrl} alt={inspectingItem.doc.fileName} style={{ maxWidth: '100%', maxHeight: '420px', borderRadius: '6px' }} />
+                      </div>
+                    )}
+                    <div style={{
+                      flex: 1,
+                      overflowY: 'auto',
+                      background: 'rgba(0, 0, 0, 0.45)',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: '8px',
+                      padding: '16px',
+                      fontSize: '0.8rem',
+                      lineHeight: 1.65,
+                      color: '#e2e8f0',
+                      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                      whiteSpace: 'pre-wrap'
+                    }}>
+                      {displayStr}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
 
             {/* Modal Footer with Review & Grade Action */}

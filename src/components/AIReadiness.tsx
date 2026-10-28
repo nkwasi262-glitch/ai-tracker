@@ -3,7 +3,7 @@ import {
   Award, Compass, Cpu, GraduationCap, Coins, 
   ShieldCheck, FileText, Layers, Users, ShoppingBag, 
   Workflow, AlertTriangle, Server, Activity, TrendingUp, Info,
-  CheckCircle2, AlertCircle, XCircle, Sparkles, FolderOpen, MessageSquare, BookOpen
+  CheckCircle2, AlertCircle, XCircle, Sparkles, FolderOpen, MessageSquare, BookOpen, Download
 } from 'lucide-react';
 import { UserRole } from './RoleSwitcher';
 import { 
@@ -15,7 +15,7 @@ import {
 } from '../data/sampleProjects';
 import { UserSession } from '../data/authTypes';
 import { DocumentReviewGradeModal } from './DocumentReviewGradeModal';
-import { getFullDocumentText } from '../services/assessmentEngine';
+import { getFullDocumentText, downloadOriginalDocument, getRealDocumentPreviewUrl } from '../services/assessmentEngine';
 
 interface AIReadinessProps {
   currentRole: UserRole | string;
@@ -946,6 +946,28 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({
                             <span>{expandedFullDocId === doc.id ? 'Hide Full Document' : 'Read Full Uploaded Document'}</span>
                           </button>
 
+                          <button
+                            type="button"
+                            onClick={() => downloadOriginalDocument(doc, activeProject)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '5px 10px',
+                              borderRadius: '6px',
+                              background: 'rgba(16, 185, 129, 0.16)',
+                              border: '1px solid rgba(16, 185, 129, 0.4)',
+                              color: '#6ee7b7',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              cursor: 'pointer'
+                            }}
+                            title={`Download original file: ${doc.fileName}`}
+                          >
+                            <Download size={12} />
+                            <span>Download</span>
+                          </button>
+
                           {canReview && (
                             <button
                               type="button"
@@ -971,24 +993,38 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({
                         </div>
                       </div>
 
-                      {expandedFullDocId === doc.id && (
-                        <div style={{
-                          marginTop: '6px',
-                          padding: '12px 14px',
-                          borderRadius: '8px',
-                          background: 'rgba(5, 10, 20, 0.9)',
-                          border: '1px solid rgba(251, 191, 36, 0.35)',
-                          maxHeight: '280px',
-                          overflowY: 'auto',
-                          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                          fontSize: '0.74rem',
-                          lineHeight: 1.6,
-                          color: '#e2e8f0',
-                          whiteSpace: 'pre-wrap'
-                        }}>
-                          {getFullDocumentText(doc, activeProject)}
-                        </div>
-                      )}
+                      {expandedFullDocId === doc.id && (() => {
+                        const previewUrl = getRealDocumentPreviewUrl(doc.id, doc);
+                        const isPdf = doc.fileType.toLowerCase() === 'pdf' || doc.fileName.toLowerCase().endsWith('.pdf');
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
+                            {previewUrl && isPdf && (
+                              <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(56, 189, 248, 0.35)', background: '#fff' }}>
+                                <iframe
+                                  src={previewUrl}
+                                  title={`Uploaded PDF: ${doc.fileName}`}
+                                  style={{ width: '100%', height: '440px', border: 'none', display: 'block' }}
+                                />
+                              </div>
+                            )}
+                            <div style={{
+                              padding: '12px 14px',
+                              borderRadius: '8px',
+                              background: 'rgba(5, 10, 20, 0.9)',
+                              border: '1px solid rgba(251, 191, 36, 0.35)',
+                              maxHeight: '280px',
+                              overflowY: 'auto',
+                              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                              fontSize: '0.74rem',
+                              lineHeight: 1.6,
+                              color: '#e2e8f0',
+                              whiteSpace: 'pre-wrap'
+                            }}>
+                              {getFullDocumentText(doc, activeProject)}
+                            </div>
+                          </div>
+                        );
+                      })()}
 
                       {/* Reviewer Comment Preview */}
                       {doc.reviewerComments && doc.reviewerComments.length > 0 && (

@@ -25,6 +25,404 @@ export const MASTER_MOCK_OCR_TEXTS: Record<string, string> = {
 const OCR_STORAGE_KEY = 'gnaprms_ocr_texts_v1';
 const FULL_DOC_STORAGE_KEY = 'gnaprms_full_docs_v1';
 const FILE_DATA_URL_STORAGE_KEY = 'gnaprms_doc_dataurls_v1';
+const IDB_DB_NAME = 'gnaprms_real_uploaded_files_db_v1';
+const IDB_STORE_NAME = 'uploaded_files';
+
+export interface StoredRealUploadedFile {
+  docId: string;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  dataUrl: string;
+  extractedText: string;
+  uploadedAt: string;
+  blob?: Blob;
+}
+
+// In-memory cache of real uploaded files + generated Blob URLs for instant synchronous access
+const REAL_FILES_MEMORY: Record<string, StoredRealUploadedFile> = {};
+const BLOB_URL_CACHE: Record<string, string> = {};
+const HYDRATION_LISTENERS: Set<() => void> = new Set();
+
+export function onRealFilesHydrated(listener: () => void): () => void {
+  HYDRATION_LISTENERS.add(listener);
+  return () => {
+    HYDRATION_LISTENERS.delete(listener);
+  };
+}
+
+function notifyHydrationListeners(): void {
+  HYDRATION_LISTENERS.forEach(fn => {
+    try {
+      fn();
+    } catch {
+      // ignore listener errors
+    }
+  });
+}
+
+function dataUrlToBlob(dataUrl: string, fallbackMime = 'application/octet-stream'): Blob | undefined {
+  try {
+    const parts = dataUrl.split(',');
+    if (parts.length < 2) return undefined;
+    const header = parts[0];
+    const base64 = parts.slice(1).join(',');
+    const mimeMatch = header.match(/data:([^;]+);/);
+    const mime = mimeMatch ? mimeMatch[1] : fallbackMime;
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return new Blob([bytes], { type: mime });
+  } catch {
+    return undefined;
+  }
+}
+
+function openRealFilesIdb(): Promise<IDBDatabase | null> {
+  if (typeof window === 'undefined' || !window.indexedDB) {
+    return Promise.resolve(null);
+  }
+  return new Promise(resolve => {
+    try {
+      const req = window.indexedDB.open(IDB_DB_NAME, 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(IDB_STORE_NAME)) {
+          db.createObjectStore(IDB_STORE_NAME, { keyPath: 'docId' });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+async function saveRealFileToIdb(record: StoredRealUploadedFile): Promise<void> {
+  const db = await openRealFilesIdb();
+  if (!db) return;
+  return new Promise(resolve => {
+    try {
+      const tx = db.transaction(IDB_STORE_NAME, 'readwrite');
+      const store = tx.objectStore(IDB_STORE_NAME);
+      store.put({
+        docId: record.docId,
+        fileName: record.fileName,
+        mimeType: record.mimeType,
+        fileSize: record.fileSize,
+        dataUrl: record.dataUrl,
+        extractedText: record.extractedText,
+        uploadedAt: record.uploadedAt
+      });
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    } catch {
+      resolve();
+    }
+  });
+}
+
+async function hydrateAllRealFilesFromIdb(): Promise<void> {
+  const db = await openRealFilesIdb();
+  if (!db) return;
+  try {
+    const tx = db.transaction(IDB_STORE_NAME, 'readonly');
+    const store = tx.objectStore(IDB_STORE_NAME);
+    const req = store.getAll();
+    req.onsuccess = () => {
+      const items = (req.result || []) as StoredRealUploadedFile[];
+      let updated = false;
+      for (const item of items) {
+        if (item && item.docId && !REAL_FILES_MEMORY[item.docId]) {
+          const blob = item.dataUrl ? dataUrlToBlob(item.dataUrl, item.mimeType) : undefined;
+          REAL_FILES_MEMORY[item.docId] = { ...item, blob };
+          if (blob && typeof URL !== 'undefined' && URL.createObjectURL) {
+            BLOB_URL_CACHE[item.docId] = URL.createObjectURL(blob);
+          }
+          updated = true;
+        }
+      }
+      if (updated) {
+        notifyHydrationListeners();
+      }
+    };
+  } catch {
+    // ignore IDB read errors
+  }
+}
+
+// Trigger background hydration from IndexedDB on load
+if (typeof window !== 'undefined') {
+  hydrateAllRealFilesFromIdb();
+}
+
+/**
+ * Extracts real readable text from a .docx Word file (ZIP archive containing word/document.xml)
+ */
+async function extractTextFromDocxBuffer(buffer: ArrayBuffer): Promise<string> {
+  try {
+    const bytes = new Uint8Array(buffer);
+    const view = new DataView(buffer);
+    let offset = 0;
+
+    while (offset + 30 < bytes.length) {
+      const sig = view.getUint32(offset, true);
+      if (sig !== 0x04034b50) {
+        offset++;
+        continue;
+      }
+      const compressionMethod = view.getUint16(offset + 8, true);
+      const compressedSize = view.getUint32(offset + 18, true);
+      const fileNameLen = view.getUint16(offset + 26, true);
+      const extraLen = view.getUint16(offset + 28, true);
+      const nameBytes = bytes.subarray(offset + 30, offset + 30 + fileNameLen);
+      const entryName = new TextDecoder('utf-8').decode(nameBytes);
+      const dataStart = offset + 30 + fileNameLen + extraLen;
+
+      if (entryName === 'word/document.xml') {
+        const compressedSlice = bytes.subarray(dataStart, dataStart + compressedSize);
+        let xmlString = '';
+
+        if (compressionMethod === 0) {
+          xmlString = new TextDecoder('utf-8').decode(compressedSlice);
+        } else if (compressionMethod === 8 && typeof DecompressionStream !== 'undefined') {
+          const ds = new DecompressionStream('deflate-raw');
+          const writer = ds.writable.getWriter();
+          writer.write(compressedSlice);
+          writer.close();
+          const decompressedBuf = await new Response(ds.readable).arrayBuffer();
+          xmlString = new TextDecoder('utf-8').decode(decompressedBuf);
+        }
+
+        if (xmlString) {
+          const withBreaks = xmlString
+            .replace(/<\/w:p>/g, '\n')
+            .replace(/<w:tab\/>/g, '\t')
+            .replace(/<w:br[^/>]*\/>/g, '\n');
+          const textMatches = withBreaks.match(/<w:t[^>]*>([\s\S]*?)<\/w:t>|\n|\t/g);
+          if (textMatches) {
+            const plain = textMatches
+              .map(token => {
+                if (token === '\n' || token === '\t') return token;
+                return token
+                  .replace(/<[^>]+>/g, '')
+                  .replace(/&amp;/g, '&')
+                  .replace(/&lt;/g, '<')
+                  .replace(/&gt;/g, '>')
+                  .replace(/&quot;/g, '"')
+                  .replace(/&apos;/g, "'");
+              })
+              .join('')
+              .replace(/\n{3,}/g, '\n\n')
+              .trim();
+            if (plain.length > 0) return plain;
+          }
+        }
+        break;
+      }
+      offset = dataStart + (compressedSize > 0 ? compressedSize : 1);
+    }
+  } catch {
+    // Ignore DOCX decompression errors
+  }
+  return '';
+}
+
+/**
+ * Extracts readable text operators from a PDF ArrayBuffer if present (while the exact PDF binary is rendered natively in iframe)
+ */
+async function extractTextFromPdfBuffer(buffer: ArrayBuffer): Promise<string> {
+  try {
+    const rawLatin1 = new TextDecoder('latin1').decode(buffer);
+    const extractedChunks: string[] = [];
+
+    // 1. Check uncompressed text blocks
+    const tjRegex = /\(([^()\\]*(?:\\.[^()\\]*)*)\)\s*Tj/g;
+    let m: RegExpExecArray | null;
+    while ((m = tjRegex.exec(rawLatin1)) !== null) {
+      const cleaned = m[1]
+        .replace(/\\n/g, '\n')
+        .replace(/\\r/g, ' ')
+        .replace(/\\\(/g, '(')
+        .replace(/\\\)/g, ')')
+        .replace(/\\\\/g, '\\');
+      if (/[a-zA-Z0-9]{2,}/.test(cleaned)) {
+        extractedChunks.push(cleaned);
+      }
+    }
+
+    // 2. Also try decompressing FlateDecode streams if DecompressionStream is available
+    if (extractedChunks.length < 10 && typeof DecompressionStream !== 'undefined') {
+      const bytes = new Uint8Array(buffer);
+      const streamMarker = new TextEncoder().encode('stream');
+      const endMarker = new TextEncoder().encode('endstream');
+      let pos = 0;
+      let streamCount = 0;
+
+      const findSeq = (arr: Uint8Array, seq: Uint8Array, from: number) => {
+        outer: for (let i = from; i <= arr.length - seq.length; i++) {
+          for (let j = 0; j < seq.length; j++) {
+            if (arr[i + j] !== seq[j]) continue outer;
+          }
+          return i;
+        }
+        return -1;
+      };
+
+      while (pos < bytes.length && streamCount < 25) {
+        const sIdx = findSeq(bytes, streamMarker, pos);
+        if (sIdx === -1) break;
+        let dataStart = sIdx + streamMarker.length;
+        if (bytes[dataStart] === 0x0d && bytes[dataStart + 1] === 0x0a) dataStart += 2;
+        else if (bytes[dataStart] === 0x0a || bytes[dataStart] === 0x0d) dataStart += 1;
+
+        const eIdx = findSeq(bytes, endMarker, dataStart);
+        if (eIdx === -1) break;
+        pos = eIdx + endMarker.length;
+        streamCount++;
+
+        const slice = bytes.subarray(dataStart, eIdx);
+        if (slice.length > 10 && slice.length < 500000) {
+          try {
+            const ds = new DecompressionStream('deflate');
+            const writer = ds.writable.getWriter();
+            writer.write(slice);
+            writer.close();
+            const decompressed = await new Response(ds.readable).arrayBuffer();
+            const textStream = new TextDecoder('latin1').decode(decompressed);
+            let sm: RegExpExecArray | null;
+            const localTj = /\(([^()\\]*(?:\\.[^()\\]*)*)\)\s*Tj|\[([\s\S]*?)\]\s*TJ/g;
+            while ((sm = localTj.exec(textStream)) !== null) {
+              const rawPart = sm[1] || (sm[2] ? Array.from(sm[2].matchAll(/\(([^()\\]*(?:\\.[^()\\]*)*)\)/g)).map(x => x[1]).join('') : '');
+              const cl = rawPart
+                .replace(/\\n/g, '\n')
+                .replace(/\\\(/g, '(')
+                .replace(/\\\)/g, ')');
+              if (/[a-zA-Z0-9]{2,}/.test(cl)) {
+                extractedChunks.push(cl);
+              }
+            }
+          } catch {
+            // Not a zlib stream or failed decompression
+          }
+        }
+      }
+    }
+
+    const joined = extractedChunks.join(' ').replace(/\s+/g, ' ').trim();
+    return joined.length > 20 ? joined : '';
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Reads an uploaded File completely (DataURL + ArrayBuffer + real text extraction for TXT/DOCX/PDF)
+ * and persists the real file in memory, IndexedDB, and localStorage so downloading or reviewing it
+ * ALWAYS returns the exact document uploaded by the First-Timer / Onboarder.
+ */
+export async function readAndStoreRealUploadedFile(
+  file: File,
+  docId: string
+): Promise<{
+  dataUrl: string;
+  extractedText: string;
+  mimeType: string;
+  blobUrl: string;
+}> {
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  const mimeType =
+    file.type ||
+    (ext === 'pdf'
+      ? 'application/pdf'
+      : ext === 'docx'
+      ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      : ext === 'doc'
+      ? 'application/msword'
+      : ext === 'xlsx'
+      ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      : 'text/plain');
+
+  const [dataUrl, arrayBuffer] = await Promise.all([
+    new Promise<string>(resolve => {
+      if (typeof FileReader === 'undefined') {
+        resolve('');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+    }),
+    new Promise<ArrayBuffer>(resolve => {
+      if (typeof file.arrayBuffer === 'function') {
+        file.arrayBuffer().then(resolve).catch(() => resolve(new ArrayBuffer(0)));
+        return;
+      }
+      if (typeof FileReader === 'undefined') {
+        resolve(new ArrayBuffer(0));
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result instanceof ArrayBuffer ? reader.result : new ArrayBuffer(0));
+      reader.onerror = () => resolve(new ArrayBuffer(0));
+      reader.readAsArrayBuffer(file);
+    })
+  ]);
+
+  let extractedText = '';
+  const isPlainTextExt = ['txt', 'md', 'csv', 'json', 'xml', 'html', 'htm', 'log', 'yml', 'yaml'].includes(ext) || mimeType.startsWith('text/');
+
+  if (isPlainTextExt && arrayBuffer.byteLength > 0) {
+    extractedText = new TextDecoder('utf-8').decode(arrayBuffer);
+  } else if (ext === 'docx' && arrayBuffer.byteLength > 0) {
+    extractedText = await extractTextFromDocxBuffer(arrayBuffer);
+  } else if (ext === 'pdf' && arrayBuffer.byteLength > 0) {
+    extractedText = await extractTextFromPdfBuffer(arrayBuffer);
+  } else if (arrayBuffer.byteLength > 0) {
+    const rawCandidate = new TextDecoder('utf-8', { fatal: false }).decode(arrayBuffer);
+    if (!rawCandidate.includes('\u0000') && rawCandidate.trim().length > 0) {
+      extractedText = rawCandidate;
+    }
+  }
+
+  const blob = arrayBuffer.byteLength > 0 ? new Blob([arrayBuffer], { type: mimeType }) : dataUrlToBlob(dataUrl, mimeType);
+  let blobUrl = '';
+  if (blob && typeof URL !== 'undefined' && URL.createObjectURL) {
+    blobUrl = URL.createObjectURL(blob);
+    BLOB_URL_CACHE[docId] = blobUrl;
+  }
+
+  const record: StoredRealUploadedFile = {
+    docId,
+    fileName: file.name,
+    mimeType,
+    fileSize: file.size,
+    dataUrl,
+    extractedText,
+    uploadedAt: new Date().toISOString(),
+    blob
+  };
+
+  REAL_FILES_MEMORY[docId] = record;
+
+  // Save in IndexedDB (handles large PDFs / DOCX files with no 5MB localStorage ceiling)
+  await saveRealFileToIdb(record);
+
+  // Also register in localStorage when within quota
+  registerUploadedFullDocument(docId, extractedText, dataUrl);
+  notifyHydrationListeners();
+
+  return {
+    dataUrl,
+    extractedText,
+    mimeType,
+    blobUrl: blobUrl || dataUrl
+  };
+}
 
 function getStoredOcrTexts(): Record<string, string> {
   if (typeof window === 'undefined' || !window.localStorage) {
@@ -75,6 +473,11 @@ function getStoredDataUrls(): Record<string, string> {
  * Returns stored OCR text or dynamically simulates realistic text based on file name and project context.
  */
 export function getDocumentOcrText(docId: string, fileName?: string, projectName?: string): string {
+  const mem = REAL_FILES_MEMORY[docId];
+  if (mem?.extractedText && mem.extractedText.trim().length > 0) {
+    return mem.extractedText;
+  }
+
   const current = getStoredOcrTexts();
   if (current[docId]) {
     return current[docId];
@@ -121,39 +524,289 @@ export function registerUploadedDocumentOcr(docId: string, text: string): void {
  * Registers full document text and optional file Data URL for newly uploaded documents (e.g. by First-Timers / Onboarders).
  */
 export function registerUploadedFullDocument(docId: string, fullText: string, fileDataUrl?: string): void {
+  if (REAL_FILES_MEMORY[docId]) {
+    if (fullText && !REAL_FILES_MEMORY[docId].extractedText) {
+      REAL_FILES_MEMORY[docId].extractedText = fullText;
+    }
+    if (fileDataUrl && !REAL_FILES_MEMORY[docId].dataUrl) {
+      REAL_FILES_MEMORY[docId].dataUrl = fileDataUrl;
+    }
+  } else if (fullText || fileDataUrl) {
+    const blob = fileDataUrl ? dataUrlToBlob(fileDataUrl) : undefined;
+    REAL_FILES_MEMORY[docId] = {
+      docId,
+      fileName: docId,
+      mimeType: 'application/octet-stream',
+      fileSize: fileDataUrl ? Math.round(fileDataUrl.length * 0.75) : (fullText?.length || 0),
+      dataUrl: fileDataUrl || '',
+      extractedText: fullText || '',
+      uploadedAt: new Date().toISOString(),
+      blob
+    };
+    if (blob && typeof URL !== 'undefined' && URL.createObjectURL) {
+      BLOB_URL_CACHE[docId] = URL.createObjectURL(blob);
+    }
+    saveRealFileToIdb(REAL_FILES_MEMORY[docId]);
+  }
+
   if (typeof window !== 'undefined' && window.localStorage) {
     try {
-      const currentFull = getStoredFullDocs();
-      currentFull[docId] = fullText;
-      localStorage.setItem(FULL_DOC_STORAGE_KEY, JSON.stringify(currentFull));
-
-      if (fileDataUrl && fileDataUrl.length < 1800000) {
+      if (fullText) {
+        const currentFull = getStoredFullDocs();
+        currentFull[docId] = fullText;
+        localStorage.setItem(FULL_DOC_STORAGE_KEY, JSON.stringify(currentFull));
+      }
+    } catch (e) {
+      console.warn('localStorage full text quota reached; persisted in IndexedDB', e);
+    }
+    try {
+      if (fileDataUrl && fileDataUrl.length < 3500000) {
         const currentUrls = getStoredDataUrls();
         currentUrls[docId] = fileDataUrl;
         localStorage.setItem(FILE_DATA_URL_STORAGE_KEY, JSON.stringify(currentUrls));
       }
     } catch (e) {
-      console.error('Failed to persist full document content', e);
+      console.warn('localStorage fileDataUrl quota reached; persisted in IndexedDB', e);
     }
   }
 }
 
 /**
- * Retrieves any stored Data URL for an uploaded file.
+ * Retrieves any stored Data URL for an uploaded file (from memory, DocumentAsset, or localStorage).
  */
 export function getStoredDocumentDataUrl(docId: string, doc?: DocumentAsset): string | undefined {
+  if (REAL_FILES_MEMORY[docId]?.dataUrl) return REAL_FILES_MEMORY[docId].dataUrl;
   if (doc?.fileDataUrl) return doc.fileDataUrl;
   const stored = getStoredDataUrls();
   return stored[docId];
 }
 
 /**
+ * Returns a browser-renderable Blob URL or Data URL for the real uploaded document (for <iframe /> or <object /> preview).
+ */
+export function getRealDocumentPreviewUrl(docId: string, doc?: DocumentAsset): string | undefined {
+  if (BLOB_URL_CACHE[docId]) return BLOB_URL_CACHE[docId];
+  const dataUrl = getStoredDocumentDataUrl(docId, doc);
+  if (dataUrl) {
+    const blob = dataUrlToBlob(dataUrl);
+    if (blob && typeof URL !== 'undefined' && URL.createObjectURL) {
+      const url = URL.createObjectURL(blob);
+      BLOB_URL_CACHE[docId] = url;
+      return url;
+    }
+    return dataUrl;
+  }
+  return undefined;
+}
+
+/**
+ * Checks whether a document has a real user-uploaded binary file (PDF, DOCX, TXT, etc.) stored.
+ */
+export function hasRealUploadedFile(docId: string, doc?: DocumentAsset): boolean {
+  return !!(
+    REAL_FILES_MEMORY[docId]?.dataUrl ||
+    REAL_FILES_MEMORY[docId]?.blob ||
+    doc?.fileDataUrl ||
+    getStoredDataUrls()[docId]
+  );
+}
+
+/**
+ * Generates a valid, standards-compliant PDF binary (%PDF-1.4) for pre-seeded sample PDF documents
+ * when no local disk upload exists, so downloading a .pdf document ALWAYS downloads a real .pdf file.
+ */
+function buildValidPdfBlobFromText(title: string, bodyText: string): Blob {
+  const lines = bodyText
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .flatMap(line => {
+      const wrapped: string[] = [];
+      let rem = line;
+      while (rem.length > 88) {
+        wrapped.push(rem.slice(0, 88));
+        rem = rem.slice(88);
+      }
+      wrapped.push(rem);
+      return wrapped;
+    });
+
+  const linesPerPage = 48;
+  const pages: string[][] = [];
+  for (let i = 0; i < lines.length; i += linesPerPage) {
+    pages.push(lines.slice(i, i + linesPerPage));
+  }
+  if (pages.length === 0) pages.push([title]);
+
+  const escapePdf = (str: string) =>
+    str
+      .replace(/[^\x20-\x7E]/g, ' ')
+      .replace(/\\/g, '\\\\')
+      .replace(/\(/g, '\\(')
+      .replace(/\)/g, '\\)');
+
+  const objects: string[] = [];
+  // Obj 1: Catalog
+  objects.push('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj');
+  // Obj 2: Pages placeholder
+  const pageObjNumbers: number[] = [];
+  let nextObjNum = 4; // 3 is Font
+
+  const pageAndContentObjs: string[] = [];
+  pages.forEach((pageLines, idx) => {
+    const pageObjId = nextObjNum++;
+    const contentObjId = nextObjNum++;
+    pageObjNumbers.push(pageObjId);
+
+    const streamLines = [
+      'BT',
+      '/F1 10 Tf',
+      '45 755 Td',
+      '14 TL',
+      `(${escapePdf(title)} - Page ${idx + 1} of ${pages.length}) Tj`,
+      'T*',
+      '/F1 9 Tf'
+    ];
+    for (const l of pageLines) {
+      streamLines.push(`(${escapePdf(l)}) Tj`);
+      streamLines.push('T*');
+    }
+    streamLines.push('ET');
+    const streamContent = streamLines.join('\n');
+
+    pageAndContentObjs.push(
+      `${pageObjId} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents ${contentObjId} 0 R >>\nendobj`
+    );
+    pageAndContentObjs.push(
+      `${contentObjId} 0 obj\n<< /Length ${streamContent.length} >>\nstream\n${streamContent}\nendstream\nendobj`
+    );
+  });
+
+  objects.push(
+    `2 0 obj\n<< /Type /Pages /Kids [${pageObjNumbers.map(n => `${n} 0 R`).join(' ')}] /Count ${pages.length} >>\nendobj`
+  );
+  objects.push('3 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>\nendobj');
+  objects.push(...pageAndContentObjs);
+
+  let pdf = '%PDF-1.4\n';
+  const offsets: number[] = [0];
+  for (const obj of objects) {
+    offsets.push(pdf.length);
+    pdf += obj + '\n';
+  }
+  const xrefOffset = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (let i = 1; i < offsets.length; i++) {
+    pdf += `${String(offsets[i]).padStart(10, '0')} 00000 n \n`;
+  }
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+
+  return new Blob([pdf], { type: 'application/pdf' });
+}
+
+/**
+ * Downloads the exact original document uploaded by the First-Timer / Onboarder (or user)
+ * with its exact original fileName and binary content.
+ */
+export async function downloadOriginalDocument(doc: DocumentAsset, project?: AIProject): Promise<void> {
+  if (typeof window === 'undefined') return;
+
+  // 1. Check in-memory cache or synchronous Data URL first
+  let record: StoredRealUploadedFile | undefined = REAL_FILES_MEMORY[doc.id];
+  if (!record) {
+    // Try reading directly from IndexedDB in case hydration is still in flight
+    const db = await openRealFilesIdb();
+    if (db) {
+      record = await new Promise<StoredRealUploadedFile | undefined>(resolve => {
+        try {
+          const tx = db.transaction(IDB_STORE_NAME, 'readonly');
+          const store = tx.objectStore(IDB_STORE_NAME);
+          const req = store.get(doc.id);
+          req.onsuccess = () => resolve(req.result as StoredRealUploadedFile | undefined);
+          req.onerror = () => resolve(undefined);
+        } catch {
+          resolve(undefined);
+        }
+      });
+      if (record) {
+        REAL_FILES_MEMORY[doc.id] = record;
+      }
+    }
+  }
+
+  const dataUrl = record?.dataUrl || getStoredDocumentDataUrl(doc.id, doc);
+  if (record?.blob) {
+    const url = URL.createObjectURL(record.blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = doc.fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    return;
+  }
+
+  if (dataUrl) {
+    const blob = dataUrlToBlob(dataUrl);
+    if (blob) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = doc.fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      return;
+    }
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = doc.fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    return;
+  }
+
+  // 2. Fallback for pre-seeded sample documents that were not uploaded from the user's computer:
+  const fullText = getFullDocumentText(doc, project);
+  const ext = (doc.fileName.split('.').pop() || doc.fileType || 'pdf').toLowerCase();
+  if (ext === 'pdf') {
+    const pdfBlob = buildValidPdfBlobFromText(doc.fileName, fullText);
+    const url = URL.createObjectURL(pdfBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = doc.fileName.endsWith('.pdf') ? doc.fileName : `${doc.fileName}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    return;
+  }
+
+  const blob = new Blob([fullText], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = doc.fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+/**
  * Builds structured multi-page sections for the full uploaded document so reviewers have access
  * to the complete document uploaded by first-timers/onboarders during review and grading.
+ * When a user uploads a real document, the user's actual uploaded content is returned first (Page 1+).
  */
 export function getFullDocumentSections(doc: DocumentAsset, project?: AIProject): FullDocumentSection[] {
-  const ocrSummary = getDocumentOcrText(doc.id, doc.fileName, project?.name);
-  const storedFull = getStoredFullDocs()[doc.id] || doc.fullDocumentText;
+  const realMem = REAL_FILES_MEMORY[doc.id];
+  const storedFull = (realMem?.extractedText && realMem.extractedText.trim().length > 0)
+    ? realMem.extractedText
+    : (getStoredFullDocs()[doc.id] || doc.fullDocumentText);
+  const isRealUserUpload = hasRealUploadedFile(doc.id, doc) || !MASTER_MOCK_OCR_TEXTS[doc.id];
+
   const isFT = doc.isFirstTimerUpload ||
     doc.uploadedByRole === 'First-Timer / New User' ||
     doc.id.includes('onboard') ||
@@ -167,10 +820,113 @@ export function getFullDocumentSections(doc: DocumentAsset, project?: AIProject)
   const mdaName = project?.mda || 'Republic of Ghana MDA';
   const regionName = project ? `${project.region} (${project.district})` : 'Greater Accra';
 
-  const sections: FullDocumentSection[] = [
-    {
+  // If this is a real uploaded document by a First-Timer/Onboarder or officer, return the REAL uploaded content first!
+  if (isRealUserUpload) {
+    const realSections: FullDocumentSection[] = [];
+    const cleanText = (storedFull || '').trim();
+
+    if (cleanText.length > 0) {
+      // Split large uploaded documents into readable ~3000-char pages while preserving paragraph boundaries
+      const maxCharsPerPage = 3200;
+      if (cleanText.length <= maxCharsPerPage) {
+        realSections.push({
+          pageNumber: 1,
+          sectionTitle: `Original Uploaded Document: ${doc.fileName}`,
+          statutoryReference: `Uploaded by ${uploaderName} (${uploaderRole}) • ${doc.fileSize || 'Original File'} • ${doc.uploadedAt}`,
+          content: cleanText,
+          keyHighlights: [
+            'Original Uploaded File Content',
+            doc.fileName,
+            isFT ? 'First-Timer / Onboarder Upload' : 'User Uploaded Document'
+          ]
+        });
+      } else {
+        const paragraphs = cleanText.split(/\n\s*\n/);
+        let currentChunk = '';
+        let pageIdx = 1;
+        for (const para of paragraphs) {
+          if ((currentChunk.length + para.length + 2) > maxCharsPerPage && currentChunk.trim().length > 0) {
+            realSections.push({
+              pageNumber: pageIdx,
+              sectionTitle: `Original Uploaded Document (${doc.fileName}) — Page ${pageIdx}`,
+              statutoryReference: `Uploaded by ${uploaderName} (${uploaderRole}) • ${doc.fileSize || 'Original File'}`,
+              content: currentChunk.trim(),
+              keyHighlights: [
+                `Page ${pageIdx} of Uploaded File`,
+                doc.fileName,
+                isFT ? 'First-Timer / Onboarder Upload' : 'User Uploaded Document'
+              ]
+            });
+            pageIdx++;
+            currentChunk = para + '\n\n';
+          } else {
+            currentChunk += para + '\n\n';
+          }
+        }
+        if (currentChunk.trim().length > 0) {
+          realSections.push({
+            pageNumber: pageIdx,
+            sectionTitle: `Original Uploaded Document (${doc.fileName}) — Page ${pageIdx}`,
+            statutoryReference: `Uploaded by ${uploaderName} (${uploaderRole}) • ${doc.fileSize || 'Original File'}`,
+            content: currentChunk.trim(),
+            keyHighlights: [
+              `Page ${pageIdx} of Uploaded File`,
+              doc.fileName,
+              isFT ? 'First-Timer / Onboarder Upload' : 'User Uploaded Document'
+            ]
+          });
+        }
+      }
+    } else {
+      // Binary file where plain text stream was not extractable (e.g. scanned PDF or compressed stream),
+      // while the exact original binary is stored and rendered in the embedded viewer / available for download.
+      realSections.push({
+        pageNumber: 1,
+        sectionTitle: `Original Uploaded File: ${doc.fileName}`,
+        statutoryReference: `Uploaded by ${uploaderName} (${uploaderRole}) • ${doc.fileSize || 'Original Binary'} • ${doc.uploadedAt}`,
+        content: `ORIGINAL UPLOADED DOCUMENT ATTACHED (${doc.fileName})\n` +
+          `================================================================================\n` +
+          `File Name:        ${doc.fileName}\n` +
+          `File Type:        ${doc.fileType.toUpperCase()}\n` +
+          `File Size:        ${doc.fileSize || 'Verified Binary'}\n` +
+          `Uploaded By:      ${uploaderName} (${uploaderRole} — ${uploaderEmail})\n` +
+          `Uploaded Date:    ${doc.uploadedAt}\n` +
+          `Target Project:   [${projCode}] ${projName} (${mdaName})\n\n` +
+          `The exact file you uploaded ("${doc.fileName}") is preserved in its original binary format.\n` +
+          `• If this is a PDF, view the live embedded PDF document directly above or in the Original File tab.\n` +
+          `• Click "Download Original File" to download the exact "${doc.fileName}" file that was uploaded.`,
+        keyHighlights: [
+          'Original Binary File Preserved',
+          doc.fileName,
+          isFT ? 'First-Timer / Onboarder Upload' : 'User Uploaded Document'
+        ]
+      });
+    }
+
+    return realSections;
+  }
+
+  const ocrSummary = getDocumentOcrText(doc.id, doc.fileName, project?.name);
+
+  // If a pre-seeded onboarder document has explicit fullDocumentText, place it on Page 1 so reviewers see it immediately
+  const sections: FullDocumentSection[] = [];
+
+  if (storedFull && storedFull.trim().length > 0) {
+    sections.push({
       pageNumber: 1,
-      sectionTitle: 'Section 1: Statutory Dossier Cover, Uploader Provenance & Project Charter',
+      sectionTitle: `Section 1: Verbatim Uploaded Document (${doc.fileName})`,
+      statutoryReference: `Primary Documentary Evidence Uploaded by ${uploaderName} (${uploaderRole})`,
+      content: storedFull,
+      keyHighlights: ['Verbatim Uploaded File Content', isFT ? 'First-Timer / Onboarder Full Dossier' : 'Primary User Attachment', doc.fileName]
+    });
+  }
+
+  const pageOffset = sections.length;
+
+  sections.push(
+    {
+      pageNumber: pageOffset + 1,
+      sectionTitle: `Section ${pageOffset + 1}: Statutory Dossier Cover, Uploader Provenance & Project Charter`,
       statutoryReference: 'NITA Act 771 & Ghana National AI Strategy 2026',
       content: `REPUBLIC OF GHANA — NATIONAL INFORMATION TECHNOLOGY AGENCY (NITA)
 STATUTORY FULL COMPLIANCE DOSSIER & ONBOARDING SUBMISSION
@@ -197,8 +953,8 @@ The submitting officer (${uploaderName}) certifies that all architectural specif
       keyHighlights: ['Project Charter Verified', isFT ? 'First-Timer / Onboarder Full Dossier' : 'Institutional Filing', 'NITA Act 771 Compliant']
     },
     {
-      pageNumber: 2,
-      sectionTitle: 'Section 2: System Architecture, Model Card & Sovereign Compute Specifications',
+      pageNumber: pageOffset + 2,
+      sectionTitle: `Section ${pageOffset + 2}: System Architecture, Model Card & Sovereign Compute Specifications`,
       statutoryReference: 'ISO/IEC 42001 Annex A & NITA Sovereign Cloud Standards',
       content: `2.1 MODEL ARCHITECTURE & ALGORITHMIC SPECIFICATIONS
 • Primary AI Category: ${project?.category || 'Machine Learning & Predictive Analytics'} (${project?.sector || 'Public'} Sector)
@@ -213,8 +969,8 @@ The submitting officer (${uploaderName}) certifies that all architectural specif
       keyHighlights: ['Model Card Published', 'SHAP Explainability Active', 'NITA Tier-III Sovereign Hosting']
     },
     {
-      pageNumber: 3,
-      sectionTitle: 'Section 3: Ghana AI Ethics Framework — Fairness, Non-Bias & Inclusivity Audit',
+      pageNumber: pageOffset + 3,
+      sectionTitle: `Section ${pageOffset + 3}: Ghana AI Ethics Framework — Fairness, Non-Bias & Inclusivity Audit`,
       statutoryReference: 'Ghana Ethical AI Framework — Pillar 1 (Fairness) & Pillar 2 (Transparency)',
       content: `3.1 MULTI-REGIONAL & DEMOGRAPHIC PARITY EVALUATION
 • Geographic Representation: Training and validation datasets audited across all 16 administrative regions of Ghana (including Greater Accra, Ashanti, Western North, Northern, Upper East, Volta, and Savannah zones).
@@ -227,8 +983,8 @@ The submitting officer (${uploaderName}) certifies that all architectural specif
       keyHighlights: ['16-Region Demographic Parity', 'Local Languages (Twi, Ga, Ewe)', 'USSD/Offline Accessibility']
     },
     {
-      pageNumber: 4,
-      sectionTitle: 'Section 4: Data Protection Act, 2012 (Act 843) & Privacy Governance',
+      pageNumber: pageOffset + 4,
+      sectionTitle: `Section ${pageOffset + 4}: Data Protection Act, 2012 (Act 843) & Privacy Governance`,
       statutoryReference: 'Ghana Data Protection Act, 2012 (Act 843) & DPC Statutory Guidelines',
       content: `4.1 DATA PROTECTION COMMISSION (DPC) REGISTRATION & DPO OVERSIGHT
 • DPC Certificate Reference: ${project?.dpcCertificateNumber || 'GH-DPC-2026-VERIFIED'}
@@ -242,8 +998,8 @@ The submitting officer (${uploaderName}) certifies that all architectural specif
       keyHighlights: ['Act 843 DPC Certified', 'SHA-256 PII Cryptographic Hashing', '100% Sovereign Data Residency']
     },
     {
-      pageNumber: 5,
-      sectionTitle: 'Section 5: Cybersecurity Act (Act 1038), OWASP Clearance & AI Readiness',
+      pageNumber: pageOffset + 5,
+      sectionTitle: `Section ${pageOffset + 5}: Cybersecurity Act (Act 1038), OWASP Clearance & AI Readiness`,
       statutoryReference: 'Cybersecurity Act 2020 (Act 1038) & National AI Readiness Rubric',
       content: `5.1 CYBERSECURITY & VULNERABILITY AUDIT (SECURITY PILLAR)
 • Application Security: Source code and container images cleared against OWASP Top 10 and OWASP LLM Top 10 vulnerabilities via automated SAST/DAST pipelines.
@@ -257,25 +1013,26 @@ The submitting officer (${uploaderName}) certifies that all architectural specif
 • Fiscal Allocation: ${project?.budget ? `${project.budget.currency} ${project.budget.totalAllocated.toLocaleString()} Allocated (${project.budget.verificationStatus || 'Under Verification'})` : 'Budget logged in National Registry'}.`,
       keyHighlights: ['OWASP Top 10 Cleared', 'TLS 1.3 & HSM Active', `AI Readiness: ${project?.readinessScore ?? 80}%`]
     }
-  ];
-
-  if (storedFull && storedFull.trim().length > 0) {
-    sections.push({
-      pageNumber: 6,
-      sectionTitle: 'Section 6: Verbatim Uploaded File Content & Raw Onboarder Attachment',
-      statutoryReference: 'Primary Documentary Evidence Uploaded by User',
-      content: storedFull,
-      keyHighlights: ['Verbatim Uploaded File Content', 'Primary User Attachment']
-    });
-  }
+  );
 
   return sections;
 }
 
 /**
  * Returns the complete, multi-page full document text for reading, searching, or downloading.
+ * For real user uploads, returns the exact extracted text of the uploaded document.
  */
 export function getFullDocumentText(doc: DocumentAsset, project?: AIProject): string {
+  const realMem = REAL_FILES_MEMORY[doc.id];
+  const storedFull = (realMem?.extractedText && realMem.extractedText.trim().length > 0)
+    ? realMem.extractedText
+    : (getStoredFullDocs()[doc.id] || doc.fullDocumentText);
+  const isRealUserUpload = hasRealUploadedFile(doc.id, doc) || !MASTER_MOCK_OCR_TEXTS[doc.id];
+
+  if (isRealUserUpload && storedFull && storedFull.trim().length > 0) {
+    return storedFull;
+  }
+
   const sections = getFullDocumentSections(doc, project);
   return sections
     .map(s => `--- [PAGE ${s.pageNumber} • ${s.sectionTitle.toUpperCase()}] ---\nStatutory Ref: ${s.statutoryReference}\n\n${s.content}\n`)

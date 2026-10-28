@@ -29,7 +29,10 @@ import {
   getDocumentOcrText, 
   getFullDocumentSections, 
   getFullDocumentText, 
-  getStoredDocumentDataUrl 
+  downloadOriginalDocument,
+  getRealDocumentPreviewUrl,
+  hasRealUploadedFile,
+  onRealFilesHydrated
 } from '../services/assessmentEngine';
 
 interface DocumentReviewGradeModalProps {
@@ -99,6 +102,11 @@ export const DocumentReviewGradeModal: React.FC<DocumentReviewGradeModalProps> =
   const [applyGradesToProject, setApplyGradesToProject] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [, setHydrationTick] = useState(0);
+
+  useEffect(() => {
+    return onRealFilesHydrated(() => setHydrationTick(t => t + 1));
+  }, []);
 
   // Auto-calculate letter grade based on ethical average
   const ethicalAvg = Math.round((fairness + transparency + accountability + privacy + security) / 5);
@@ -111,7 +119,9 @@ export const DocumentReviewGradeModal: React.FC<DocumentReviewGradeModalProps> =
   const ocrText = getDocumentOcrText(activeDoc.id, activeDoc.fileName, activeProject.name);
   const fullDocumentText = getFullDocumentText(activeDoc, activeProject);
   const fullDocSections = getFullDocumentSections(activeDoc, activeProject);
-  const storedDataUrl = getStoredDocumentDataUrl(activeDoc.id, activeDoc);
+  const previewUrl = getRealDocumentPreviewUrl(activeDoc.id, activeDoc);
+  const isPdfDoc = activeDoc.fileType.toLowerCase() === 'pdf' || activeDoc.fileName.toLowerCase().endsWith('.pdf');
+  const isImageDoc = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(activeDoc.fileType.toLowerCase());
 
   const isFirstTimerDoc = (d: DocumentAsset) =>
     Boolean(
@@ -137,22 +147,9 @@ export const DocumentReviewGradeModal: React.FC<DocumentReviewGradeModalProps> =
       .map(d => ({ doc: d, project: p }))
   );
 
-  // Download full document helper
+  // Download full document helper — always downloads the exact original uploaded file
   const handleDownloadFullDocument = () => {
-    if (storedDataUrl && activeDoc.fileType !== 'pdf') {
-      const a = window.document.createElement('a');
-      a.href = storedDataUrl;
-      a.download = activeDoc.fileName;
-      a.click();
-      return;
-    }
-    const blob = new Blob([fullDocumentText], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = window.document.createElement('a');
-    a.href = url;
-    a.download = `${activeDoc.fileName.replace(/\.[^/.]+$/, '')}_FULL_UPLOADED_DOCUMENT.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadOriginalDocument(activeDoc, activeProject);
   };
 
   // Filtered full text when searching inside document
@@ -690,9 +687,34 @@ export const DocumentReviewGradeModal: React.FC<DocumentReviewGradeModalProps> =
 
               {/* TAB 1: COMPLETE FULL DOCUMENT VIEW */}
               {docReaderTab === 'full' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {previewUrl && isPdfDoc && (
+                    <div style={{ borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(56, 189, 248, 0.35)', background: '#fff' }}>
+                      <iframe
+                        src={previewUrl}
+                        title={`Uploaded PDF: ${activeDoc.fileName}`}
+                        style={{
+                          width: '100%',
+                          height: layoutMode === 'split' ? '440px' : '380px',
+                          border: 'none',
+                          display: 'block'
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {previewUrl && isImageDoc && (
+                    <div style={{ borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(56, 189, 248, 0.35)', background: '#0f172a', padding: '12px', textAlign: 'center' }}>
+                      <img
+                        src={previewUrl}
+                        alt={activeDoc.fileName}
+                        style={{ maxWidth: '100%', maxHeight: '420px', borderRadius: '6px' }}
+                      />
+                    </div>
+                  )}
+
                   <div style={{
-                    maxHeight: layoutMode === 'split' ? '500px' : '320px',
+                    maxHeight: previewUrl && isPdfDoc ? '190px' : (layoutMode === 'split' ? '500px' : '320px'),
                     overflowY: 'auto',
                     padding: '14px 16px',
                     borderRadius: '10px',
@@ -836,10 +858,10 @@ export const DocumentReviewGradeModal: React.FC<DocumentReviewGradeModalProps> =
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                     <div>
                       <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#fff' }}>
-                        Original Uploaded File Package: {activeDoc.fileName}
+                        Original Uploaded File: {activeDoc.fileName}
                       </div>
                       <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                        Format: {activeDoc.fileType.toUpperCase()} • Size: {activeDoc.fileSize || '1.8 MB'} • SHA-256: sha256-{activeDoc.id}f89a2b
+                        Format: {activeDoc.fileType.toUpperCase()} • Size: {activeDoc.fileSize || 'Original Binary'} • {hasRealUploadedFile(activeDoc.id, activeDoc) ? 'Exact Uploaded Binary Stored' : `SHA-256: sha256-${activeDoc.id}f89a2b`}
                       </div>
                     </div>
                     <button
@@ -860,22 +882,26 @@ export const DocumentReviewGradeModal: React.FC<DocumentReviewGradeModalProps> =
                       }}
                     >
                       <Download size={14} />
-                      <span>Download Complete Document</span>
+                      <span>Download Original File ({activeDoc.fileName})</span>
                     </button>
                   </div>
 
-                  {storedDataUrl && activeDoc.fileType === 'pdf' ? (
+                  {previewUrl && isPdfDoc ? (
                     <iframe
-                      src={storedDataUrl}
+                      src={previewUrl}
                       title={activeDoc.fileName}
                       style={{
                         width: '100%',
-                        height: '380px',
+                        height: '440px',
                         borderRadius: '8px',
                         border: '1px solid rgba(255, 255, 255, 0.15)',
                         background: '#fff'
                       }}
                     />
+                  ) : previewUrl && isImageDoc ? (
+                    <div style={{ textAlign: 'center', background: '#0f172a', padding: '12px', borderRadius: '8px' }}>
+                      <img src={previewUrl} alt={activeDoc.fileName} style={{ maxWidth: '100%', maxHeight: '420px', borderRadius: '6px' }} />
+                    </div>
                   ) : (
                     <div style={{
                       padding: '14px',
@@ -888,9 +914,9 @@ export const DocumentReviewGradeModal: React.FC<DocumentReviewGradeModalProps> =
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontWeight: 700, marginBottom: '6px' }}>
                         <CheckCircle2 size={14} />
-                        <span>Full Sovereign Dossier Preserved & Indexed</span>
+                        <span>{hasRealUploadedFile(activeDoc.id, activeDoc) ? 'Exact Uploaded File Stored & Ready for Download' : 'Full Sovereign Dossier Preserved & Indexed'}</span>
                       </div>
-                      The complete text and all {fullDocSections.length} statutory pages of <strong>{activeDoc.fileName}</strong> uploaded by <strong>{activeDoc.uploadedByName || 'the First-Timer / Onboarder'}</strong> are available in the <em>Complete Full Document</em> and <em>Page-by-Page Section Reader</em> tabs, or can be downloaded to your workstation using the button above.
+                      The complete file <strong>{activeDoc.fileName}</strong> uploaded by <strong>{activeDoc.uploadedByName || 'the First-Timer / Onboarder'}</strong> is preserved and can be downloaded in its exact original format using the button above.
                     </div>
                   )}
                 </div>
