@@ -26,14 +26,13 @@ export function loadStoredProjects(): AIProject[] {
         if (!sample) return proj;
         const existingIds = new Set((proj.documents || []).map(d => d.id));
         const missingDocs = (sample.documents || []).filter(d => !existingIds.has(d.id));
-        if (missingDocs.length > 0) {
-          return {
-            ...proj,
-            documents: [...(proj.documents || []), ...missingDocs],
-            hasFirstTimerUpload: proj.hasFirstTimerUpload || sample.hasFirstTimerUpload
-          };
-        }
-        return proj;
+        return {
+          ...proj,
+          documents: missingDocs.length > 0 ? [...(proj.documents || []), ...missingDocs] : (proj.documents || []),
+          hasFirstTimerUpload: proj.hasFirstTimerUpload || sample.hasFirstTimerUpload,
+          reviewStatus: proj.reviewStatus || sample.reviewStatus,
+          dgFinalVerdict: proj.dgFinalVerdict || sample.dgFinalVerdict
+        };
       });
       return merged;
     }

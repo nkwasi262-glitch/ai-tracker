@@ -13,9 +13,15 @@ import {
   FolderOpen,
   CheckCircle2,
   HelpCircle,
-  ShieldCheck
+  ShieldCheck,
+  Stamp,
+  XCircle,
+  RotateCcw,
+  Clock,
+  ArrowRight
 } from 'lucide-react';
 import { AIProject, formatNumberToWords, computeZeroAssumptionSummary } from '../data/sampleProjects';
+import { getDGVerdicts } from '../services/verdictService';
 import { UserRole } from './RoleSwitcher';
 
 const CustomTooltip = ({ active, payload }: any) => {
@@ -66,15 +72,93 @@ const CustomTooltip = ({ active, payload }: any) => {
 interface DashboardProps {
   projects: AIProject[];
   currentRole: UserRole;
+  onNavigate?: (tab: string) => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onNavigate }) => {
   const [selectedSector, setSelectedSector] = useState<string>('All');
   const [showProjectsTooltip, setShowProjectsTooltip] = useState(false);
+  const [verdictFilter, setVerdictFilter] = useState<'All' | 'Approved' | 'Requires More Understanding' | 'Rejected' | 'Awaiting DG'>('All');
+
+  const allVerdicts = getDGVerdicts();
+
+  // Resolve the authoritative Director General Final Verdict & Reasons for a project
+  const resolveProjectDGVerdict = (p: AIProject) => {
+    const latestFromService = allVerdicts.find(v => v.projectId === p.id);
+    if (p.dgFinalVerdict) {
+      return {
+        hasFinalVerdict: true,
+        statusLabel: p.dgFinalVerdict.finalStatusLabel,
+        verdictType: p.dgFinalVerdict.verdict,
+        reasons: p.dgFinalVerdict.reasons,
+        signedByName: p.dgFinalVerdict.signedByName,
+        signedByRole: p.dgFinalVerdict.signedByRole,
+        signedAt: p.dgFinalVerdict.signedAt,
+        signatureSeal: p.dgFinalVerdict.signatureSeal || 'NITA-DG-SEAL-VERIFIED',
+      };
+    }
+    if (latestFromService) {
+      const statusLabel: 'Approved' | 'Rejected' | 'Requires More Understanding' =
+        latestFromService.verdict === 'Approve'
+          ? 'Approved'
+          : latestFromService.verdict === 'Reject'
+          ? 'Rejected'
+          : 'Requires More Understanding';
+      return {
+        hasFinalVerdict: true,
+        statusLabel,
+        verdictType: latestFromService.verdict,
+        reasons: latestFromService.mandatoryComments,
+        signedByName: latestFromService.reviewedByName,
+        signedByRole: latestFromService.reviewedByRole,
+        signedAt: latestFromService.timestamp,
+        signatureSeal: latestFromService.signatureSeal || 'NITA-DG-SEAL-VERIFIED',
+      };
+    }
+    if (p.reviewStatus === 'Approved' || p.reviewStatus === 'Rejected' || p.reviewStatus === 'Returned' || p.reviewStatus === 'Needs Correction') {
+      const statusLabel: 'Approved' | 'Rejected' | 'Requires More Understanding' =
+        p.reviewStatus === 'Approved'
+          ? 'Approved'
+          : p.reviewStatus === 'Rejected'
+          ? 'Rejected'
+          : 'Requires More Understanding';
+      return {
+        hasFinalVerdict: true,
+        statusLabel,
+        verdictType: statusLabel === 'Approved' ? 'Approve' : statusLabel === 'Rejected' ? 'Reject' : 'Return for Further Review',
+        reasons: p.technicalReview?.recommendationNotes || (
+          statusLabel === 'Rejected'
+            ? 'Rejected by Director General due to statutory non-compliance.'
+            : statusLabel === 'Requires More Understanding'
+            ? 'Returned by Director General: Requires more understanding and technical clarification before approval.'
+            : 'Approved by Director General for National AI Registry deployment.'
+        ),
+        signedByName: 'Hon. Director General (NITA)',
+        signedByRole: 'Director General',
+        signedAt: p.technicalReview?.reviewedAt || p.startDate || new Date().toISOString(),
+        signatureSeal: 'NITA-DG-SEAL-VERIFIED',
+      };
+    }
+    return {
+      hasFinalVerdict: false,
+      statusLabel: 'Awaiting DG' as const,
+      verdictType: null,
+      reasons: p.technicalReview?.recommendationNotes || 'Currently undergoing statutory vetting prior to Director General final sign-off.',
+      signedByName: null,
+      signedByRole: null,
+      signedAt: null,
+      signatureSeal: null,
+    };
+  };
 
   const activeProjectsList = projects.filter(p => p.status === 'Active');
   const delayedProjectsList = projects.filter(p => p.status === 'Delayed');
   const completedProjectsList = projects.filter(p => p.status === 'Completed');
+
+  // DG Verdict Counts across filtered sector projects
+  const dgApprovedProjects = projects.filter(p => resolveProjectDGVerdict(p).statusLabel === 'Approved');
+  const dgRequiresUnderstandingProjects = projects.filter(p => resolveProjectDGVerdict(p).statusLabel === 'Requires More Understanding');
+  const dgRejectedProjects = projects.filter(p => resolveProjectDGVerdict(p).statusLabel === 'Rejected');
 
   // Calculates KPI values
   const totalProjectsCount = projects.length;
@@ -136,24 +220,44 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
     { month: 'Jun', Compliance: 86, Projects: 24 },
   ];
 
-  // Dynamic system notifications based on roles
+  // Dynamic system notifications based on Director General final verdicts & roles
   const getNotifications = () => {
-    const notices = [];
+    const notices: Array<{ type: 'danger' | 'warning' | 'success' | 'info'; message: string; reason?: string; time: string }> = [];
+
+    // Surface all projects that have received a Director General Final Verdict (especially Rejections & Requires More Understanding)
+    projects.forEach(p => {
+      const v = resolveProjectDGVerdict(p);
+      if (v.hasFinalVerdict) {
+        if (v.statusLabel === 'Rejected') {
+          notices.push({
+            type: 'danger',
+            message: `[DG FINAL VERDICT — REJECTED] ${p.name} (${p.mdaCode}) — Status: ${p.status}`,
+            reason: `Rejection Reason: ${v.reasons}`,
+            time: v.signedAt ? `Signed by ${v.signedByName} • ${new Date(v.signedAt).toLocaleDateString()}` : 'Signed by Director General',
+          });
+        } else if (v.statusLabel === 'Requires More Understanding') {
+          notices.push({
+            type: 'warning',
+            message: `[DG FINAL VERDICT — REQUIRES MORE UNDERSTANDING] ${p.name} (${p.mdaCode}) — Status: ${p.status}`,
+            reason: `Why More Understanding Is Required: ${v.reasons}`,
+            time: v.signedAt ? `Signed by ${v.signedByName} • ${new Date(v.signedAt).toLocaleDateString()}` : 'Signed by Director General',
+          });
+        } else if (v.statusLabel === 'Approved') {
+          notices.push({
+            type: 'success',
+            message: `[DG FINAL SIGN-OFF — APPROVED] ${p.name} (${p.mdaCode}) — Status: ${p.status}`,
+            reason: `Executive Directive: ${v.reasons}`,
+            time: v.signedAt ? `Signed by ${v.signedByName} • ${new Date(v.signedAt).toLocaleDateString()}` : 'Signed by Director General',
+          });
+        }
+      }
+    });
+
     if (currentRole !== 'Public User') {
       notices.push({
         type: 'warning',
         message: 'GRA Tax Fraud engine milestone verification delayed by 2 weeks.',
         time: '3 hours ago'
-      });
-      notices.push({
-        type: 'danger',
-        message: 'Security risk check flagged on Akosombo Dam Hydrology project. Mitigation action required.',
-        time: '5 hours ago'
-      });
-      notices.push({
-        type: 'success',
-        message: 'Cocoa Board disease predictor ethics review finalized and approved.',
-        time: '1 day ago'
       });
     } else {
       notices.push({
@@ -164,6 +268,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
     }
     return notices;
   };
+
+  // Filtered projects for the Director General Final Verdict Status Board
+  const verdictFilteredProjects = filteredProjects.filter(p => {
+    if (verdictFilter === 'All') return true;
+    return resolveProjectDGVerdict(p).statusLabel === verdictFilter;
+  });
 
   return (
     <div>
@@ -307,6 +417,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
             <div className="kpi-sub">
               <span style={{ color: 'var(--ghana-emerald)' }}>Active: {activeProjectsCount}</span> | Delayed: {delayedProjectsCount}
             </div>
+            <div style={{ fontSize: '0.68rem', marginTop: '6px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              <span style={{ color: '#10b981', fontWeight: 700 }}>✓ DG Approved: {dgApprovedProjects.length}</span>
+              <span style={{ color: '#fbbf24', fontWeight: 700 }}>• Needs Understanding: {dgRequiresUnderstandingProjects.length}</span>
+              <span style={{ color: '#ef4444', fontWeight: 700 }}>• Rejected: {dgRejectedProjects.length}</span>
+            </div>
           </div>
           <FolderOpen className="kpi-icon-wrapper" />
 
@@ -445,6 +560,392 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
         </div>
       </div>
 
+      {/* Director General Final Sign-Off & Project Verdict Status Board */}
+      <div
+        className="glass-card"
+        style={{
+          marginBottom: '24px',
+          padding: '22px 24px',
+          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.96) 0%, rgba(16, 185, 129, 0.04) 100%)',
+          border: '1px solid rgba(16, 185, 129, 0.3)',
+          borderRadius: '14px',
+        }}
+      >
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '14px', marginBottom: '18px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '10px',
+              background: 'rgba(16, 185, 129, 0.15)',
+              border: '1px solid rgba(16, 185, 129, 0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#10b981'
+            }}>
+              <Stamp size={22} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#fff', margin: 0 }}>
+                  Director General Final Sign-Off & Project Verdict Status Board
+                </h3>
+                <span style={{
+                  fontSize: '0.68rem',
+                  fontWeight: 800,
+                  padding: '2px 10px',
+                  borderRadius: '9999px',
+                  background: 'rgba(251, 191, 36, 0.16)',
+                  color: '#fbbf24',
+                  border: '1px solid rgba(251, 191, 36, 0.4)'
+                }}>
+                  STATUTORY EXECUTIVE REGISTRY
+                </span>
+              </div>
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '3px' }}>
+                Live project statuses after final sign-off or verdict from the NITA Director General — including full statutory reasons when a project is <strong>Rejected</strong> or <strong>Requires More Understanding</strong>.
+              </p>
+            </div>
+          </div>
+
+          {onNavigate && (currentRole === 'Super Administrator' || currentRole === 'National AI Authority' || currentRole === 'Government Administrator') && (
+            <button
+              onClick={() => onNavigate('dg_queue')}
+              className="btn btn-primary"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 14px',
+                fontSize: '0.76rem',
+                fontWeight: 700,
+              }}
+            >
+              <Stamp size={14} /> Open DG Sign-Off Queue <ArrowRight size={14} />
+            </button>
+          )}
+        </div>
+
+        {/* Summary Filter Tabs */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '18px', paddingBottom: '14px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <button
+            onClick={() => setVerdictFilter('All')}
+            style={{
+              padding: '7px 14px',
+              borderRadius: '8px',
+              fontSize: '0.76rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              background: verdictFilter === 'All' ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.03)',
+              color: verdictFilter === 'All' ? '#fff' : 'var(--text-secondary)',
+              border: verdictFilter === 'All' ? '1px solid rgba(255,255,255,0.35)' : '1px solid rgba(255,255,255,0.08)',
+            }}
+          >
+            All Projects ({filteredProjects.length})
+          </button>
+
+          <button
+            onClick={() => setVerdictFilter('Approved')}
+            style={{
+              padding: '7px 14px',
+              borderRadius: '8px',
+              fontSize: '0.76rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: verdictFilter === 'Approved' ? 'rgba(16, 185, 129, 0.22)' : 'rgba(16, 185, 129, 0.06)',
+              color: '#10b981',
+              border: verdictFilter === 'Approved' ? '1px solid rgba(16, 185, 129, 0.6)' : '1px solid rgba(16, 185, 129, 0.22)',
+            }}
+          >
+            <CheckCircle2 size={14} /> DG Approved ({filteredProjects.filter(p => resolveProjectDGVerdict(p).statusLabel === 'Approved').length})
+          </button>
+
+          <button
+            onClick={() => setVerdictFilter('Requires More Understanding')}
+            style={{
+              padding: '7px 14px',
+              borderRadius: '8px',
+              fontSize: '0.76rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: verdictFilter === 'Requires More Understanding' ? 'rgba(245, 158, 11, 0.24)' : 'rgba(245, 158, 11, 0.07)',
+              color: '#fbbf24',
+              border: verdictFilter === 'Requires More Understanding' ? '1px solid rgba(245, 158, 11, 0.65)' : '1px solid rgba(245, 158, 11, 0.25)',
+            }}
+          >
+            <RotateCcw size={14} /> Requires More Understanding ({filteredProjects.filter(p => resolveProjectDGVerdict(p).statusLabel === 'Requires More Understanding').length})
+          </button>
+
+          <button
+            onClick={() => setVerdictFilter('Rejected')}
+            style={{
+              padding: '7px 14px',
+              borderRadius: '8px',
+              fontSize: '0.76rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: verdictFilter === 'Rejected' ? 'rgba(239, 68, 68, 0.24)' : 'rgba(239, 68, 68, 0.07)',
+              color: '#f87171',
+              border: verdictFilter === 'Rejected' ? '1px solid rgba(239, 68, 68, 0.65)' : '1px solid rgba(239, 68, 68, 0.25)',
+            }}
+          >
+            <XCircle size={14} /> Rejected by DG ({filteredProjects.filter(p => resolveProjectDGVerdict(p).statusLabel === 'Rejected').length})
+          </button>
+
+          <button
+            onClick={() => setVerdictFilter('Awaiting DG')}
+            style={{
+              padding: '7px 14px',
+              borderRadius: '8px',
+              fontSize: '0.76rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: verdictFilter === 'Awaiting DG' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(56, 189, 248, 0.05)',
+              color: '#38bdf8',
+              border: verdictFilter === 'Awaiting DG' ? '1px solid rgba(56, 189, 248, 0.55)' : '1px solid rgba(56, 189, 248, 0.2)',
+            }}
+          >
+            <Clock size={14} /> Awaiting DG Sign-Off ({filteredProjects.filter(p => resolveProjectDGVerdict(p).statusLabel === 'Awaiting DG').length})
+          </button>
+        </div>
+
+        {/* Project Cards Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '14px' }}>
+          {verdictFilteredProjects.map(project => {
+            const v = resolveProjectDGVerdict(project);
+            const isRejected = v.statusLabel === 'Rejected';
+            const isRequiresUnderstanding = v.statusLabel === 'Requires More Understanding';
+            const isApproved = v.statusLabel === 'Approved';
+
+            const borderColor = isRejected
+              ? 'rgba(239, 68, 68, 0.45)'
+              : isRequiresUnderstanding
+              ? 'rgba(245, 158, 11, 0.45)'
+              : isApproved
+              ? 'rgba(16, 185, 129, 0.4)'
+              : 'rgba(255, 255, 255, 0.1)';
+
+            const cardBg = isRejected
+              ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.07) 0%, rgba(15, 23, 42, 0.92) 100%)'
+              : isRequiresUnderstanding
+              ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.07) 0%, rgba(15, 23, 42, 0.92) 100%)'
+              : isApproved
+              ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.06) 0%, rgba(15, 23, 42, 0.92) 100%)'
+              : 'rgba(255, 255, 255, 0.02)';
+
+            return (
+              <div
+                key={project.id}
+                style={{
+                  padding: '16px',
+                  borderRadius: '12px',
+                  background: cardBg,
+                  border: `1px solid ${borderColor}`,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                }}
+              >
+                {/* Top Row: Code + Operational Status + DG Final Verdict Badge */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', flexWrap: 'wrap' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.68rem', fontFamily: 'monospace', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>
+                        {project.projectCode}
+                      </span>
+                      <span style={{
+                        fontSize: '0.66rem',
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        background: project.status === 'Active'
+                          ? 'rgba(16, 185, 129, 0.14)'
+                          : project.status === 'Suspended'
+                          ? 'rgba(239, 68, 68, 0.18)'
+                          : 'rgba(245, 158, 11, 0.16)',
+                        color: project.status === 'Active'
+                          ? '#10b981'
+                          : project.status === 'Suspended'
+                          ? '#f87171'
+                          : '#fbbf24',
+                      }}>
+                        Project Status: {project.status.toUpperCase()}
+                      </span>
+                    </div>
+                    <h4 style={{ fontSize: '0.92rem', fontWeight: 800, color: '#fff', marginTop: '6px', marginBottom: '2px' }}>
+                      {project.name}
+                    </h4>
+                    <div style={{ fontSize: '0.73rem', color: 'var(--text-secondary)' }}>
+                      {project.mda} ({project.mdaCode}) • Sector: <strong style={{ color: '#e2e8f0' }}>{project.sector}</strong>
+                    </div>
+                  </div>
+
+                  {/* DG Verdict Pill */}
+                  <div>
+                    {isApproved && (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        padding: '5px 10px',
+                        borderRadius: '9999px',
+                        fontSize: '0.7rem',
+                        fontWeight: 800,
+                        background: 'rgba(16, 185, 129, 0.2)',
+                        color: '#10b981',
+                        border: '1px solid rgba(16, 185, 129, 0.5)'
+                      }}>
+                        <CheckCircle2 size={13} /> DG APPROVED
+                      </span>
+                    )}
+                    {isRequiresUnderstanding && (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        padding: '5px 10px',
+                        borderRadius: '9999px',
+                        fontSize: '0.7rem',
+                        fontWeight: 800,
+                        background: 'rgba(245, 158, 11, 0.22)',
+                        color: '#fbbf24',
+                        border: '1px solid rgba(245, 158, 11, 0.55)'
+                      }}>
+                        <RotateCcw size={13} /> REQUIRES MORE UNDERSTANDING
+                      </span>
+                    )}
+                    {isRejected && (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        padding: '5px 10px',
+                        borderRadius: '9999px',
+                        fontSize: '0.7rem',
+                        fontWeight: 800,
+                        background: 'rgba(239, 68, 68, 0.22)',
+                        color: '#f87171',
+                        border: '1px solid rgba(239, 68, 68, 0.55)'
+                      }}>
+                        <XCircle size={13} /> DG REJECTED
+                      </span>
+                    )}
+                    {!v.hasFinalVerdict && (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        padding: '5px 10px',
+                        borderRadius: '9999px',
+                        fontSize: '0.7rem',
+                        fontWeight: 800,
+                        background: 'rgba(56, 189, 248, 0.14)',
+                        color: '#38bdf8',
+                        border: '1px solid rgba(56, 189, 248, 0.35)'
+                      }}>
+                        <Clock size={13} /> {project.reviewStatus ? project.reviewStatus.toUpperCase() : 'AWAITING DG SIGN-OFF'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Reasons / Executive Directive Box */}
+                <div style={{
+                  padding: '12px 14px',
+                  borderRadius: '8px',
+                  background: isRejected
+                    ? 'rgba(239, 68, 68, 0.12)'
+                    : isRequiresUnderstanding
+                    ? 'rgba(245, 158, 11, 0.12)'
+                    : isApproved
+                    ? 'rgba(16, 185, 129, 0.08)'
+                    : 'rgba(255, 255, 255, 0.03)',
+                  borderLeft: `3px solid ${
+                    isRejected
+                      ? '#ef4444'
+                      : isRequiresUnderstanding
+                      ? '#f59e0b'
+                      : isApproved
+                      ? '#10b981'
+                      : '#38bdf8'
+                  }`,
+                }}>
+                  <div style={{
+                    fontSize: '0.7rem',
+                    fontWeight: 800,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    marginBottom: '5px',
+                    color: isRejected
+                      ? '#fca5a5'
+                      : isRequiresUnderstanding
+                      ? '#fde68a'
+                      : isApproved
+                      ? '#6ee7b7'
+                      : '#7dd3fc'
+                  }}>
+                    {isRejected && '🚨 Director General Rejection Reasons & Statutory Grounds:'}
+                    {isRequiresUnderstanding && '⚠️ Why Project Requires More Understanding / Clarification (DG Directive):'}
+                    {isApproved && '✓ Director General Final Sign-Off Remarks & Approval Mandate:'}
+                    {!v.hasFinalVerdict && 'ℹ️ Current Review & Vetting Status:'}
+                  </div>
+                  <div style={{ fontSize: '0.79rem', color: '#f1f5f9', lineHeight: '1.5' }}>
+                    {v.reasons}
+                  </div>
+                </div>
+
+                {/* Signer & Seal Footer */}
+                {v.hasFinalVerdict && (
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '8px',
+                    paddingTop: '6px',
+                    borderTop: '1px solid rgba(255,255,255,0.06)',
+                    fontSize: '0.69rem',
+                    color: 'var(--text-muted)'
+                  }}>
+                    <div>
+                      Signed by: <strong style={{ color: '#e2e8f0' }}>{v.signedByName}</strong>
+                      {v.signedAt ? ` • ${new Date(v.signedAt).toLocaleString()}` : ''}
+                    </div>
+                    {v.signatureSeal && (
+                      <span style={{
+                        fontFamily: 'monospace',
+                        fontSize: '0.65rem',
+                        padding: '2px 7px',
+                        borderRadius: '4px',
+                        background: 'rgba(255,255,255,0.05)',
+                        color: '#cbd5e1',
+                        border: '1px solid rgba(255,255,255,0.1)'
+                      }}>
+                        SEAL: {v.signatureSeal}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Charts Panels */}
       <div className="chart-grid">
         {/* Budget utilization Bar chart */}
@@ -554,7 +1055,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole }) =
                 {note.type === 'info' && <HelpCircle className="w-5 h-5 text-blue-400 flex-shrink-0" />}
                 
                 <div style={{ flex: 1 }}>
-                  <div style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{note.message}</div>
+                  <div style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{note.message}</div>
+                  {note.reason && (
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: '1.4' }}>
+                      {note.reason}
+                    </div>
+                  )}
                   <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px' }}>{note.time}</div>
                 </div>
               </div>

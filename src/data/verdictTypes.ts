@@ -7,6 +7,7 @@ export interface DGVerdictRecord {
   projectName: string;
   mda: string;
   verdict: DGVerdictDecision;
+  finalStatusLabel?: 'Approved' | 'Rejected' | 'Requires More Understanding';
   mandatoryComments: string;
   reviewedByName: string;
   reviewedByRole: 'Director General' | 'Super Admin';
@@ -15,4 +16,6 @@ export interface DGVerdictRecord {
   technicalRecommendationSummary: string;
   complianceGradeAtReview: string;
   clearanceOfficer: string;
+  signatureSeal?: string;
 }
+

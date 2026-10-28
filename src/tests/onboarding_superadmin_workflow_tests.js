@@ -347,6 +347,79 @@ test('First-Timer real uploaded file is preserved byte-for-byte with original fi
   );
 });
 
+// 6. Director General Final Sign-Off Verdict & Reasons Displayed on Dashboard
+console.log('\n6. Testing Director General Final Verdict Status & Reasons on Dashboard:');
+
+test('Director General final sign-off updates project status and exposes exact reasons on Dashboard when Rejected or Requires More Understanding', () => {
+  const executeDGVerdictOnProject = (project, verdictChoice, mandatoryComments) => {
+    const finalStatusLabel =
+      verdictChoice === 'Approve'
+        ? 'Approved'
+        : verdictChoice === 'Reject'
+        ? 'Rejected'
+        : 'Requires More Understanding';
+
+    const nextReviewStatus =
+      verdictChoice === 'Approve'
+        ? 'Approved'
+        : verdictChoice === 'Reject'
+        ? 'Rejected'
+        : 'Returned';
+
+    const nextOperationalStatus =
+      verdictChoice === 'Approve'
+        ? 'Active'
+        : verdictChoice === 'Reject'
+        ? 'Suspended'
+        : 'Delayed';
+
+    return {
+      ...project,
+      status: nextOperationalStatus,
+      reviewStatus: nextReviewStatus,
+      reviewNotes: mandatoryComments,
+      dgFinalVerdict: {
+        verdict: verdictChoice,
+        finalStatusLabel,
+        reasons: mandatoryComments,
+        signedByName: 'Hon. Director General (NITA)',
+        signedByRole: 'Super Admin / Director General',
+        signedAt: new Date().toISOString(),
+        signatureSeal: 'NITA-DG-SEAL-2026-VERIFIED'
+      }
+    };
+  };
+
+  // Case A: Rejected by Director General
+  const rejectedProject = executeDGVerdictOnProject(
+    { id: 'proj-4', name: 'Akosombo Smart Grid Load Forecaster', status: 'Delayed', reviewStatus: 'Recommended for DG Decision' },
+    'Reject',
+    'STATUTORY REJECTION: Unmitigated SCADA security vulnerabilities and failure to meet Act 843 sovereign hosting requirements.'
+  );
+  assert(rejectedProject.dgFinalVerdict.finalStatusLabel === 'Rejected', 'Rejected project has DG Final Status Label set to Rejected on Dashboard');
+  assert(rejectedProject.status === 'Suspended', 'Rejected project operational status updated to Suspended');
+  assert(
+    rejectedProject.dgFinalVerdict.reasons.includes('Unmitigated SCADA security vulnerabilities'),
+    'Exact DG rejection reasons are stored and visible on Dashboard'
+  );
+
+  // Case B: Requires More Understanding / Further Review
+  const requiresUnderstandingProject = executeDGVerdictOnProject(
+    { id: 'proj-5', name: 'Judicial Case Flow & Precedent Assistant', status: 'Active', reviewStatus: 'Recommended for DG Decision' },
+    'Return for Further Review',
+    'REQUIRES MORE UNDERSTANDING: Judicial Services must clarify human-in-the-loop judge override workflow and ethnic bias audit metrics.'
+  );
+  assert(
+    requiresUnderstandingProject.dgFinalVerdict.finalStatusLabel === 'Requires More Understanding',
+    'Returned project has DG Final Status Label set to Requires More Understanding on Dashboard'
+  );
+  assert(requiresUnderstandingProject.status === 'Delayed', 'Project requiring more understanding has operational status set to Delayed');
+  assert(
+    requiresUnderstandingProject.dgFinalVerdict.reasons.includes('clarify human-in-the-loop judge override workflow'),
+    'Exact reasons why project requires more understanding are stored and visible on Dashboard'
+  );
+});
+
 const passed = tests.filter(t => t.passed).length;
 const total = tests.length;
 

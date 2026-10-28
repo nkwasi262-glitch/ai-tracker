@@ -48,11 +48,12 @@ export const DGDecisionQueue: React.FC<DGDecisionQueueProps> = ({
   onUpdateProjectStatus,
   onReviewDocument
 }) => {
-  // Only projects that have been RECOMMENDED by technical clearance teams appear in the DG queue!
+  const [queueFilterMode, setQueueFilterMode] = useState<'recommended' | 'all'>('recommended');
   const recommendedProjects = projects.filter(p => p.reviewStatus === 'Recommended');
+  const displayedQueueProjects = queueFilterMode === 'recommended' ? recommendedProjects : projects;
 
-  const [selectedProjectId, setSelectedProjectId] = useState<string>(recommendedProjects[0]?.id || '');
-  const selectedProject = projects.find(p => p.id === selectedProjectId) || recommendedProjects[0];
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(recommendedProjects[0]?.id || projects[0]?.id || '');
+  const selectedProject = projects.find(p => p.id === selectedProjectId) || displayedQueueProjects[0] || projects[0];
 
   // Verdict state
   const [verdict, setVerdict] = useState<DGVerdictDecision>('Approve');
@@ -71,7 +72,7 @@ export const DGDecisionQueue: React.FC<DGDecisionQueueProps> = ({
     if (!selectedProject) return;
 
     if (!mandatoryComments.trim() || mandatoryComments.trim().length < 20) {
-      alert('Mandatory directive comments must contain at least 20 characters explaining the statutory rationale.');
+      alert('Mandatory directive comments / reasons must contain at least 20 characters explaining the statutory rationale.');
       return;
     }
 
@@ -93,20 +94,27 @@ export const DGDecisionQueue: React.FC<DGDecisionQueueProps> = ({
       clearanceOfficer: selectedProject.technicalReview?.reviewerName || 'Technical Clearance Team'
     });
 
-    // Update project state in central registry
+    // Update project state in central registry (including DG final verdict & reasons for the Dashboard)
     let targetStatus: AIProject['reviewStatus'] = 'Approved';
     if (verdict === 'Reject') targetStatus = 'Rejected';
     if (verdict === 'Return for Further Review') targetStatus = 'Returned';
 
-    onUpdateProjectStatus(selectedProject.id, targetStatus);
+    onUpdateProjectStatus(selectedProject.id, targetStatus, mandatoryComments.trim());
+
+    const statusDisplayLabel =
+      verdict === 'Approve'
+        ? 'APPROVED (ACTIVE ON DASHBOARD)'
+        : verdict === 'Reject'
+        ? 'REJECTED (REASONS PUBLISHED ON DASHBOARD)'
+        : 'REQUIRES MORE UNDERSTANDING (REASONS PUBLISHED ON DASHBOARD)';
 
     setVerdictHistory(prev => [newRecord, ...prev]);
-    setSuccessFeedback(`Final Verdict "${verdict.toUpperCase()}" officially logged for ${selectedProject.projectCode}.`);
+    setSuccessFeedback(`✓ Director General Final Sign-Off "${statusDisplayLabel}" officially logged for [${selectedProject.projectCode}] ${selectedProject.name} and published to the National AI Dashboard.`);
     setMandatoryComments('');
     setSubmitting(false);
 
     // Switch selection to next recommended item if available
-    const remaining = recommendedProjects.filter(p => p.id !== selectedProject.id);
+    const remaining = displayedQueueProjects.filter(p => p.id !== selectedProject.id);
     if (remaining.length > 0) {
       setSelectedProjectId(remaining[0].id);
     }
@@ -234,7 +242,53 @@ export const DGDecisionQueue: React.FC<DGDecisionQueueProps> = ({
       {/* Mode 1: Active Decision Queue */}
       {activeSubTab === 'queue' && (
         <>
-          {recommendedProjects.length === 0 ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+            <div style={{ display: 'inline-flex', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '3px' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setQueueFilterMode('recommended');
+                  if (recommendedProjects[0]) setSelectedProjectId(recommendedProjects[0].id);
+                }}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  fontSize: '0.76rem',
+                  fontWeight: 700,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: queueFilterMode === 'recommended' ? 'rgba(251, 191, 36, 0.22)' : 'transparent',
+                  color: queueFilterMode === 'recommended' ? '#fde68a' : 'var(--text-secondary)'
+                }}
+              >
+                Recommended for Final Decision ({recommendedProjects.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setQueueFilterMode('all');
+                  if (projects[0]) setSelectedProjectId(projects[0].id);
+                }}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  fontSize: '0.76rem',
+                  fontWeight: 700,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: queueFilterMode === 'all' ? 'rgba(16, 185, 129, 0.22)' : 'transparent',
+                  color: queueFilterMode === 'all' ? '#a7f3d0' : 'var(--text-secondary)'
+                }}
+              >
+                All Registry Projects ({projects.length})
+              </button>
+            </div>
+            <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+              Every final sign-off or verdict (Approve, Reject, or Requires More Understanding) and its reasons are immediately published on the National AI Dashboard.
+            </span>
+          </div>
+
+          {displayedQueueProjects.length === 0 ? (
             <div style={{
               padding: '60px 20px',
               textAlign: 'center',
@@ -246,22 +300,44 @@ export const DGDecisionQueue: React.FC<DGDecisionQueueProps> = ({
               <h3 style={{ fontSize: '1.2rem', color: '#fff', marginBottom: '6px' }}>
                 All Recommended Projects Cleared!
               </h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', maxWidth: '480px', margin: '0 auto' }}>
-                There are currently no outstanding project dossiers awaiting Director General final verdict.
-                Technical teams will push dossiers here once initial checks pass.
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', maxWidth: '480px', margin: '0 auto 16px auto' }}>
+                There are currently no outstanding project dossiers in the Recommended filter. Switch to "All Registry Projects" above to review or update the Director General final verdict on any project.
               </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setQueueFilterMode('all');
+                  if (projects[0]) setSelectedProjectId(projects[0].id);
+                }}
+                style={{
+                  padding: '8px 18px',
+                  borderRadius: '8px',
+                  background: 'var(--ghana-gold)',
+                  color: '#0b0f19',
+                  fontWeight: 800,
+                  fontSize: '0.8rem',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                View All Registry Projects ({projects.length})
+              </button>
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '20px' }}>
               
               {/* Left Column: Dossier Selector */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '780px', overflowY: 'auto', paddingRight: '4px' }}>
                 <div style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Recommended Projects ({recommendedProjects.length})
+                  {queueFilterMode === 'recommended' ? `Recommended Projects (${displayedQueueProjects.length})` : `All Registry Projects (${displayedQueueProjects.length})`}
                 </div>
 
-                {recommendedProjects.map((proj) => {
+                {displayedQueueProjects.map((proj) => {
                   const isSelected = proj.id === selectedProject?.id;
+                  const statusBadgeColor =
+                    proj.reviewStatus === 'Approved' ? '#10b981' :
+                    proj.reviewStatus === 'Rejected' ? '#ef4444' :
+                    proj.reviewStatus === 'Returned' || proj.reviewStatus === 'Needs Correction' ? '#fbbf24' : '#38bdf8';
                   return (
                     <div
                       key={proj.id}
@@ -275,19 +351,19 @@ export const DGDecisionQueue: React.FC<DGDecisionQueueProps> = ({
                         transition: 'all 0.2s ease'
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', gap: '6px', flexWrap: 'wrap' }}>
                         <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--ghana-gold)' }}>
                           {proj.projectCode}
                         </span>
                         <span style={{
-                          fontSize: '0.68rem',
+                          fontSize: '0.66rem',
                           padding: '2px 8px',
                           borderRadius: '9999px',
-                          background: 'rgba(16, 185, 129, 0.15)',
-                          color: '#10b981',
+                          background: 'rgba(255, 255, 255, 0.06)',
+                          color: statusBadgeColor,
                           fontWeight: 700
                         }}>
-                          {proj.compliance.overallGrade}
+                          {proj.dgFinalVerdict?.finalStatusLabel || proj.reviewStatus || 'Recommended'}
                         </span>
                       </div>
                       <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>
@@ -708,7 +784,7 @@ export const DGDecisionQueue: React.FC<DGDecisionQueueProps> = ({
                   >
                     <div>
                       <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>
-                        Pass Statutory Verdict:
+                        Pass Final Director General Sign-Off & Statutory Verdict (Published on Dashboard):
                       </div>
                       <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                         <label style={{
@@ -758,7 +834,7 @@ export const DGDecisionQueue: React.FC<DGDecisionQueueProps> = ({
                             style={{ accentColor: 'var(--ghana-gold)' }}
                           />
                           <RotateCcw size={16} className="text-amber-400" />
-                          <span>Return for Further Review</span>
+                          <span>Requires More Understanding / Further Review</span>
                         </label>
 
                         <label style={{
@@ -783,27 +859,75 @@ export const DGDecisionQueue: React.FC<DGDecisionQueueProps> = ({
                             style={{ accentColor: 'var(--ghana-red)' }}
                           />
                           <XCircle size={16} className="text-red-400" />
-                          <span>Statutory Rejection</span>
+                          <span>Statutory Rejection (Reject Project)</span>
                         </label>
                       </div>
                     </div>
 
-                    {/* Mandatory Comments */}
+                    {/* Mandatory Comments / Reasons */}
                     <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                        <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                          Mandatory Directive Remarks (Minimum 20 characters) *
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', flexWrap: 'wrap', gap: '6px' }}>
+                        <label style={{ fontSize: '0.78rem', fontWeight: 700, color: verdict === 'Reject' ? '#fca5a5' : verdict === 'Return for Further Review' ? '#fde68a' : 'var(--text-primary)' }}>
+                          {verdict === 'Reject'
+                            ? 'Mandatory Reasons for Rejection (Will be displayed on the Dashboard) *'
+                            : verdict === 'Return for Further Review'
+                            ? 'Mandatory Reasons Why Project Requires More Understanding / Clarification (Displayed on Dashboard) *'
+                            : 'Mandatory Final Approval Remarks & Monitoring Directives (Displayed on Dashboard) *'}
                         </label>
                         <span style={{ fontSize: '0.72rem', color: mandatoryComments.length >= 20 ? '#10b981' : '#f59e0b' }}>
                           {mandatoryComments.length} / 20 chars min
                         </span>
                       </div>
+
+                      {/* Quick-fill Reason Chips for Reject or Requires More Understanding */}
+                      {verdict !== 'Approve' && (
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', alignSelf: 'center' }}>Quick Insert Reason:</span>
+                          {(verdict === 'Return for Further Review'
+                            ? [
+                                'Requires more understanding of algorithmic fairness and demographic parity testing across all 16 regions before final sign-off.',
+                                'Requires more understanding of Data Protection Act (Act 843) PII anonymization architecture and rural offline fallback protocols.',
+                                'Requires more understanding of capital expenditure milestones and reconciliation with MoF Treasury Warrant vouchers under Act 921.'
+                              ]
+                            : [
+                                'Rejected due to non-compliance with Data Protection Act, 2012 (Act 843) and lack of verified DPC registration certificate.',
+                                'Rejected due to unreconciled financial expenditure discrepancies under Public Financial Management Act (Act 921) and high algorithmic bias risk.',
+                                'Rejected due to critical OWASP / Cybersecurity Act (Act 1038) vulnerabilities and unverified sovereign cloud data residency.'
+                              ]
+                          ).map((template, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setMandatoryComments(prev => prev ? `${prev} ${template}` : template)}
+                              style={{
+                                padding: '4px 10px',
+                                borderRadius: '6px',
+                                fontSize: '0.68rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                background: verdict === 'Reject' ? 'rgba(239, 68, 68, 0.14)' : 'rgba(251, 191, 36, 0.14)',
+                                border: verdict === 'Reject' ? '1px solid rgba(239, 68, 68, 0.35)' : '1px solid rgba(251, 191, 36, 0.35)',
+                                color: verdict === 'Reject' ? '#fca5a5' : '#fde68a'
+                              }}
+                            >
+                              + Reason {idx + 1}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
                       <textarea
                         required
                         rows={3}
                         value={mandatoryComments}
                         onChange={(e) => setMandatoryComments(e.target.value)}
-                        placeholder="State executive observations, directives for implementation monitoring, or specific statutory reasons..."
+                        placeholder={
+                          verdict === 'Reject'
+                            ? 'Enter the exact statutory and technical reasons why this project is rejected (these reasons will be shown on the Dashboard)...'
+                            : verdict === 'Return for Further Review'
+                            ? 'Explain what requires more understanding, clarification, or additional evidence before final approval (shown on the Dashboard)...'
+                            : 'State executive approval observations and directives for national deployment monitoring...'
+                        }
                         style={{
                           width: '100%',
                           padding: '12px 14px',
@@ -842,7 +966,7 @@ export const DGDecisionQueue: React.FC<DGDecisionQueueProps> = ({
                         }}
                       >
                         <Stamp size={18} />
-                        <span>Sign & Record Executive Verdict</span>
+                        <span>Sign & Publish Final Verdict to Dashboard</span>
                       </button>
                     </div>
                   </form>

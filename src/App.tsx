@@ -24,6 +24,7 @@ import { AppModuleId, canAccessModule, MODULE_REGISTRY } from './services/rbacPo
 import { generateAssessmentFromDocuments } from './services/assessmentEngine';
 import { loadStoredProjects, saveStoredProjects, resetProjectsStorage } from './services/projectStorage';
 import { recordAuditEvent } from './services/auditService';
+import { recordDGVerdict } from './services/verdictService';
 
 function App() {
   // 1. Session State from Mandatory Entry Gate
@@ -243,23 +244,78 @@ function App() {
     newReviewStatus: ReviewWorkflowStatus, 
     notes?: string
   ) => {
-    setProjects(prev => prev.map(p => {
-      if (p.id === projectId) {
-        return {
-          ...p,
-          reviewStatus: newReviewStatus,
-          status: newReviewStatus === 'Approved' ? 'Active' : p.status,
-          technicalReview: notes ? {
-            reviewerName: session?.fullName,
-            reviewerRole: session?.role,
-            reviewerEmail: session?.email,
-            reviewedAt: new Date().toISOString(),
-            recommendationNotes: notes
-          } : p.technicalReview
-        };
-      }
-      return p;
-    }));
+    setProjects(prev => {
+      const updated = prev.map(p => {
+        if (p.id === projectId) {
+          const isFinalSignOff =
+            newReviewStatus === 'Approved' ||
+            newReviewStatus === 'Rejected' ||
+            newReviewStatus === 'Returned' ||
+            newReviewStatus === 'Needs Correction' ||
+            newReviewStatus === 'Pending';
+
+          const nextOperationalStatus: AIProject['status'] =
+            newReviewStatus === 'Approved'
+              ? 'Active'
+              : newReviewStatus === 'Rejected'
+              ? 'Suspended'
+              : (newReviewStatus === 'Returned' || newReviewStatus === 'Needs Correction' || newReviewStatus === 'Pending')
+              ? 'Delayed'
+              : p.status;
+
+          const dgVerdictDecision: 'Approve' | 'Reject' | 'Return for Further Review' =
+            newReviewStatus === 'Approved'
+              ? 'Approve'
+              : newReviewStatus === 'Rejected'
+              ? 'Reject'
+              : 'Return for Further Review';
+
+          const finalStatusLabel: 'Approved' | 'Rejected' | 'Requires More Understanding' =
+            newReviewStatus === 'Approved'
+              ? 'Approved'
+              : newReviewStatus === 'Rejected'
+              ? 'Rejected'
+              : 'Requires More Understanding';
+
+          const defaultReason =
+            newReviewStatus === 'Approved'
+              ? 'Final statutory approval signed by Director General under NITA Act 771 and Act 843.'
+              : newReviewStatus === 'Rejected'
+              ? 'Statutory rejection issued by Director General due to unresolved compliance, privacy, or financial warrant discrepancies.'
+              : 'Requires more understanding and technical clarification before final national deployment sign-off.';
+
+          const nextDgFinalVerdict = isFinalSignOff
+            ? {
+                verdict: dgVerdictDecision,
+                finalStatusLabel,
+                reasons: (notes && notes.trim()) || p.dgFinalVerdict?.reasons || defaultReason,
+                signedByName: session?.fullName || 'Hon. Director General',
+                signedByRole: session?.role || 'Director General',
+                signedByEmail: session?.email || 'dg@nita.gov.gh',
+                signedAt: new Date().toISOString(),
+                signatureSeal: `DG-SEAL-NITA-${new Date().getFullYear()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
+              }
+            : p.dgFinalVerdict;
+
+          return {
+            ...p,
+            reviewStatus: newReviewStatus,
+            status: nextOperationalStatus,
+            dgFinalVerdict: nextDgFinalVerdict,
+            technicalReview: notes ? {
+              reviewerName: session?.fullName,
+              reviewerRole: session?.role,
+              reviewerEmail: session?.email,
+              reviewedAt: new Date().toISOString(),
+              recommendationNotes: notes
+            } : p.technicalReview
+          };
+        }
+        return p;
+      });
+      saveStoredProjects(updated);
+      return updated;
+    });
   };
 
   // Reviews a specific document, updates its review comments and status, and applies updated Governance & Ethics / AI Readiness grades to the project
@@ -290,12 +346,68 @@ function App() {
             return d;
           });
 
+          const effectiveReviewStatus = newProjectStatus || p.reviewStatus;
+          const isDGRole = session?.role === 'Director General' || session?.role === 'Super Admin';
+          let updatedDgVerdict = p.dgFinalVerdict;
+          let updatedOpStatus = p.status;
+
+          if (isDGRole && reviewComment.verdict) {
+            const mappedDecision: 'Approve' | 'Reject' | 'Return for Further Review' =
+              reviewComment.verdict === 'Approved' || reviewComment.verdict === 'Conditionally Cleared'
+                ? 'Approve'
+                : reviewComment.verdict === 'Under Investigation'
+                ? 'Reject'
+                : 'Return for Further Review';
+
+            const mappedLabel: 'Approved' | 'Rejected' | 'Requires More Understanding' =
+              mappedDecision === 'Approve'
+                ? 'Approved'
+                : mappedDecision === 'Reject'
+                ? 'Rejected'
+                : 'Requires More Understanding';
+
+            updatedOpStatus =
+              mappedDecision === 'Approve'
+                ? 'Active'
+                : mappedDecision === 'Reject'
+                ? 'Suspended'
+                : 'Delayed';
+
+            updatedDgVerdict = {
+              verdict: mappedDecision,
+              finalStatusLabel: mappedLabel,
+              reasons: reviewComment.comment,
+              signedByName: session?.fullName || 'Hon. Director General',
+              signedByRole: session?.role || 'Director General',
+              signedByEmail: session?.email || 'dg@nita.gov.gh',
+              signedAt: new Date().toISOString(),
+              signatureSeal: `DG-SEAL-NITA-${new Date().getFullYear()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
+            };
+
+            recordDGVerdict({
+              projectId: p.id,
+              projectCode: p.projectCode,
+              projectName: p.name,
+              mda: p.mda,
+              verdict: mappedDecision,
+              mandatoryComments: reviewComment.comment,
+              reviewedByName: session?.fullName || 'Hon. Director General',
+              reviewedByRole: session?.role === 'Super Admin' ? 'Super Admin' : 'Director General',
+              reviewedByEmail: session?.email || 'dg@nita.gov.gh',
+              technicalRecommendationSummary: p.technicalReview?.recommendationNotes || 'Reviewed via Full Document Grading Studio.',
+              complianceGradeAtReview: (newCompliance || p.compliance).overallGrade,
+              clearanceOfficer: session?.fullName || 'Director General'
+            });
+          }
+
           return {
             ...p,
             documents: updatedDocs,
             compliance: newCompliance || p.compliance,
             readinessScore: newReadinessScore !== undefined ? newReadinessScore : p.readinessScore,
-            reviewStatus: newProjectStatus || p.reviewStatus
+            reviewStatus: effectiveReviewStatus,
+            status: updatedOpStatus,
+            dgFinalVerdict: updatedDgVerdict
           };
         }
         return p;
@@ -396,7 +508,7 @@ function App() {
 
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard projects={projects} currentRole={session.role as any} />;
+        return <Dashboard projects={projects} currentRole={session.role as any} onNavigate={(tab) => setActiveTab(tab)} />;
       case 'registry':
         return (
           <ProjectRegistry 

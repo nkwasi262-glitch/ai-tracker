@@ -143,6 +143,17 @@ export interface TechnicalReviewDetails {
   flaggedDefects?: string[];
 }
 
+export interface DGFinalVerdictDetails {
+  verdict: 'Approve' | 'Reject' | 'Return for Further Review';
+  finalStatusLabel: 'Approved' | 'Rejected' | 'Requires More Understanding';
+  reasons: string;
+  signedByName: string;
+  signedByRole: string;
+  signedByEmail: string;
+  signedAt: string;
+  signatureSeal: string;
+}
+
 export interface AIProject {
   id: string;
   projectCode: string;
@@ -169,6 +180,7 @@ export interface AIProject {
   documents: DocumentAsset[];
   reviewStatus?: ReviewWorkflowStatus;
   technicalReview?: TechnicalReviewDetails;
+  dgFinalVerdict?: DGFinalVerdictDetails;
   autoAssessment?: AutoAssessmentDetails;
   dpcCertificateNumber?: string;
   zeroAssumptionAudit?: ZeroAssumptionAudit;
@@ -269,6 +281,16 @@ export const sampleProjects: AIProject[] = [
     ],
     hasFirstTimerUpload: true,
     reviewStatus: "Approved",
+    dgFinalVerdict: {
+      verdict: "Approve",
+      finalStatusLabel: "Approved",
+      reasons: "Statutory compliance satisfied under NITA Act 771 and Data Protection Act 843. Approved for operational continuous monitoring across all 16 regions.",
+      signedByName: "Hon. Director General",
+      signedByRole: "Director General",
+      signedByEmail: "dg@nita.gov.gh",
+      signedAt: "2026-09-30T14:20:10Z",
+      signatureSeal: "DG-SEAL-NITA-2026-001A9F"
+    },
     technicalReview: {
       reviewerName: "Ing. Emmanuel Darko",
       reviewerRole: "Technical Director",
@@ -561,6 +583,17 @@ export const sampleProjects: AIProject[] = [
     documents: [
       { id: "doc-4-1", fileName: "E-Justice_Audit_Report.pdf", fileType: "pdf", uploadedAt: "2023-11-05", version: 1, signedBy: ["Judicial Secretary", "Lead Auditor"] }
     ],
+    reviewStatus: "Rejected",
+    dgFinalVerdict: {
+      verdict: "Reject",
+      finalStatusLabel: "Rejected",
+      reasons: "Statutory Rejection issued under NITA Act 771 & Public Financial Management Act (Act 921): (1) Unreconciled financial audit discrepancy of GHS 850,000 in judicial cloud licensing flagged by MoF Internal Audit Directorate; (2) Unacceptable speech-to-text transcription error rate (>18% word error rate) on regional Ghanaian languages (Akan/Twi, Ewe, Ga) risking wrongful court transcript records; and (3) Lack of certified judicial privacy encryption sign-off under Act 843.",
+      signedByName: "Hon. Director General",
+      signedByRole: "Director General",
+      signedByEmail: "dg@nita.gov.gh",
+      signedAt: "2026-10-15T16:40:00Z",
+      signatureSeal: "DG-SEAL-NITA-2026-004R8B"
+    },
     dpcCertificateNumber: "GH-DPC-2026-015",
     zeroAssumptionAudit: {
       isFullyVerified: false,
@@ -637,6 +670,17 @@ export const sampleProjects: AIProject[] = [
     documents: [
       { id: "doc-5-1", fileName: "NHIA_DPIA_Audit_Signoff.pdf", fileType: "pdf", uploadedAt: "2023-09-22", version: 1, signedBy: ["NHIA DPO", "External Auditor"] }
     ],
+    reviewStatus: "Returned",
+    dgFinalVerdict: {
+      verdict: "Return for Further Review",
+      finalStatusLabel: "Requires More Understanding",
+      reasons: "Requires more understanding and technical clarification before final national deployment sign-off: (1) NHIA must provide a detailed breakdown of how false-positive AI claim rejections are manually appealed by rural district clinics; (2) Offline biometric verification fallback during cellular outages must be demonstrated; and (3) Self-reported GHS 4.5M disbursement requires matching MoF Treasury Warrant vouchers.",
+      signedByName: "Hon. Director General",
+      signedByRole: "Director General",
+      signedByEmail: "dg@nita.gov.gh",
+      signedAt: "2026-10-12T11:15:00Z",
+      signatureSeal: "DG-SEAL-NITA-2026-005C4E"
+    },
     dpcCertificateNumber: "GH-DPC-2025-077",
     zeroAssumptionAudit: {
       isFullyVerified: false,
