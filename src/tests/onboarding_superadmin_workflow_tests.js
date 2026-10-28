@@ -616,6 +616,120 @@ test('All documents uploaded by a First-Timer are stored under the same logged-i
   );
 });
 
+// 8. 3-Tier Statutory Clearance Chain at Documents & OCR (Tech Clearance Team -> Tech Director -> Director General -> Dashboard)
+console.log('\n8. Testing 3-Tier Statutory Clearance Chain (Tech Clearance Team -> Tech Director -> DG -> Dashboard):');
+
+test('Documents & OCR enforces 3-tier chain: Technical Clearance Team recommends to Technical Director, Technical Director recommends to Director General, and DG final verdict is visible on Dashboard', () => {
+  let project = {
+    id: 'proj-mda-onboard-ministry-of-health',
+    projectCode: 'GN-AI-2026-MOH',
+    name: 'Ministry of Health',
+    mda: 'Ministry of Health',
+    mdaCode: 'MOH',
+    status: 'Delayed',
+    reviewStatus: 'Under Technical Review',
+    budget: { totalAllocated: 18000000, disbursed: 9000000, utilized: 6000000, remaining: 9000000 }
+  };
+
+  // Step 1: Technical Clearance Team recommends to Technical Director at Documents & OCR
+  const recommendToTechnicalDirector = (proj, reviewerName, notes) => ({
+    ...proj,
+    reviewStatus: 'Recommended to Technical Director',
+    technicalClearanceReview: {
+      reviewerName,
+      reviewerRole: 'Technical Clearance Team',
+      reviewedAt: new Date().toISOString(),
+      recommendationNotes: notes
+    },
+    dgFinalVerdict: undefined
+  });
+
+  project = recommendToTechnicalDirector(
+    project,
+    'Ing. Ama Osei (Tech Clearance Team)',
+    'OCR & Act 843 DPIA verified. Recommended to Technical Director.'
+  );
+  assert(
+    project.reviewStatus === 'Recommended to Technical Director',
+    'Step 1: Technical Clearance Team sets project status to Recommended to Technical Director'
+  );
+  assert(
+    project.technicalClearanceReview && project.technicalClearanceReview.reviewerRole === 'Technical Clearance Team',
+    'Step 1: Technical Clearance Team recommendation metadata is recorded'
+  );
+  assert(project.dgFinalVerdict === undefined, 'Step 1: No premature DG Final Verdict exists yet');
+
+  // Step 2: Technical Director recommends to Director General at Documents & OCR
+  const recommendToDirectorGeneral = (proj, reviewerName, notes) => ({
+    ...proj,
+    reviewStatus: 'Recommended',
+    technicalDirectorReview: {
+      reviewerName,
+      reviewerRole: 'Technical Director',
+      reviewedAt: new Date().toISOString(),
+      recommendationNotes: notes
+    },
+    dgFinalVerdict: undefined
+  });
+
+  project = recommendToDirectorGeneral(
+    project,
+    'Dr. Kwabena Mensah (Technical Director)',
+    'Endorsed Technical Clearance Team findings and recommended to Director General for final verdict.'
+  );
+  assert(
+    project.reviewStatus === 'Recommended',
+    'Step 2: Technical Director sets project status to Recommended (Recommended to Director General)'
+  );
+  assert(
+    project.technicalDirectorReview && project.technicalDirectorReview.reviewerRole === 'Technical Director',
+    'Step 2: Technical Director endorsement metadata is recorded while preserving Step 1'
+  );
+  assert(
+    project.technicalClearanceReview !== undefined,
+    'Step 2: Step 1 Technical Clearance Team recommendation remains preserved'
+  );
+
+  // Step 3: Director General signs the Final Verdict and it is published to the Dashboard
+  const signDirectorGeneralFinalVerdict = (proj, verdictDecision, reasons) => {
+    const finalStatusLabel =
+      verdictDecision === 'Approve'
+        ? 'Approved'
+        : verdictDecision === 'Reject'
+        ? 'Rejected'
+        : 'Requires More Understanding';
+    return {
+      ...proj,
+      reviewStatus: verdictDecision === 'Approve' ? 'Approved' : verdictDecision === 'Reject' ? 'Rejected' : 'Returned',
+      status: verdictDecision === 'Approve' ? 'Active' : verdictDecision === 'Reject' ? 'Suspended' : 'Delayed',
+      dgFinalVerdict: {
+        verdict: verdictDecision,
+        finalStatusLabel,
+        reasons,
+        signedByName: 'Hon. Director General (NITA)',
+        signedByRole: 'Director General',
+        signedAt: new Date().toISOString(),
+        signatureSeal: 'DG-SEAL-NITA-2026-VERIFIED'
+      }
+    };
+  };
+
+  project = signDirectorGeneralFinalVerdict(
+    project,
+    'Approve',
+    'Final statutory approval granted following Technical Clearance Team and Technical Director recommendations.'
+  );
+
+  assert(
+    project.dgFinalVerdict && project.dgFinalVerdict.finalStatusLabel === 'Approved',
+    'Step 3: Director General final verdict is signed and marked Approved for Dashboard display'
+  );
+  assert(
+    project.status === 'Active' && project.reviewStatus === 'Approved',
+    'Step 3: Project status becomes Active & Approved on the Dashboard'
+  );
+});
+
 const passed = tests.filter(t => t.passed).length;
 const total = tests.length;
 

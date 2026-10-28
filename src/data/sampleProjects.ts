@@ -104,6 +104,7 @@ export type ReviewWorkflowStatus =
   | 'Submitted'
   | 'Under Technical Review'
   | 'Needs Correction'
+  | 'Recommended to Technical Director'
   | 'Recommended'
   | 'Under DG Review'
   | 'Approved'
@@ -180,6 +181,8 @@ export interface AIProject {
   risks: RiskItem[];
   documents: DocumentAsset[];
   reviewStatus?: ReviewWorkflowStatus;
+  technicalClearanceReview?: TechnicalReviewDetails;
+  technicalDirectorReview?: TechnicalReviewDetails;
   technicalReview?: TechnicalReviewDetails;
   dgFinalVerdict?: DGFinalVerdictDetails;
   autoAssessment?: AutoAssessmentDetails;
@@ -1366,13 +1369,13 @@ export function ensureFirstTimerMdaProject(
     risks: [],
     documents: matchingMdaDocs,
     hasFirstTimerUpload: true,
-    reviewStatus: 'Recommended',
+    reviewStatus: 'Under Technical Review',
     technicalReview: {
       reviewerName: 'GNAPRMS Automated Grading Engine',
       reviewerRole: 'Technical Clearance Team',
       reviewerEmail: 'clearance@nita.gov.gh',
       reviewedAt: new Date().toISOString(),
-      recommendationNotes: `Onboarding submission for ${mdaName} (${mdaCode}). Automatically graded against Ghana AI Governance & Ethics rubric and AI Readiness capability framework.`
+      recommendationNotes: `Onboarding submission for ${mdaName} (${mdaCode}). Automatically graded against Ghana AI Governance & Ethics rubric and AI Readiness capability framework. Awaiting Technical Clearance Team recommendation to Technical Director.`
     }
   };
 

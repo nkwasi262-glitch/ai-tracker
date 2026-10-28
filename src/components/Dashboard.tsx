@@ -115,7 +115,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
         signatureSeal: latestFromService.signatureSeal || 'NITA-DG-SEAL-VERIFIED',
       };
     }
-    if (p.reviewStatus === 'Approved' || p.reviewStatus === 'Rejected' || p.reviewStatus === 'Returned' || p.reviewStatus === 'Needs Correction') {
+    if (p.reviewStatus === 'Approved' || p.reviewStatus === 'Rejected' || p.reviewStatus === 'Returned') {
       const statusLabel: 'Approved' | 'Rejected' | 'Requires More Understanding' =
         p.reviewStatus === 'Approved'
           ? 'Approved'
@@ -143,7 +143,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
       hasFinalVerdict: false,
       statusLabel: 'Awaiting DG' as const,
       verdictType: null,
-      reasons: p.technicalReview?.recommendationNotes || 'Currently undergoing statutory vetting prior to Director General final sign-off.',
+      reasons:
+        p.technicalDirectorReview?.recommendationNotes ||
+        p.technicalClearanceReview?.recommendationNotes ||
+        p.technicalReview?.recommendationNotes ||
+        'Currently undergoing statutory vetting (Technical Clearance Team → Technical Director → Director General) prior to Director General final sign-off.',
       signedByName: null,
       signedByRole: null,
       signedAt: null,
@@ -884,9 +888,64 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
                         color: '#38bdf8',
                         border: '1px solid rgba(56, 189, 248, 0.35)'
                       }}>
-                        <Clock size={13} /> {project.reviewStatus ? project.reviewStatus.toUpperCase() : 'AWAITING DG SIGN-OFF'}
+                        <Clock size={13} />{' '}
+                        {project.reviewStatus === 'Recommended'
+                          ? 'RECOMMENDED TO DG (AWAITING DG SIGN-OFF)'
+                          : project.reviewStatus === 'Recommended to Technical Director'
+                          ? 'RECOMMENDED TO TECH DIRECTOR'
+                          : project.reviewStatus
+                          ? project.reviewStatus.toUpperCase()
+                          : 'AWAITING DG SIGN-OFF'}
                       </span>
                     )}
+                  </div>
+                </div>
+
+                {/* 3-Step Statutory Clearance Chain Strip */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: '6px',
+                  padding: '8px 10px',
+                  borderRadius: '8px',
+                  background: 'rgba(15, 23, 42, 0.65)',
+                  border: '1px solid rgba(255, 255, 255, 0.07)',
+                  fontSize: '0.66rem'
+                }}>
+                  <div style={{
+                    color: (project.technicalClearanceReview || project.reviewStatus === 'Recommended to Technical Director' || project.reviewStatus === 'Recommended' || v.hasFinalVerdict)
+                      ? '#6ee7b7'
+                      : '#94a3b8',
+                    fontWeight: 700
+                  }}>
+                    1. Tech Clearance → TD:{' '}
+                    {(project.technicalClearanceReview || project.reviewStatus === 'Recommended to Technical Director' || project.reviewStatus === 'Recommended' || v.hasFinalVerdict)
+                      ? '✓ Recommended'
+                      : 'Pending'}
+                  </div>
+                  <div style={{
+                    color: (project.technicalDirectorReview || project.reviewStatus === 'Recommended' || v.hasFinalVerdict)
+                      ? '#fde68a'
+                      : '#94a3b8',
+                    fontWeight: 700
+                  }}>
+                    2. Tech Director → DG:{' '}
+                    {(project.technicalDirectorReview || project.reviewStatus === 'Recommended' || v.hasFinalVerdict)
+                      ? '✓ Recommended'
+                      : 'Pending'}
+                  </div>
+                  <div style={{
+                    color: v.hasFinalVerdict
+                      ? isApproved
+                        ? '#10b981'
+                        : isRejected
+                        ? '#f87171'
+                        : '#fbbf24'
+                      : '#38bdf8',
+                    fontWeight: 800
+                  }}>
+                    3. DG Final Verdict:{' '}
+                    {v.hasFinalVerdict ? `✓ ${v.statusLabel}` : '⏳ Awaiting DG'}
                   </div>
                 </div>
 

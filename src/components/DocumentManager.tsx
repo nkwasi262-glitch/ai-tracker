@@ -111,13 +111,14 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
     return projects.find(p => p.id === selectedProjectId) || projects[0];
   })();
   const isSuperAdmin = session?.role === 'Super Admin' || currentRole === 'Super Admin';
+  const isTechClearanceTeam = session?.role === 'Technical Clearance Team' || currentRole === 'Technical Clearance Team';
+  const isTechDirector = session?.role === 'Technical Director' || currentRole === 'Technical Director';
+  const isDirectorGeneral = session?.role === 'Director General' || currentRole === 'Director General';
   const canAccessTechnicalClearanceGate = !isFirstTimer && (
-    currentRole === 'Technical Director' ||
-    currentRole === 'Technical Clearance Team' ||
-    currentRole === 'Super Admin' ||
-    session?.role === 'Technical Director' ||
-    session?.role === 'Technical Clearance Team' ||
-    session?.role === 'Super Admin'
+    isTechDirector ||
+    isTechClearanceTeam ||
+    isSuperAdmin ||
+    isDirectorGeneral
   );
 
   // Statutory authority to review documents, grade modules, and pass comments on first-timer uploads
@@ -156,7 +157,14 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
   const [inlineBiasAudit, setInlineBiasAudit] = useState<number>(82);
   const [inlineCybersecurity, setInlineCybersecurity] = useState<number>(90);
   const [inlineReadiness, setInlineReadiness] = useState<number>(84);
-  const [inlineProjectStatus, setInlineProjectStatus] = useState<ReviewWorkflowStatus>('Under Technical Review');
+  const defaultRolePipelineStatus: ReviewWorkflowStatus = isTechClearanceTeam
+    ? 'Recommended to Technical Director'
+    : isTechDirector
+    ? 'Recommended'
+    : isDirectorGeneral || isSuperAdmin
+    ? 'Approved'
+    : 'Under Technical Review';
+  const [inlineProjectStatus, setInlineProjectStatus] = useState<ReviewWorkflowStatus>(defaultRolePipelineStatus);
   const [inlineReviewFeedback, setInlineReviewFeedback] = useState<string | null>(null);
 
   // Inspection Modal reader state
@@ -246,7 +254,15 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
     setInlineBiasAudit(project.compliance?.accountability ?? 82);
     setInlineCybersecurity(project.compliance?.security ?? 90);
     setInlineReadiness(project.readinessScore ?? 84);
-    setInlineProjectStatus(project.reviewStatus || 'Under Technical Review');
+    setInlineProjectStatus(
+      isTechClearanceTeam
+        ? 'Recommended to Technical Director'
+        : isTechDirector
+        ? 'Recommended'
+        : isDirectorGeneral || isSuperAdmin
+        ? 'Approved'
+        : project.reviewStatus || 'Under Technical Review'
+    );
   };
 
   const [, setHydrationTick] = useState(0);
@@ -304,14 +320,29 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
       createdAt: new Date().toISOString().replace('T', ' ').substring(0, 16) + ' GMT'
     };
 
+    const resolvedPipelineStatus: ReviewWorkflowStatus =
+      inlineVerdict === 'Changes Requested'
+        ? isDirectorGeneral || isSuperAdmin
+          ? 'Returned'
+          : 'Needs Correction'
+        : inlineVerdict === 'Under Investigation'
+        ? isDirectorGeneral || isSuperAdmin
+          ? 'Rejected'
+          : 'Needs Correction'
+        : inlineProjectStatus;
+
     onReviewDocument(
       project.id,
       doc.id,
       commentObj,
       newCompliance,
       newReadiness,
-      inlineEnableGrading ? inlineProjectStatus : undefined
+      resolvedPipelineStatus
     );
+
+    if (onUpdateProjectStatus) {
+      onUpdateProjectStatus(project.id, resolvedPipelineStatus, finalComment);
+    }
 
     if (session) {
       recordAuditEvent({
@@ -322,15 +353,28 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
         actorInstitution: session.institution,
         targetModule: 'documents',
         targetEntityId: project.id,
-        actionDetails: `Full-Document Review & Grading submitted for "${doc.fileName}" (${project.projectCode}). Verdict: ${inlineVerdict}. ${
+        actionDetails: `Full-Document Review & Grading submitted for "${doc.fileName}" (${project.projectCode}). Verdict: ${inlineVerdict}. Pipeline Transition: [${resolvedPipelineStatus}]. ${
           inlineEnableGrading ? `Governance Grade: ${inlineCalculatedGrade}, AI Readiness: ${inlineReadiness}%.` : ''
         } Comment: "${finalComment}"`
       });
     }
 
+    const pipelineLabel =
+      resolvedPipelineStatus === 'Recommended to Technical Director'
+        ? 'Recommended to Technical Director'
+        : resolvedPipelineStatus === 'Recommended'
+        ? 'Recommended to Director General'
+        : resolvedPipelineStatus === 'Approved'
+        ? 'DG Final Verdict: APPROVED (Published on Dashboard)'
+        : resolvedPipelineStatus === 'Returned'
+        ? 'DG Final Verdict: REQUIRES MORE UNDERSTANDING (Published on Dashboard)'
+        : resolvedPipelineStatus === 'Rejected'
+        ? 'DG Final Verdict: REJECTED (Published on Dashboard)'
+        : resolvedPipelineStatus;
+
     setInlineComment('');
     setInlineReviewFeedback(
-      `✓ Review & Module Grading saved for "${doc.fileName}" (${project.projectCode}): Verdict "${inlineVerdict}"${
+      `✓ Review & Grading saved for "${doc.fileName}" (${project.projectCode}): Pipeline Status → "${pipelineLabel}"${
         inlineEnableGrading ? ` • Governance Grade "${inlineCalculatedGrade}" • AI Readiness ${inlineReadiness}%` : ''
       }.`
     );
@@ -1274,6 +1318,57 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                       )}
                     </div>
 
+                    {/* 4. Statutory 3-Tier Clearance Pipeline Transition */}
+                    <div style={{
+                      padding: '10px',
+                      borderRadius: '8px',
+                      background: 'rgba(16, 185, 129, 0.06)',
+                      border: '1px solid rgba(16, 185, 129, 0.3)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '6px'
+                    }}>
+                      <label style={{ fontSize: '0.7rem', fontWeight: 800, color: '#6ee7b7', display: 'block' }}>
+                        4. Statutory Clearance Pipeline Action
+                      </label>
+                      <div style={{ fontSize: '0.66rem', color: 'var(--text-secondary)', lineHeight: 1.35 }}>
+                        Chain: <strong>Tech Clearance Team</strong> → <strong>Technical Director</strong> → <strong>Director General Final Verdict</strong> (Published on Dashboard)
+                      </div>
+                      <select
+                        value={inlineProjectStatus}
+                        onChange={(e) => setInlineProjectStatus(e.target.value as ReviewWorkflowStatus)}
+                        className="form-select"
+                        style={{ width: '100%', fontSize: '0.73rem', padding: '6px 8px' }}
+                      >
+                        {(isTechClearanceTeam || isSuperAdmin) && (
+                          <option value="Recommended to Technical Director">
+                            Step 1 (Tech Clearance Team): Recommend to Technical Director
+                          </option>
+                        )}
+                        {(isTechDirector || isSuperAdmin) && (
+                          <option value="Recommended">
+                            Step 2 (Technical Director): Recommend to Director General
+                          </option>
+                        )}
+                        {(isDirectorGeneral || isSuperAdmin) && (
+                          <>
+                            <option value="Approved">
+                              Step 3 (Director General Final Verdict): Sign & Approve (Publish to Dashboard)
+                            </option>
+                            <option value="Returned">
+                              Step 3 (Director General Final Verdict): Requires More Understanding (Publish to Dashboard)
+                            </option>
+                            <option value="Rejected">
+                              Step 3 (Director General Final Verdict): Sign & Reject (Publish to Dashboard)
+                            </option>
+                          </>
+                        )}
+                        <option value="Needs Correction">
+                          Return for Technical Correction (Needs Correction)
+                        </option>
+                      </select>
+                    </div>
+
                     <button
                       type="button"
                       onClick={() => handleInlineSubmitReview(activeOnboarderItem.doc, activeOnboarderItem.project)}
@@ -1295,7 +1390,13 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                       }}
                     >
                       <Send size={14} />
-                      <span>Submit Full-Document Review & Grade</span>
+                      <span>
+                        {isTechClearanceTeam
+                          ? 'Submit Grade & Recommend to Technical Director'
+                          : isTechDirector
+                          ? 'Submit Grade & Recommend to Director General'
+                          : 'Submit Full-Document Review, Grade & Verdict'}
+                      </span>
                     </button>
                   </>
                 ) : (
@@ -2326,14 +2427,21 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
               </div>
             )}
 
-            {/* TECHNICAL CLEARANCE GATE (Strictly Restricted for First-Timers) */}
+            {/* TECHNICAL CLEARANCE GATE: 3-TIER STATUTORY CHAIN (Tech Clearance Team -> Tech Director -> Director General -> Dashboard) */}
             {canAccessTechnicalClearanceGate ? (
               activeProject && (
-                <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', border: '1px solid rgba(16, 185, 129, 0.32)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <Award className="w-4 h-4 text-emerald-400" />
-                      <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0 }}>Technical Clearance Gate</h3>
+                      <div>
+                        <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0 }}>
+                          Statutory 3-Tier Clearance & Recommendation Gate
+                        </h3>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                          Tech Clearance Team → Technical Director → Director General Final Sign-Off
+                        </div>
+                      </div>
                     </div>
                     <span style={{
                       fontSize: '0.68rem',
@@ -2344,20 +2452,144 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                         ? 'rgba(16, 185, 129, 0.2)'
                         : activeProject.reviewStatus === 'Recommended'
                         ? 'rgba(251, 191, 36, 0.2)'
+                        : activeProject.reviewStatus === 'Recommended to Technical Director'
+                        ? 'rgba(56, 189, 248, 0.2)'
+                        : activeProject.reviewStatus === 'Rejected'
+                        ? 'rgba(239, 68, 68, 0.2)'
                         : 'rgba(59, 130, 246, 0.2)',
                       color: activeProject.reviewStatus === 'Approved'
                         ? '#10b981'
                         : activeProject.reviewStatus === 'Recommended'
                         ? '#fbbf24'
+                        : activeProject.reviewStatus === 'Recommended to Technical Director'
+                        ? '#38bdf8'
+                        : activeProject.reviewStatus === 'Rejected'
+                        ? '#f87171'
                         : '#60a5fa'
                     }}>
-                      {activeProject.reviewStatus || 'Under Technical Review'}
+                      {activeProject.reviewStatus === 'Recommended'
+                        ? 'Recommended to Director General'
+                        : activeProject.reviewStatus || 'Under Technical Review'}
                     </span>
                   </div>
 
-                  <p style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', margin: 0 }}>
-                    Technical clearance officers screen uploaded documents and forward validated dossiers to the Director General queue.
-                  </p>
+                  {/* Live 3-Step Pipeline Tracker */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '10px 12px', borderRadius: '8px', background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    {/* Step 1: Technical Clearance Team -> Technical Director */}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', fontSize: '0.72rem' }}>
+                      <div>
+                        <div style={{ fontWeight: 700, color: (activeProject.technicalClearanceReview || activeProject.reviewStatus === 'Recommended to Technical Director' || activeProject.reviewStatus === 'Recommended' || activeProject.reviewStatus === 'Approved') ? '#6ee7b7' : '#cbd5e1' }}>
+                          1. Technical Clearance Team → Technical Director
+                        </div>
+                        <div style={{ fontSize: '0.67rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                          {activeProject.technicalClearanceReview
+                            ? `✓ Recommended by ${activeProject.technicalClearanceReview.reviewerName}: "${activeProject.technicalClearanceReview.recommendationNotes}"`
+                            : activeProject.reviewStatus === 'Recommended to Technical Director' || activeProject.reviewStatus === 'Recommended' || activeProject.reviewStatus === 'Approved'
+                            ? '✓ Screened and recommended to Technical Director'
+                            : '⏳ Awaiting Technical Clearance Team screening & recommendation to Technical Director'}
+                        </div>
+                      </div>
+                      <span style={{
+                        fontSize: '0.64rem',
+                        fontWeight: 800,
+                        padding: '2px 7px',
+                        borderRadius: '9999px',
+                        whiteSpace: 'nowrap',
+                        background: (activeProject.technicalClearanceReview || activeProject.reviewStatus === 'Recommended to Technical Director' || activeProject.reviewStatus === 'Recommended' || activeProject.reviewStatus === 'Approved')
+                          ? 'rgba(16, 185, 129, 0.18)'
+                          : 'rgba(255, 255, 255, 0.06)',
+                        color: (activeProject.technicalClearanceReview || activeProject.reviewStatus === 'Recommended to Technical Director' || activeProject.reviewStatus === 'Recommended' || activeProject.reviewStatus === 'Approved')
+                          ? '#10b981'
+                          : '#94a3b8'
+                      }}>
+                        {(activeProject.technicalClearanceReview || activeProject.reviewStatus === 'Recommended to Technical Director' || activeProject.reviewStatus === 'Recommended' || activeProject.reviewStatus === 'Approved')
+                          ? '✓ Recommended to TD'
+                          : 'Pending Step 1'}
+                      </span>
+                    </div>
+
+                    {/* Step 2: Technical Director -> Director General */}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', fontSize: '0.72rem', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '7px' }}>
+                      <div>
+                        <div style={{ fontWeight: 700, color: (activeProject.technicalDirectorReview || activeProject.reviewStatus === 'Recommended' || activeProject.reviewStatus === 'Approved') ? '#fde68a' : '#cbd5e1' }}>
+                          2. Technical Director → Director General
+                        </div>
+                        <div style={{ fontSize: '0.67rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                          {activeProject.technicalDirectorReview
+                            ? `✓ Endorsed by ${activeProject.technicalDirectorReview.reviewerName}: "${activeProject.technicalDirectorReview.recommendationNotes}"`
+                            : activeProject.reviewStatus === 'Recommended' || activeProject.reviewStatus === 'Approved'
+                            ? '✓ Endorsed by Technical Director and recommended to Director General'
+                            : activeProject.reviewStatus === 'Recommended to Technical Director'
+                            ? '⚡ Ready for Technical Director endorsement to Director General'
+                            : '⏳ Awaiting Step 1 recommendation from Technical Clearance Team'}
+                        </div>
+                      </div>
+                      <span style={{
+                        fontSize: '0.64rem',
+                        fontWeight: 800,
+                        padding: '2px 7px',
+                        borderRadius: '9999px',
+                        whiteSpace: 'nowrap',
+                        background: (activeProject.technicalDirectorReview || activeProject.reviewStatus === 'Recommended' || activeProject.reviewStatus === 'Approved')
+                          ? 'rgba(251, 191, 36, 0.2)'
+                          : activeProject.reviewStatus === 'Recommended to Technical Director'
+                          ? 'rgba(56, 189, 248, 0.18)'
+                          : 'rgba(255, 255, 255, 0.06)',
+                        color: (activeProject.technicalDirectorReview || activeProject.reviewStatus === 'Recommended' || activeProject.reviewStatus === 'Approved')
+                          ? '#fbbf24'
+                          : activeProject.reviewStatus === 'Recommended to Technical Director'
+                          ? '#38bdf8'
+                          : '#94a3b8'
+                      }}>
+                        {(activeProject.technicalDirectorReview || activeProject.reviewStatus === 'Recommended' || activeProject.reviewStatus === 'Approved')
+                          ? '✓ Recommended to DG'
+                          : activeProject.reviewStatus === 'Recommended to Technical Director'
+                          ? 'Ready for TD'
+                          : 'Pending Step 2'}
+                      </span>
+                    </div>
+
+                    {/* Step 3: Director General Final Sign-Off -> Dashboard */}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', fontSize: '0.72rem', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '7px' }}>
+                      <div>
+                        <div style={{ fontWeight: 700, color: activeProject.dgFinalVerdict ? '#10b981' : '#cbd5e1' }}>
+                          3. Director General Final Verdict → Published on Dashboard
+                        </div>
+                        <div style={{ fontSize: '0.67rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                          {activeProject.dgFinalVerdict
+                            ? `✓ Signed by ${activeProject.dgFinalVerdict.signedByName} [${activeProject.dgFinalVerdict.finalStatusLabel.toUpperCase()}] — Live on National AI Dashboard: "${activeProject.dgFinalVerdict.reasons}"`
+                            : activeProject.reviewStatus === 'Recommended'
+                            ? '⚡ Recommended by Technical Director — Awaiting Director General Final Verdict Sign-Off'
+                            : '⏳ Awaiting Technical Director recommendation to Director General'}
+                        </div>
+                      </div>
+                      <span style={{
+                        fontSize: '0.64rem',
+                        fontWeight: 800,
+                        padding: '2px 7px',
+                        borderRadius: '9999px',
+                        whiteSpace: 'nowrap',
+                        background: activeProject.dgFinalVerdict
+                          ? activeProject.dgFinalVerdict.finalStatusLabel === 'Approved'
+                            ? 'rgba(16, 185, 129, 0.22)'
+                            : activeProject.dgFinalVerdict.finalStatusLabel === 'Rejected'
+                            ? 'rgba(239, 68, 68, 0.22)'
+                            : 'rgba(245, 158, 11, 0.22)'
+                          : 'rgba(255, 255, 255, 0.06)',
+                        color: activeProject.dgFinalVerdict
+                          ? activeProject.dgFinalVerdict.finalStatusLabel === 'Approved'
+                            ? '#10b981'
+                            : activeProject.dgFinalVerdict.finalStatusLabel === 'Rejected'
+                            ? '#f87171'
+                            : '#fbbf24'
+                          : '#94a3b8'
+                      }}>
+                        {activeProject.dgFinalVerdict
+                          ? `✓ DG: ${activeProject.dgFinalVerdict.finalStatusLabel}`
+                          : 'Awaiting DG'}
+                      </span>
+                    </div>
+                  </div>
 
                   {onUpdateProjectStatus && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -2365,7 +2597,13 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                         rows={2}
                         value={techNotes}
                         onChange={(e) => setTechNotes(e.target.value)}
-                        placeholder="Enter technical clearance notes or recommendation summary..."
+                        placeholder={
+                          isTechClearanceTeam
+                            ? 'Enter Technical Clearance Team screening notes for recommendation to the Technical Director...'
+                            : isTechDirector
+                            ? 'Enter Technical Director endorsement notes for recommendation to the Director General...'
+                            : 'Enter statutory clearance notes, recommendation summary, or Director General final verdict rationale...'
+                        }
                         style={{
                           width: '100%',
                           padding: '8px 10px',
@@ -2379,52 +2617,200 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                         }}
                       />
 
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateStatus('Recommended')}
-                          style={{
-                            padding: '8px 10px',
-                            borderRadius: '6px',
-                            background: 'linear-gradient(135deg, var(--ghana-emerald), #059669)',
-                            color: '#0b0f19',
-                            fontWeight: 700,
-                            fontSize: '0.75rem',
-                            border: 'none',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '4px'
-                          }}
-                        >
-                          <ArrowRight size={13} /> Recommend to DG
-                        </button>
+                      {/* Role-Specific Recommendation Buttons */}
+                      {isTechClearanceTeam && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateStatus('Recommended to Technical Director')}
+                            style={{
+                              padding: '9px 10px',
+                              borderRadius: '6px',
+                              background: 'linear-gradient(135deg, #38bdf8, #0284c7)',
+                              color: '#06131f',
+                              fontWeight: 800,
+                              fontSize: '0.75rem',
+                              border: 'none',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            <ArrowRight size={13} /> Recommend to Technical Director
+                          </button>
 
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateStatus('Needs Correction')}
-                          style={{
-                            padding: '8px 10px',
-                            borderRadius: '6px',
-                            background: 'rgba(245, 158, 11, 0.15)',
-                            border: '1px solid rgba(245, 158, 11, 0.3)',
-                            color: '#fde68a',
-                            fontWeight: 600,
-                            fontSize: '0.75rem',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '4px'
-                          }}
-                        >
-                          <RotateCcw size={13} /> Needs Correction
-                        </button>
-                      </div>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateStatus('Needs Correction')}
+                            style={{
+                              padding: '9px 10px',
+                              borderRadius: '6px',
+                              background: 'rgba(245, 158, 11, 0.15)',
+                              border: '1px solid rgba(245, 158, 11, 0.3)',
+                              color: '#fde68a',
+                              fontWeight: 600,
+                              fontSize: '0.75rem',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            <RotateCcw size={13} /> Needs Correction
+                          </button>
+                        </div>
+                      )}
+
+                      {isTechDirector && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateStatus('Recommended')}
+                            style={{
+                              padding: '9px 10px',
+                              borderRadius: '6px',
+                              background: 'linear-gradient(135deg, var(--ghana-emerald), #059669)',
+                              color: '#0b0f19',
+                              fontWeight: 800,
+                              fontSize: '0.75rem',
+                              border: 'none',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            <ArrowRight size={13} /> Recommend to Director General
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateStatus('Needs Correction')}
+                            style={{
+                              padding: '9px 10px',
+                              borderRadius: '6px',
+                              background: 'rgba(245, 158, 11, 0.15)',
+                              border: '1px solid rgba(245, 158, 11, 0.3)',
+                              color: '#fde68a',
+                              fontWeight: 600,
+                              fontSize: '0.75rem',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            <RotateCcw size={13} /> Return for Correction
+                          </button>
+                        </div>
+                      )}
+
+                      {(isSuperAdmin || isDirectorGeneral) && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateStatus('Recommended to Technical Director')}
+                              style={{
+                                padding: '8px 10px',
+                                borderRadius: '6px',
+                                background: 'rgba(56, 189, 248, 0.18)',
+                                border: '1px solid rgba(56, 189, 248, 0.45)',
+                                color: '#7dd3fc',
+                                fontWeight: 700,
+                                fontSize: '0.73rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <ArrowRight size={13} /> 1. Tech Clearance → Recommend to Tech Director
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateStatus('Recommended')}
+                              style={{
+                                padding: '8px 10px',
+                                borderRadius: '6px',
+                                background: 'linear-gradient(135deg, var(--ghana-emerald), #059669)',
+                                color: '#0b0f19',
+                                fontWeight: 800,
+                                fontSize: '0.73rem',
+                                border: 'none',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <ArrowRight size={13} /> 2. Tech Director → Recommend to DG
+                            </button>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateStatus('Approved')}
+                              style={{
+                                padding: '8px 8px',
+                                borderRadius: '6px',
+                                background: 'rgba(16, 185, 129, 0.2)',
+                                border: '1px solid rgba(16, 185, 129, 0.5)',
+                                color: '#6ee7b7',
+                                fontWeight: 800,
+                                fontSize: '0.7rem',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              ✓ 3. DG Sign & Approve (Dashboard)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateStatus('Returned')}
+                              style={{
+                                padding: '8px 8px',
+                                borderRadius: '6px',
+                                background: 'rgba(245, 158, 11, 0.18)',
+                                border: '1px solid rgba(245, 158, 11, 0.45)',
+                                color: '#fde68a',
+                                fontWeight: 700,
+                                fontSize: '0.7rem',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              ⚠ DG: Needs Understanding
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateStatus('Rejected')}
+                              style={{
+                                padding: '8px 8px',
+                                borderRadius: '6px',
+                                background: 'rgba(239, 68, 68, 0.18)',
+                                border: '1px solid rgba(239, 68, 68, 0.45)',
+                                color: '#fca5a5',
+                                fontWeight: 700,
+                                fontSize: '0.7rem',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              ✕ DG Sign & Reject
+                            </button>
+                          </div>
+                        </div>
+                      )}
 
                       {statusFeedback && (
-                        <div style={{ fontSize: '0.72rem', color: '#10b981', textAlign: 'center' }}>
+                        <div style={{ fontSize: '0.72rem', color: '#10b981', textAlign: 'center', fontWeight: 700 }}>
                           ✓ {statusFeedback}
                         </div>
                       )}

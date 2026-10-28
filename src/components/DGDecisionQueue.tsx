@@ -438,30 +438,53 @@ export const DGDecisionQueue: React.FC<DGDecisionQueueProps> = ({
                     </p>
                   </div>
 
-                  {/* Technical Clearance Officer Note */}
+                  {/* 2-Stage Technical Recommendation Chain (Tech Clearance Team -> Tech Director -> DG) */}
                   <div style={{
                     padding: '16px',
                     borderRadius: '10px',
                     background: 'rgba(16, 185, 129, 0.08)',
-                    border: '1px solid rgba(16, 185, 129, 0.25)',
+                    border: '1px solid rgba(16, 185, 129, 0.28)',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '6px'
+                    gap: '10px'
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <ShieldCheck size={16} className="text-emerald-400" />
-                        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#a7f3d0' }}>
-                          Technical Clearance Recommendation
+                        <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#a7f3d0' }}>
+                          Statutory Technical Recommendation Chain (Documents & OCR → DG Queue)
                         </span>
                       </div>
-                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                        Cleared by: {selectedProject.technicalReview?.reviewerName || 'Technical Director'}
+                      <span style={{ fontSize: '0.7rem', color: '#fde68a', fontWeight: 700 }}>
+                        Status: {selectedProject.reviewStatus === 'Recommended' ? 'Recommended by Technical Director to DG' : selectedProject.reviewStatus}
                       </span>
                     </div>
-                    <p style={{ fontSize: '0.82rem', color: '#e2e8f0', margin: 0, lineHeight: 1.4 }}>
-                      "{selectedProject.technicalReview?.recommendationNotes || 'Statutory architecture validated against Act 843 and Ghana AI Ethical Guidelines.'}"
-                    </p>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px' }}>
+                      <div style={{ padding: '10px 12px', borderRadius: '8px', background: 'rgba(15, 23, 42, 0.7)', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
+                        <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#7dd3fc' }}>
+                          Step 1: Technical Clearance Team → Technical Director
+                        </div>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                          Screened by: {selectedProject.technicalClearanceReview?.reviewerName || 'Technical Clearance Team'}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#e2e8f0', marginTop: '4px', fontStyle: 'italic' }}>
+                          "{selectedProject.technicalClearanceReview?.recommendationNotes || 'Compliance documents & OCR verified and recommended to Technical Director.'}"
+                        </div>
+                      </div>
+
+                      <div style={{ padding: '10px 12px', borderRadius: '8px', background: 'rgba(15, 23, 42, 0.7)', border: '1px solid rgba(16, 185, 129, 0.35)' }}>
+                        <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#6ee7b7' }}>
+                          Step 2: Technical Director → Director General
+                        </div>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                          Endorsed by: {selectedProject.technicalDirectorReview?.reviewerName || selectedProject.technicalReview?.reviewerName || 'Technical Director (NITA)'}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#e2e8f0', marginTop: '4px', fontStyle: 'italic' }}>
+                          "{selectedProject.technicalDirectorReview?.recommendationNotes || selectedProject.technicalReview?.recommendationNotes || 'Endorsed by Technical Director and recommended to the Director General for final verdict.'}"
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Ethical Compliance Breakdown */}
