@@ -21,7 +21,9 @@ import {
   ReviewWorkflowStatus,
   ComplianceScore, 
   AutoAssessmentDetails, 
-  ZeroAssumptionAudit 
+  ZeroAssumptionAudit,
+  ensureFirstTimerMdaProject,
+  getFirstTimerMdaProjectId
 } from '../data/sampleProjects';
 import { UserSession } from '../data/authTypes';
 import { recordAuditEvent } from '../services/auditService';
@@ -73,8 +75,15 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
   onProceedToMonitoring,
   onSwitchRole
 }) => {
-  const [selectedProjectId, setSelectedProjectId] = useState<string>(projects[0]?.id || '');
-  const activeProject = projects.find(p => p.id === selectedProjectId) || projects[0];
+  // Resolve the active project strictly to the MDA the First-Timer logged in with (session.institution)
+  const mdaProjectId = getFirstTimerMdaProjectId(session.institution);
+  const { mdaProject: ensuredMdaProject } = ensureFirstTimerMdaProject(
+    projects,
+    session.institution,
+    session.fullName,
+    session.email
+  );
+  const activeProject = projects.find(p => p.id === mdaProjectId) || ensuredMdaProject;
 
   // Upload state
   const [uploading, setUploading] = useState(false);
@@ -97,6 +106,9 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
   // Active project assessment metrics
   const auto = activeProject ? generateAssessmentFromDocuments(activeProject, session) : null;
   const compliance = auto?.compliance || activeProject?.compliance;
+  const avgGovernance = compliance
+    ? Math.round((compliance.fairness + compliance.transparency + compliance.accountability + compliance.privacy + compliance.security) / 5)
+    : 0;
   const readinessScore = auto?.readinessScore ?? activeProject?.readinessScore ?? 0;
   const zeroAudit = auto?.zeroAssumptionAudit || activeProject?.zeroAssumptionAudit;
 
@@ -138,6 +150,7 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
         uploadedByRole: session.role || 'First-Timer / New User',
         uploadedByName: session.fullName,
         uploadedByEmail: session.email,
+        uploadedByMda: session.institution,
         isFirstTimerUpload: true,
         reviewStatus: 'Pending Review',
         fileSize: formattedSize,
@@ -281,11 +294,11 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
         </div>
       </div>
 
-      {/* Target Project Selection */}
+      {/* Target MDA / Active Project Being Registered */}
       <div style={{
         background: 'var(--bg-card)',
         borderRadius: '14px',
-        border: '1px solid var(--border-color)',
+        border: '1px solid rgba(16, 185, 129, 0.35)',
         padding: '18px 24px',
         display: 'flex',
         alignItems: 'center',
@@ -294,36 +307,40 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
         gap: '14px'
       }}>
         <div>
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
-            Active Project Being Registered / Onboarded:
+          <span style={{ fontSize: '0.72rem', color: 'var(--ghana-emerald)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Active Project Being Registered / Onboarded (Logged-In MDA):
           </span>
-          <div style={{ fontSize: '1rem', fontWeight: 700, color: '#fff', marginTop: '2px' }}>
-            [{activeProject?.projectCode}] {activeProject?.name} ({activeProject?.mdaCode || activeProject?.mda})
+          <div style={{ fontSize: '1.08rem', fontWeight: 800, color: '#fff', marginTop: '4px' }}>
+            [{activeProject?.projectCode}] {session.institution} ({activeProject?.mdaCode})
+          </div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '3px' }}>
+            Onboarding Officer: <strong style={{ color: '#e2e8f0' }}>{session.fullName}</strong> ({session.email}) • All uploaded documents are stored & automatically graded under <strong style={{ color: '#6ee7b7' }}>{session.institution}</strong>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: 600 }}>Switch Project:</span>
-          <select
-            value={selectedProjectId}
-            onChange={(e) => setSelectedProjectId(e.target.value)}
-            style={{
-              padding: '8px 12px',
-              borderRadius: '8px',
-              background: '#111b27',
-              border: '1px solid var(--border-color)',
-              color: '#fff',
-              fontSize: '0.8rem',
-              outline: 'none',
-              cursor: 'pointer'
-            }}
-          >
-            {projects.map(p => (
-              <option key={p.id} value={p.id}>
-                [{p.projectCode}] {p.name}
-              </option>
-            ))}
-          </select>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <span style={{
+            padding: '7px 14px',
+            borderRadius: '8px',
+            background: 'rgba(16, 185, 129, 0.14)',
+            border: '1px solid rgba(16, 185, 129, 0.4)',
+            color: '#6ee7b7',
+            fontSize: '0.76rem',
+            fontWeight: 700
+          }}>
+            🏛️ MDA Workspace: {session.institution}
+          </span>
+          <span style={{
+            padding: '7px 14px',
+            borderRadius: '8px',
+            background: 'rgba(56, 189, 248, 0.14)',
+            border: '1px solid rgba(56, 189, 248, 0.4)',
+            color: '#7dd3fc',
+            fontSize: '0.76rem',
+            fontWeight: 700
+          }}>
+            📄 {(activeProject?.documents || []).length} Document(s) Under {activeProject?.mdaCode}
+          </span>
         </div>
       </div>
 
@@ -603,8 +620,14 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
 
         {/* Uploaded Documents Table */}
         <div>
-          <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>
-            Attached Project Documents ({(activeProject?.documents || []).length})
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+              Attached Project Documents Under {session.institution} ({(activeProject?.documents || []).length})
+            </div>
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#a7f3d0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <ShieldCheck size={14} className="text-emerald-400" />
+              <span>All documents grouped under MDA: {session.institution} • Auto-Graded: {compliance?.overallGrade || 'Moderate'} ({avgGovernance}%) & Readiness {readinessScore}%</span>
+            </div>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -632,6 +655,28 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
                         <span style={{
                           padding: '2px 8px',
                           borderRadius: '9999px',
+                          fontSize: '0.65rem',
+                          fontWeight: 800,
+                          background: 'rgba(16, 185, 129, 0.16)',
+                          color: '#6ee7b7',
+                          border: '1px solid rgba(16, 185, 129, 0.4)'
+                        }}>
+                          🏛️ MDA: {doc.uploadedByMda || activeProject?.mda || session.institution}
+                        </span>
+                        <span style={{
+                          padding: '2px 8px',
+                          borderRadius: '9999px',
+                          fontSize: '0.65rem',
+                          fontWeight: 700,
+                          background: 'rgba(56, 189, 248, 0.15)',
+                          color: '#7dd3fc',
+                          border: '1px solid rgba(56, 189, 248, 0.35)'
+                        }}>
+                          ⚡ Auto-Graded: {compliance?.overallGrade || 'Moderate'} ({avgGovernance}%) • Readiness {readinessScore}%
+                        </span>
+                        <span style={{
+                          padding: '2px 8px',
+                          borderRadius: '9999px',
                           fontSize: '0.66rem',
                           fontWeight: 700,
                           background: doc.reviewStatus === 'Reviewed & Verified' ? 'rgba(16, 185, 129, 0.2)' :
@@ -648,7 +693,7 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
                         </span>
                       </div>
                       <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                        Uploaded: {doc.uploadedAt} • Version {doc.version} • Format: {doc.fileType.toUpperCase()}
+                        MDA: {doc.uploadedByMda || activeProject?.mda || session.institution} ({activeProject?.projectCode}) • Uploaded: {doc.uploadedAt} • Version {doc.version} • Format: {doc.fileType.toUpperCase()}
                       </div>
                     </div>
                   </div>

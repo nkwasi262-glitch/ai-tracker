@@ -5,7 +5,8 @@ import {
   ComplianceScore,
   DocumentAsset,
   DocumentReviewComment,
-  ReviewWorkflowStatus
+  ReviewWorkflowStatus,
+  getFirstTimerMdaProjectId
 } from '../data/sampleProjects';
 import { UserRole } from './RoleSwitcher';
 import { UserSession } from '../data/authTypes';
@@ -938,8 +939,19 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
   session,
   onReviewDocument
 }) => {
-  const defaultProjId = projects.find(p => (p.documents?.length || 0) > 0)?.id || projects[0]?.id || 'general';
+  const isFirstTimer = session?.role === 'First-Timer / New User' || currentRole === 'First-Timer / New User' || !!session?.isFirstTimer || session?.memberType === 'new_member';
+  const firstTimerMdaProjId = isFirstTimer && session?.institution
+    ? getFirstTimerMdaProjectId(session.institution)
+    : '';
+  const defaultProjId = firstTimerMdaProjId || projects.find(p => (p.documents?.length || 0) > 0)?.id || projects[0]?.id || 'general';
   const [selectedProjectId, setSelectedProjectId] = useState<string>(defaultProjId);
+
+  useEffect(() => {
+    if (isFirstTimer && firstTimerMdaProjId && selectedProjectId !== firstTimerMdaProjId) {
+      setSelectedProjectId(firstTimerMdaProjId);
+    }
+  }, [isFirstTimer, firstTimerMdaProjId, selectedProjectId]);
+
   const activeProject = projects.find(p => p.id === selectedProjectId);
   const [reviewingDoc, setReviewingDoc] = useState<DocumentAsset | null>(null);
   const [expandedFullDocId, setExpandedFullDocId] = useState<string | null>(null);
@@ -998,7 +1010,7 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
       s4_sub1: score.security >= 100 ? 'yes' : 'no',
     };
     setAnswers(initialAnswers);
-  }, [selectedProjectId]);
+  }, [selectedProjectId, activeProject?.compliance, activeProject?.documents?.length]);
 
   const handleAnswerChange = (subId: string, val: 'yes' | 'no') => {
     if (!canAudit) return;

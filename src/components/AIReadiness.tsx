@@ -11,7 +11,8 @@ import {
   DocumentAsset, 
   DocumentReviewComment, 
   ComplianceScore, 
-  ReviewWorkflowStatus 
+  ReviewWorkflowStatus,
+  getFirstTimerMdaProjectId
 } from '../data/sampleProjects';
 import { UserSession } from '../data/authTypes';
 import { DocumentReviewGradeModal } from './DocumentReviewGradeModal';
@@ -312,10 +313,21 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({
   const [expandedFullDocId, setExpandedFullDocId] = useState<string | null>(null);
 
   const canReview = session?.role === 'Super Admin' || session?.role === 'Director General' || session?.role === 'Technical Clearance Team' || session?.role === 'Technical Director' || currentRole === 'Super Admin' || currentRole === 'Director General' || currentRole === 'Technical Clearance Team' || currentRole === 'Technical Director';
+  const isFirstTimer = session?.role === 'First-Timer / New User' || currentRole === 'First-Timer / New User' || !!session?.isFirstTimer || session?.memberType === 'new_member';
+  const firstTimerMdaProjId = isFirstTimer && session?.institution
+    ? getFirstTimerMdaProjectId(session.institution)
+    : '';
 
-  // Default to project with uploaded documents or first project
-  const initialProjectId = projects.find(p => (p.documents?.length || 0) > 0)?.id || projects[0]?.id || '';
+  // Default to First-Timer's logged-in MDA project, or project with uploaded documents, or first project
+  const initialProjectId = firstTimerMdaProjId || projects.find(p => (p.documents?.length || 0) > 0)?.id || projects[0]?.id || '';
   const [selectedProjectId, setSelectedProjectId] = useState<string>(initialProjectId);
+
+  React.useEffect(() => {
+    if (isFirstTimer && firstTimerMdaProjId && selectedProjectId !== firstTimerMdaProjId) {
+      setSelectedProjectId(firstTimerMdaProjId);
+    }
+  }, [isFirstTimer, firstTimerMdaProjId, selectedProjectId]);
+
   const activeProject = projects.find(p => p.id === selectedProjectId);
 
   // Helper to construct dynamic answers aligning with auto-assessment

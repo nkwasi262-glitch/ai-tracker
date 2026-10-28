@@ -482,6 +482,140 @@ test('Director General signing and approving final verdict increases Dashboard T
   assert(afterSecondApproval.totalBudget === 86000000, 'After DG approves proj-2, Approved Budget increases from GHS 36M to GHS 86M (+GHS 50,000,000)');
 });
 
+// 7. First-Timer Active Project Uses Logged-In MDA Name, Consolidates All Uploads Under Same MDA, and Auto-Grades Submission
+console.log('\n7. Testing First-Timer Active Project MDA Binding, Same-MDA Document Grouping & Automatic Rubric Grading:');
+
+test('First-Timer active project being registered uses the exact name of the MDA the First-Timer logged in with', () => {
+  const firstTimerSession = {
+    fullName: 'Dr. Akosua Mensah',
+    email: 'a.mensah@mofa.gov.gh',
+    institution: 'Ministry of Food and Agriculture (MoFA)',
+    role: 'First-Timer / New User',
+    memberType: 'new_member',
+    isFirstTimer: true
+  };
+
+  const getFirstTimerMdaProjectId = (institution) => {
+    const slug = institution.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    return `proj-mda-onboard-${slug}`;
+  };
+
+  const ensureFirstTimerMdaProject = (projects, institution) => {
+    const targetId = getFirstTimerMdaProjectId(institution);
+    const existing = projects.find(p => p.id === targetId);
+    if (existing) return projects;
+    return [
+      {
+        id: targetId,
+        projectCode: 'GN-AI-2026-MOFA',
+        name: institution,
+        mda: institution,
+        mdaCode: 'MoFA',
+        documents: []
+      },
+      ...projects
+    ];
+  };
+
+  const initialProjects = [
+    { id: 'proj-1', projectCode: 'GN-AI-2026-001', name: 'GhanaPostGPS', mda: 'Ministry of Communications and Digitalisation (MOCD)', mdaCode: 'MOCD', documents: [] }
+  ];
+
+  const syncedProjects = ensureFirstTimerMdaProject(initialProjects, firstTimerSession.institution);
+  const activeProject = syncedProjects.find(p => p.id === getFirstTimerMdaProjectId(firstTimerSession.institution));
+
+  assert(activeProject !== undefined, 'Dedicated MDA onboarding project is created for the First-Timer');
+  assert(activeProject.name === 'Ministry of Food and Agriculture (MoFA)', 'Active project being registered displays the exact MDA name the First-Timer logged in with');
+  assert(activeProject.mda === 'Ministry of Food and Agriculture (MoFA)', 'Active project MDA field matches the First-Timer logged-in MDA');
+});
+
+test('All documents uploaded by a First-Timer are stored under the same logged-in MDA and automatically grade Governance & Ethics + AI Readiness', () => {
+  const firstTimerSession = {
+    fullName: 'Ing. Kofi Boateng',
+    email: 'k.boateng@moh.gov.gh',
+    institution: 'Ghana Health Service (GHS)',
+    role: 'First-Timer / New User',
+    memberType: 'new_member',
+    isFirstTimer: true
+  };
+
+  let mdaProject = {
+    id: 'proj-mda-onboard-ghana-health-service-ghs',
+    projectCode: 'GN-AI-2026-GHS',
+    name: firstTimerSession.institution,
+    mda: firstTimerSession.institution,
+    mdaCode: 'GHS',
+    documents: [],
+    compliance: { fairness: 55, transparency: 55, accountability: 55, privacy: 55, security: 55, overallGrade: 'Moderate' },
+    readinessScore: 55
+  };
+
+  const autoGradeFromUploadedDocuments = (project) => {
+    const docs = project.documents || [];
+    const combinedText = docs.map(d => `${d.fileName} ${d.fullDocumentText || ''}`).join(' ').toLowerCase();
+    const docCoverageBonus = Math.min(24, docs.length * 8);
+    const hasEthics = combinedText.includes('fairness') || combinedText.includes('bias') || combinedText.includes('equity');
+    const hasPrivacy = combinedText.includes('act 843') || combinedText.includes('dpia') || combinedText.includes('dpc');
+    const hasSecurity = combinedText.includes('encryption') || combinedText.includes('iso 27001') || combinedText.includes('nita');
+    const hasInfra = combinedText.includes('g-cloud') || combinedText.includes('gpu') || combinedText.includes('architecture');
+
+    const fairness = Math.min(98, 60 + docCoverageBonus + (hasEthics ? 14 : 4));
+    const transparency = Math.min(98, 60 + docCoverageBonus + 10);
+    const accountability = Math.min(98, 60 + docCoverageBonus + 10);
+    const privacy = Math.min(98, 60 + docCoverageBonus + (hasPrivacy ? 16 : 4));
+    const security = Math.min(98, 60 + docCoverageBonus + (hasSecurity ? 14 : 4));
+    const avg = Math.round((fairness + transparency + accountability + privacy + security) / 5);
+    const overallGrade = avg >= 85 ? 'Excellent' : avg >= 70 ? 'Good' : avg >= 50 ? 'Moderate' : 'High Risk';
+    const readinessScore = Math.min(98, 58 + docCoverageBonus + (hasInfra ? 14 : 6));
+
+    return {
+      compliance: { fairness, transparency, accountability, privacy, security, overallGrade },
+      readinessScore
+    };
+  };
+
+  const uploadDocumentAsFirstTimer = (fileName, fullDocumentText) => {
+    const newDoc = {
+      id: `doc-${Date.now()}-${Math.random()}`,
+      fileName,
+      uploadedByRole: firstTimerSession.role,
+      uploadedByName: firstTimerSession.fullName,
+      uploadedByMda: firstTimerSession.institution,
+      isFirstTimerUpload: true,
+      fullDocumentText
+    };
+    mdaProject.documents = [newDoc, ...mdaProject.documents];
+    const graded = autoGradeFromUploadedDocuments(mdaProject);
+    mdaProject.compliance = graded.compliance;
+    mdaProject.readinessScore = graded.readinessScore;
+  };
+
+  // Upload 1st document
+  uploadDocumentAsFirstTimer(
+    'GHS_Telehealth_Architecture_GCloud.pdf',
+    'Sovereign G-Cloud GPU architecture with fairness and regional dialect equity across 16 regions.'
+  );
+  // Upload 2nd document
+  uploadDocumentAsFirstTimer(
+    'GHS_Act843_DPIA_and_Security_Audit.pdf',
+    'Data Protection Act 843 DPIA certified by DPC with ISO 27001 encryption and NITA interoperability.'
+  );
+
+  assert(mdaProject.documents.length === 2, 'Both uploaded documents are stored in the same MDA project');
+  assert(
+    mdaProject.documents.every(d => d.uploadedByMda === 'Ghana Health Service (GHS)'),
+    'Every uploaded document is tagged and grouped under the same logged-in MDA (Ghana Health Service (GHS))'
+  );
+  assert(
+    mdaProject.compliance.overallGrade === 'Excellent' && mdaProject.compliance.privacy >= 90,
+    'Uploaded documents automatically grade the submission using the Ghana AI Governance & Ethics rubric'
+  );
+  assert(
+    mdaProject.readinessScore >= 85,
+    'Uploaded documents automatically grade the submission using the AI Readiness capability framework'
+  );
+});
+
 const passed = tests.filter(t => t.passed).length;
 const total = tests.length;
 

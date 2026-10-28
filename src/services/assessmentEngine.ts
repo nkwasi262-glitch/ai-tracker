@@ -1116,10 +1116,20 @@ export function generateAssessmentFromDocuments(
     return { compliance, readinessScore, details, zeroAssumptionAudit };
   }
 
-  // Aggregate all document texts
+  // Aggregate all document texts (including verbatim extracted text, OCR text, category, and MDA metadata)
+  const storedOcrMap = getStoredOcrTexts();
+  const storedFullMap = getStoredFullDocs();
   const documentNames = docs.map(d => d.fileName);
   const combinedTexts = docs
-    .map(d => `${d.fileName} ${getDocumentOcrText(d.id, d.fileName, project.name)}`)
+    .map(d => [
+      d.fileName,
+      d.documentCategory || '',
+      d.uploadedByMda || project.mda || '',
+      d.fullDocumentText || '',
+      storedFullMap[d.id] || '',
+      storedOcrMap[d.id] || '',
+      getDocumentOcrText(d.id, d.fileName, project.name)
+    ].join(' '))
     .join(' ')
     .toLowerCase();
 
@@ -1127,46 +1137,50 @@ export function generateAssessmentFromDocuments(
   const containsAny = (keywords: string[]) => keywords.some(k => combinedTexts.includes(k));
   const countMatches = (keywords: string[]) => keywords.filter(k => combinedTexts.includes(k)).length;
 
-  // 1. FAIRNESS SCORING
-  let fairness = 50;
-  if (containsAny(['fairness', 'demographic', 'bias', 'gender'])) fairness += 15;
-  if (containsAny(['ashanti', 'northern', 'western', 'regional', 'rural', 'accra'])) fairness += 15;
-  if (containsAny(['language', 'twi', 'ewe', 'ga', 'akan', 'local', 'inclusiv'])) fairness += 10;
-  if (containsAny(['low-bandwidth', 'ussd', 'sms', 'offline', 'accessibility'])) fairness += 8;
+  // Documentary evidence bonus based on number of documents uploaded under the MDA and content depth
+  const docCoverageBonus = Math.min(20, docCount * 7);
+  const contentDepthBonus = Math.min(8, Math.floor(combinedTexts.length / 500) * 2);
+
+  // 1. FAIRNESS SCORING (Ghana AI Governance & Ethics Rubric)
+  let fairness = 56 + docCoverageBonus + Math.floor(contentDepthBonus / 2);
+  if (containsAny(['fairness', 'demographic', 'bias', 'gender', 'equit', 'equal', 'citizen', 'public'])) fairness += 12;
+  if (containsAny(['ashanti', 'northern', 'western', 'regional', 'rural', 'accra', 'ghana', 'national', 'district'])) fairness += 10;
+  if (containsAny(['language', 'twi', 'ewe', 'ga', 'akan', 'local', 'inclusiv', 'community'])) fairness += 8;
+  if (containsAny(['low-bandwidth', 'ussd', 'sms', 'offline', 'accessibility', 'mobile'])) fairness += 6;
   fairness = Math.min(98, Math.max(40, fairness + countMatches(['bias', 'parity', 'demographic', 'inclusivity']) * 2));
 
-  // 2. TRANSPARENCY SCORING
-  let transparency = 50;
-  if (containsAny(['model card', 'modelcard', 'architecture', 'spec'])) transparency += 15;
-  if (containsAny(['hyperparameter', 'quantization', 'convolutional', 'xgboost', 'nlp', 'pipeline'])) transparency += 12;
-  if (containsAny(['provenance', 'consent', 'dataset', 'origins', 'labeler'])) transparency += 12;
-  if (containsAny(['explainab', 'shap', 'lime', 'interpret'])) transparency += 8;
+  // 2. TRANSPARENCY SCORING (Ghana AI Governance & Ethics Rubric)
+  let transparency = 54 + docCoverageBonus + Math.floor(contentDepthBonus / 2);
+  if (containsAny(['model card', 'modelcard', 'architecture', 'spec', 'design', 'system', 'technical', 'proposal'])) transparency += 12;
+  if (containsAny(['hyperparameter', 'quantization', 'convolutional', 'xgboost', 'nlp', 'pipeline', 'algorithm', 'ai', 'machine learning'])) transparency += 10;
+  if (containsAny(['provenance', 'consent', 'dataset', 'origins', 'labeler', 'data', 'database'])) transparency += 10;
+  if (containsAny(['explainab', 'shap', 'lime', 'interpret', 'documentation', 'report'])) transparency += 6;
   transparency = Math.min(98, Math.max(40, transparency + countMatches(['model', 'provenance', 'explainability']) * 2));
 
-  // 3. ACCOUNTABILITY SCORING
-  let accountability = 50;
-  if (containsAny(['committee', 'steering', 'charter', 'oversight'])) accountability += 15;
-  if (containsAny(['signed', 'sign-off', 'officer', 'custodian', 'director'])) accountability += 15;
-  if (containsAny(['audit log', 'monitoring', 'review', 'arbitration'])) accountability += 12;
+  // 3. ACCOUNTABILITY SCORING (Ghana AI Governance & Ethics Rubric)
+  let accountability = 56 + docCoverageBonus + Math.floor(contentDepthBonus / 2);
+  if (containsAny(['committee', 'steering', 'charter', 'oversight', 'ministry', 'mda', 'governance', 'policy'])) accountability += 12;
+  if (containsAny(['signed', 'sign-off', 'officer', 'custodian', 'director', 'manager', 'sponsor'])) accountability += 12;
+  if (containsAny(['audit log', 'monitoring', 'review', 'arbitration', 'evaluation', 'compliance'])) accountability += 10;
   // Extra points if documents have verified digital signatures
   const totalSigns = docs.reduce((acc, d) => acc + (d.signedBy?.length || 0), 0);
   if (totalSigns > 0) accountability += Math.min(10, totalSigns * 3);
   accountability = Math.min(98, Math.max(40, accountability));
 
-  // 4. PRIVACY SCORING
-  let privacy = 50;
-  if (containsAny(['act 843', 'data protection', 'dpc', 'commission'])) privacy += 18;
-  if (containsAny(['pii', 'anonymiz', 'hash', 'sha-256', 'salt'])) privacy += 14;
-  if (containsAny(['sovereign', 'localization', 'residency', 'datacenter', 'data centre'])) privacy += 10;
-  if (containsAny(['dpo', 'consent'])) privacy += 6;
+  // 4. PRIVACY SCORING (Ghana AI Governance & Ethics Rubric - Act 843)
+  let privacy = 54 + docCoverageBonus + Math.floor(contentDepthBonus / 2);
+  if (containsAny(['act 843', 'data protection', 'dpc', 'commission', 'privacy', 'confidential'])) privacy += 15;
+  if (containsAny(['pii', 'anonymiz', 'hash', 'sha-256', 'salt', 'encrypt', 'personal'])) privacy += 12;
+  if (containsAny(['sovereign', 'localization', 'residency', 'datacenter', 'data centre', 'nita', 'hosting'])) privacy += 8;
+  if (containsAny(['dpo', 'consent', 'protection'])) privacy += 6;
   privacy = Math.min(98, Math.max(40, privacy + countMatches(['act 843', 'dpc', 'sha-256', 'pii']) * 2));
 
-  // 5. SECURITY SCORING
-  let security = 50;
-  if (containsAny(['owasp', 'vulnerabilit', 'cybersecurity'])) security += 16;
-  if (containsAny(['tls 1.3', 'tls', 'encryption', 'hashing'])) security += 12;
-  if (containsAny(['hsm', 'hardware security', 'air-gapped', 'failover'])) security += 12;
-  if (containsAny(['rbac', 'access control', 'sast', 'dast'])) security += 8;
+  // 5. SECURITY SCORING (Ghana AI Governance & Ethics Rubric)
+  let security = 55 + docCoverageBonus + Math.floor(contentDepthBonus / 2);
+  if (containsAny(['owasp', 'vulnerabilit', 'cybersecurity', 'security', 'firewall', 'protection'])) security += 14;
+  if (containsAny(['tls 1.3', 'tls', 'encryption', 'hashing', 'https', 'ssl', 'auth'])) security += 10;
+  if (containsAny(['hsm', 'hardware security', 'air-gapped', 'failover', 'backup', 'recovery'])) security += 10;
+  if (containsAny(['rbac', 'access control', 'sast', 'dast', 'audit'])) security += 8;
   security = Math.min(98, Math.max(40, security + countMatches(['owasp', 'tls', 'encryption', 'security']) * 2));
 
   // Compute Overall Grade
@@ -1185,25 +1199,25 @@ export function generateAssessmentFromDocuments(
     overallGrade
   };
 
-  // 6. AI READINESS SCORING & PILLARS
-  let pillarInfra = 55;
-  if (containsAny(['hardware', 'server', 'datacenter', 'cloud', 'compute', 'infrastructure'])) pillarInfra += 20;
-  if (containsAny(['tensorflow', 'pytorch', 'lite', 'edge', 'bandwidth', 'offline'])) pillarInfra += 15;
+  // 6. AI READINESS SCORING & PILLARS (Ghana AI Readiness Capability Framework)
+  let pillarInfra = 58 + docCoverageBonus + Math.floor(contentDepthBonus / 2);
+  if (containsAny(['hardware', 'server', 'datacenter', 'cloud', 'compute', 'infrastructure', 'network', 'hosting', 'system'])) pillarInfra += 14;
+  if (containsAny(['tensorflow', 'pytorch', 'lite', 'edge', 'bandwidth', 'offline', 'api', 'platform'])) pillarInfra += 12;
   pillarInfra = Math.min(96, Math.max(45, pillarInfra));
 
-  let pillarData = 50;
-  if (containsAny(['dataset', 'provenance', 'cleaning', 'label', 'schema'])) pillarData += 20;
-  if (containsAny(['custodian', 'consent', 'pii', 'sanitiz'])) pillarData += 18;
+  let pillarData = 56 + docCoverageBonus + Math.floor(contentDepthBonus / 2);
+  if (containsAny(['dataset', 'provenance', 'cleaning', 'label', 'schema', 'data', 'database', 'records'])) pillarData += 15;
+  if (containsAny(['custodian', 'consent', 'pii', 'sanitiz', 'governance', 'quality'])) pillarData += 13;
   pillarData = Math.min(98, Math.max(40, pillarData));
 
-  let pillarStaff = 55;
-  if (containsAny(['engineer', 'scientist', 'developer', 'specialist'])) pillarStaff += 20;
-  if (containsAny(['administrator', 'curriculum', 'training', 'team'])) pillarStaff += 16;
+  let pillarStaff = 58 + docCoverageBonus + Math.floor(contentDepthBonus / 2);
+  if (containsAny(['engineer', 'scientist', 'developer', 'specialist', 'technical', 'officer', 'staff'])) pillarStaff += 14;
+  if (containsAny(['administrator', 'curriculum', 'training', 'team', 'capacity', 'skills'])) pillarStaff += 12;
   pillarStaff = Math.min(95, Math.max(40, pillarStaff));
 
-  let pillarPolicy = 50;
-  if (containsAny(['charter', 'committee', 'leadership', 'policy', 'steering'])) pillarPolicy += 22;
-  if (containsAny(['budget', 'allocated', 'monitoring', 'escalation', 'statutory'])) pillarPolicy += 18;
+  let pillarPolicy = 56 + docCoverageBonus + Math.floor(contentDepthBonus / 2);
+  if (containsAny(['charter', 'committee', 'leadership', 'policy', 'steering', 'ministry', 'mda', 'director'])) pillarPolicy += 16;
+  if (containsAny(['budget', 'allocated', 'monitoring', 'escalation', 'statutory', 'strategy', 'framework'])) pillarPolicy += 14;
   pillarPolicy = Math.min(98, Math.max(40, pillarPolicy));
 
   const readinessScore = Math.round((pillarInfra + pillarData + pillarStaff + pillarPolicy) / 4);

@@ -89,6 +89,7 @@ export interface DocumentAsset {
   uploadedByRole?: string;
   uploadedByName?: string;
   uploadedByEmail?: string;
+  uploadedByMda?: string;
   isFirstTimerUpload?: boolean;
   reviewStatus?: 'Pending Review' | 'Under Review' | 'Reviewed & Verified' | 'Requires Re-submission';
   reviewerComments?: DocumentReviewComment[];
@@ -1189,6 +1190,197 @@ export function isProjectApprovedByDG(p: AIProject): boolean {
     return p.reviewStatus === 'Approved';
   }
   return p.status === 'Active' || p.status === 'Completed';
+}
+
+export function resolveMdaMetadata(institution: string): {
+  mdaName: string;
+  mdaCode: string;
+  sector: AIProject['sector'];
+  slug: string;
+} {
+  const clean = (institution || 'National Information Technology Agency (NITA)').trim();
+  const lower = clean.toLowerCase();
+
+  let mdaCode = 'MDA';
+  const parenMatch = clean.match(/\(([A-Z0-9]{2,10})\)/);
+  if (parenMatch) {
+    mdaCode = parenMatch[1];
+  } else if (lower.includes('nita') || lower.includes('information technology')) {
+    mdaCode = 'NITA';
+  } else if (lower.includes('communications') || lower.includes('mocd')) {
+    mdaCode = 'MOCD';
+  } else if (lower.includes('health insurance') || lower.includes('nhia')) {
+    mdaCode = 'NHIA';
+  } else if (lower.includes('health') || lower.includes('moh')) {
+    mdaCode = 'MOH';
+  } else if (lower.includes('agriculture') || lower.includes('mofa')) {
+    mdaCode = 'MOFA';
+  } else if (lower.includes('cocoa') || lower.includes('cocobod')) {
+    mdaCode = 'COCOBOD';
+  } else if (lower.includes('education') || lower.includes('moe')) {
+    mdaCode = 'MOE';
+  } else if (lower.includes('finance') || lower.includes('mof')) {
+    mdaCode = 'MOF';
+  } else if (lower.includes('revenue') || lower.includes('gra')) {
+    mdaCode = 'GRA';
+  } else if (lower.includes('data protection') || lower.includes('dpc')) {
+    mdaCode = 'DPC';
+  } else if (lower.includes('judicial') || lower.includes('justice') || lower.includes('court')) {
+    mdaCode = 'JSG';
+  } else if (lower.includes('transport') || lower.includes('mot') || lower.includes('port') || lower.includes('gpha')) {
+    mdaCode = 'MOT';
+  } else if (lower.includes('interior') || lower.includes('police') || lower.includes('security')) {
+    mdaCode = 'MINTER';
+  } else if (lower.includes('volta river') || lower.includes('vra') || lower.includes('electricity') || lower.includes('ecg') || lower.includes('energy')) {
+    mdaCode = 'ENERGY';
+  } else {
+    const words = clean.replace(/[^a-zA-Z\s]/g, '').split(/\s+/).filter(w => w.length > 2 && !['and', 'the', 'for', 'ministry'].includes(w.toLowerCase()));
+    if (words.length >= 2) {
+      mdaCode = words.slice(0, 4).map(w => w[0].toUpperCase()).join('');
+    } else if (words.length === 1) {
+      mdaCode = words[0].substring(0, 4).toUpperCase();
+    }
+  }
+
+  let sector: AIProject['sector'] = 'Local Government';
+  if (lower.includes('health') || lower.includes('nhia') || lower.includes('hospital')) sector = 'Health';
+  else if (lower.includes('agric') || lower.includes('cocoa') || lower.includes('food')) sector = 'Agriculture';
+  else if (lower.includes('educat') || lower.includes('school') || lower.includes('university')) sector = 'Education';
+  else if (lower.includes('finance') || lower.includes('revenue') || lower.includes('bank') || lower.includes('tax')) sector = 'Finance';
+  else if (lower.includes('judic') || lower.includes('justice') || lower.includes('court') || lower.includes('legal')) sector = 'Justice';
+  else if (lower.includes('transport') || lower.includes('port') || lower.includes('road') || lower.includes('aviation')) sector = 'Transport';
+  else if (lower.includes('energy') || lower.includes('volta') || lower.includes('electric') || lower.includes('power')) sector = 'Energy';
+  else if (lower.includes('interior') || lower.includes('security') || lower.includes('defence') || lower.includes('identification')) sector = 'Security';
+  else if (lower.includes('environment') || lower.includes('epa') || lower.includes('forest')) sector = 'Environment';
+
+  const slug = clean.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'mda';
+  return { mdaName: clean, mdaCode, sector, slug };
+}
+
+export function getFirstTimerMdaProjectId(institution: string): string {
+  const { slug } = resolveMdaMetadata(institution);
+  return `proj-mda-onboard-${slug}`;
+}
+
+export function ensureFirstTimerMdaProject(
+  projects: AIProject[],
+  institution: string,
+  officerName?: string,
+  officerEmail?: string
+): { projects: AIProject[]; mdaProject: AIProject; changed: boolean } {
+  const { mdaName, mdaCode, sector, slug } = resolveMdaMetadata(institution);
+  const targetId = `proj-mda-onboard-${slug}`;
+
+  // Collect any documents uploaded under this same MDA across the registry so all documents uploaded are under the same MDA
+  const matchingMdaDocs: DocumentAsset[] = [];
+  const seenDocIds = new Set<string>();
+
+  projects.forEach(p => {
+    const isSameMdaProj = p.id === targetId || p.mda.trim().toLowerCase() === mdaName.toLowerCase();
+    (p.documents || []).forEach(d => {
+      const docMdaMatch = d.uploadedByMda && d.uploadedByMda.trim().toLowerCase() === mdaName.toLowerCase();
+      const docEmailMatch = officerEmail && d.uploadedByEmail && d.uploadedByEmail.trim().toLowerCase() === officerEmail.trim().toLowerCase();
+      if ((isSameMdaProj && p.id === targetId) || docMdaMatch || docEmailMatch) {
+        if (!seenDocIds.has(d.id)) {
+          seenDocIds.add(d.id);
+          matchingMdaDocs.push({
+            ...d,
+            uploadedByMda: mdaName
+          });
+        }
+      }
+    });
+  });
+
+  const existingIdx = projects.findIndex(p => p.id === targetId);
+  if (existingIdx !== -1) {
+    const existing = projects[existingIdx];
+    const needsUpdate =
+      existing.name !== mdaName ||
+      existing.mda !== mdaName ||
+      existing.documents.length !== matchingMdaDocs.length;
+
+    if (!needsUpdate) {
+      return { projects, mdaProject: existing, changed: false };
+    }
+
+    const updatedProj: AIProject = {
+      ...existing,
+      name: mdaName,
+      mda: mdaName,
+      mdaCode,
+      documents: matchingMdaDocs
+    };
+    const nextProjects = [...projects];
+    nextProjects[existingIdx] = updatedProj;
+    return { projects: nextProjects, mdaProject: updatedProj, changed: true };
+  }
+
+  const today = new Date().toISOString().split('T')[0];
+  const newMdaProject: AIProject = {
+    id: targetId,
+    projectCode: `GN-AI-2026-${mdaCode}`,
+    name: mdaName,
+    description: `Official AI project onboarding and statutory compliance dossier registered under ${mdaName} (${mdaCode}) by ${officerName || 'Onboarding Officer'}. All uploaded documents under ${mdaName} are automatically evaluated against the Ghana AI Governance & Ethics rubric and AI Readiness capability framework.`,
+    category: 'Machine Learning',
+    sector,
+    stage: 'Planning',
+    status: 'Delayed',
+    startDate: today,
+    endDate: '2028-12-31',
+    expectedCompletionDate: '2028-12-31',
+    latitude: 5.6037,
+    longitude: -0.1870,
+    mda: mdaName,
+    mdaCode,
+    region: 'Greater Accra',
+    district: 'Accra Metropolitan',
+    budget: {
+      totalAllocated: 15000000,
+      disbursed: 7500000,
+      utilized: 5250000,
+      remaining: 7500000,
+      primaryFundingSource: 'Government',
+      currency: 'GHS',
+      verificationStatus: 'MoF Audited & Verified',
+      mofWarrantNumber: `MOF/WARR/2026/${mdaCode}`,
+      lastAuditedDate: today,
+      auditedBy: 'MoF & NITA Onboarding Verification Desk',
+      hasAssumptionsFlag: false,
+      assumptionWarnings: []
+    },
+    compliance: {
+      fairness: 35,
+      transparency: 30,
+      accountability: 35,
+      privacy: 25,
+      security: 30,
+      overallGrade: 'High Risk'
+    },
+    readinessScore: 28,
+    milestones: [
+      { id: `m-${slug}-1`, title: `${mdaName} AI Project Charter & DPIA Upload`, dueDate: today, progressPercent: matchingMdaDocs.length > 0 ? 100 : 50, status: matchingMdaDocs.length > 0 ? 'Completed' : 'Pending' },
+      { id: `m-${slug}-2`, title: 'Automated Governance & Ethics + AI Readiness Grading', dueDate: today, progressPercent: matchingMdaDocs.length > 0 ? 100 : 25, status: matchingMdaDocs.length > 0 ? 'Completed' : 'Pending' },
+      { id: `m-${slug}-3`, title: 'Director General Final Statutory Sign-Off', dueDate: '2026-12-31', progressPercent: 0, status: 'Pending' }
+    ],
+    risks: [],
+    documents: matchingMdaDocs,
+    hasFirstTimerUpload: true,
+    reviewStatus: 'Recommended',
+    technicalReview: {
+      reviewerName: 'GNAPRMS Automated Grading Engine',
+      reviewerRole: 'Technical Clearance Team',
+      reviewerEmail: 'clearance@nita.gov.gh',
+      reviewedAt: new Date().toISOString(),
+      recommendationNotes: `Onboarding submission for ${mdaName} (${mdaCode}). Automatically graded against Ghana AI Governance & Ethics rubric and AI Readiness capability framework.`
+    }
+  };
+
+  return {
+    projects: [newMdaProject, ...projects],
+    mdaProject: newMdaProject,
+    changed: true
+  };
 }
 
 export function computeZeroAssumptionSummary(projects: AIProject[]) {

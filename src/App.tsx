@@ -17,7 +17,7 @@ import { AccessDenied } from './components/AccessDenied';
 import { ActiveRoleSelectorModal } from './components/ActiveRoleSelectorModal';
 import { FirstTimerOnboardingHub } from './components/FirstTimerOnboardingHub';
 import { PendingApprovalNotice } from './components/PendingApprovalNotice';
-import { AIProject, ComplianceScore, DocumentAsset, DocumentReviewComment, ReviewWorkflowStatus, AutoAssessmentDetails, ZeroAssumptionAudit } from './data/sampleProjects';
+import { AIProject, ComplianceScore, DocumentAsset, DocumentReviewComment, ReviewWorkflowStatus, AutoAssessmentDetails, ZeroAssumptionAudit, ensureFirstTimerMdaProject, getFirstTimerMdaProjectId } from './data/sampleProjects';
 import { UserSession, ActiveRole } from './data/authTypes';
 import { getStoredSession, clearSession, elevateFromFirstTimer, submitOnboardingForApproval } from './services/authService';
 import { AppModuleId, canAccessModule, MODULE_REGISTRY } from './services/rbacPolicy';
@@ -31,7 +31,29 @@ function App() {
   const [session, setSession] = useState<UserSession | null>(() => getStoredSession());
 
   // 2. Central Registry & Navigation States (Persistent across reloads)
-  const [projects, setProjects] = useState<AIProject[]>(() => loadStoredProjects());
+  const [projects, setProjects] = useState<AIProject[]>(() => {
+    const initial = loadStoredProjects();
+    const s = getStoredSession();
+    if (s && (s.role === 'First-Timer / New User' || s.memberType === 'new_member' || s.isFirstTimer) && s.institution) {
+      const { projects: synced } = ensureFirstTimerMdaProject(initial, s.institution, s.fullName, s.email);
+      return synced;
+    }
+    return initial;
+  });
+
+  // Ensure First-Timer's logged-in MDA project is always registered and active with all documents under that same MDA
+  useEffect(() => {
+    if (session && (session.role === 'First-Timer / New User' || session.memberType === 'new_member' || session.isFirstTimer) && session.institution) {
+      setProjects(prev => {
+        const { projects: synced, changed } = ensureFirstTimerMdaProject(prev, session.institution, session.fullName, session.email);
+        if (changed) {
+          saveStoredProjects(synced);
+          return synced;
+        }
+        return prev;
+      });
+    }
+  }, [session?.sessionId, session?.institution, session?.role, session?.memberType]);
 
   // Sync projects changes to persistent storage
   useEffect(() => {
@@ -143,11 +165,31 @@ function App() {
   // Appends uploaded PDF metadata inside MinIO simulation and auto-generates Governance & Readiness
   const handleAddDocument = (projectId: string, newDoc: DocumentAsset) => {
     setProjects(prev => {
-      const isFromFirstTimer = session?.role === 'First-Timer / New User' || !!session?.isFirstTimer;
-      const updated = prev.map(p => {
-        if (p.id === projectId) {
-          const updatedDocs = [newDoc, ...p.documents];
-          const tempProject = { ...p, documents: updatedDocs };
+      const isFromFirstTimer = session?.role === 'First-Timer / New User' || session?.memberType === 'new_member' || !!session?.isFirstTimer;
+      let baseList = prev;
+      let targetProjectId = projectId;
+
+      if (isFromFirstTimer && session?.institution) {
+        const ensured = ensureFirstTimerMdaProject(prev, session.institution, session.fullName, session.email);
+        baseList = ensured.projects;
+        targetProjectId = getFirstTimerMdaProjectId(session.institution);
+      }
+
+      const enrichedDoc: DocumentAsset = {
+        ...newDoc,
+        uploadedByMda: isFromFirstTimer && session?.institution ? session.institution : newDoc.uploadedByMda
+      };
+
+      const updated = baseList.map(p => {
+        if (p.id === targetProjectId) {
+          const existingWithoutDup = (p.documents || []).filter(d => d.id !== enrichedDoc.id);
+          const updatedDocs = [enrichedDoc, ...existingWithoutDup];
+          const tempProject: AIProject = {
+            ...p,
+            name: isFromFirstTimer && session?.institution ? session.institution : p.name,
+            mda: isFromFirstTimer && session?.institution ? session.institution : p.mda,
+            documents: updatedDocs
+          };
           const auto = generateAssessmentFromDocuments(tempProject, session || undefined);
           const newReviewStatus: ReviewWorkflowStatus = isFromFirstTimer
             ? 'Recommended'
@@ -155,8 +197,7 @@ function App() {
             ? 'Approved'
             : 'Under Technical Review';
           const updatedProj: AIProject = {
-            ...p,
-            documents: updatedDocs,
+            ...tempProject,
             compliance: auto.compliance,
             readinessScore: auto.readinessScore,
             autoAssessment: auto.details,

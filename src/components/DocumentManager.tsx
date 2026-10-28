@@ -30,7 +30,9 @@ import {
   ReviewWorkflowStatus, 
   ComplianceScore, 
   AutoAssessmentDetails, 
-  ZeroAssumptionAudit 
+  ZeroAssumptionAudit,
+  getFirstTimerMdaProjectId,
+  ensureFirstTimerMdaProject
 } from '../data/sampleProjects';
 import { UserRole } from './RoleSwitcher';
 import { UserSession } from '../data/authTypes';
@@ -83,11 +85,31 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
   onUpdateProjectAssessment,
   onReviewDocument
 }) => {
-  const [selectedProjectId, setSelectedProjectId] = useState<string>(projects[0]?.id || '');
-  const activeProject = projects.find(p => p.id === selectedProjectId);
-
   // Role permissions checks
-  const isFirstTimer = session?.role === 'First-Timer / New User' || currentRole === 'First-Timer / New User' || !!session?.isFirstTimer;
+  const isFirstTimer = session?.role === 'First-Timer / New User' || currentRole === 'First-Timer / New User' || !!session?.isFirstTimer || session?.memberType === 'new_member';
+  const firstTimerMdaProjectId = isFirstTimer && session?.institution
+    ? getFirstTimerMdaProjectId(session.institution)
+    : '';
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(
+    firstTimerMdaProjectId || projects[0]?.id || ''
+  );
+
+  useEffect(() => {
+    if (isFirstTimer && firstTimerMdaProjectId && selectedProjectId !== firstTimerMdaProjectId) {
+      setSelectedProjectId(firstTimerMdaProjectId);
+    }
+  }, [isFirstTimer, firstTimerMdaProjectId, selectedProjectId]);
+
+  const activeProject = (() => {
+    if (isFirstTimer && session?.institution) {
+      const mdaProj = projects.find(p => p.id === firstTimerMdaProjectId) ||
+        projects.find(p => (p.mda || '').toLowerCase() === session.institution.toLowerCase());
+      if (mdaProj) return mdaProj;
+      const ensured = ensureFirstTimerMdaProject(projects, session.institution, session.fullName, session.email);
+      return ensured.mdaProject;
+    }
+    return projects.find(p => p.id === selectedProjectId) || projects[0];
+  })();
   const isSuperAdmin = session?.role === 'Super Admin' || currentRole === 'Super Admin';
   const canAccessTechnicalClearanceGate = !isFirstTimer && (
     currentRole === 'Technical Director' ||
@@ -400,6 +422,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
           uploadedByRole: session?.role || currentRole,
           uploadedByName: session?.fullName || 'Registry User',
           uploadedByEmail: session?.email || '',
+          uploadedByMda: session?.institution || activeProject.mda,
           isFirstTimerUpload: isFirstTimer,
           reviewStatus: 'Pending Review',
           fullDocumentText: capturedText || undefined,
@@ -412,7 +435,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
         const simulatedOcr = getDocumentOcrText(nextDocId, file.name, activeProject.name);
         registerUploadedDocumentOcr(nextDocId, capturedText ? `${capturedText.slice(0, 4000)} ${simulatedOcr}` : simulatedOcr);
 
-        onAddDocument(selectedProjectId, doc);
+        onAddDocument(activeProject.id, doc);
         setNewFileName('');
 
         // Auto-generate assessments immediately upon document upload
@@ -1592,20 +1615,36 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                 </div>
                 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Project:</span>
-                  <select
-                    value={selectedProjectId}
-                    onChange={(e) => {
-                      setSelectedProjectId(e.target.value);
-                      setSelectedDoc(null);
-                    }}
-                    className="form-select"
-                    style={{ width: '220px', padding: '6px 12px', fontSize: '0.8rem' }}
-                  >
-                    {projects.map(p => (
-                      <option key={p.id} value={p.id}>{p.projectCode} - {p.mdaCode}</option>
-                    ))}
-                  </select>
+                  <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                    {isFirstTimer ? 'Logged-In MDA:' : 'Project:'}
+                  </span>
+                  {isFirstTimer ? (
+                    <div style={{
+                      padding: '6px 12px',
+                      borderRadius: '8px',
+                      background: 'rgba(16, 185, 129, 0.14)',
+                      border: '1px solid rgba(16, 185, 129, 0.45)',
+                      color: '#6ee7b7',
+                      fontSize: '0.78rem',
+                      fontWeight: 800
+                    }}>
+                      🏛️ {session?.institution || activeProject?.mda} ({activeProject?.projectCode})
+                    </div>
+                  ) : (
+                    <select
+                      value={selectedProjectId}
+                      onChange={(e) => {
+                        setSelectedProjectId(e.target.value);
+                        setSelectedDoc(null);
+                      }}
+                      className="form-select"
+                      style={{ width: '250px', padding: '6px 12px', fontSize: '0.8rem' }}
+                    >
+                      {projects.map(p => (
+                        <option key={p.id} value={p.id}>{p.projectCode} - {p.name} ({p.mdaCode})</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
 
