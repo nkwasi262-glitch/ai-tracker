@@ -21,14 +21,22 @@ export async function initializeDatabase() {
   const schemaSql = fs.readFileSync(schemaPath, 'utf8');
 
   // Strip comments and split by semicolon into clean executable statements
-  const statements = schemaSql
+  const cleanSql = schemaSql
+    .replace(/--.*$/gm, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+
+  const statements = cleanSql
     .split(';')
     .map(s => s.trim())
-    .filter(s => s.length > 0 && !s.startsWith('--'));
+    .filter(s => s.length > 0);
 
   for (const statement of statements) {
     try {
-      await sql(statement);
+      if (typeof sql.query === 'function') {
+        await sql.query(statement);
+      } else {
+        await sql(statement);
+      }
     } catch (err) {
       console.error('[Neon DB Init] Error executing statement:', statement.slice(0, 60), '...', err.message);
     }
