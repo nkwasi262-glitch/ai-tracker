@@ -29,11 +29,12 @@ export function setLastSelectedRole(role: ActiveRole): void {
 export function elevateFromFirstTimer(newRole: ActiveRole): UserSession | null {
   const session = getStoredSession();
   if (!session) return null;
+  const isFT = newRole === 'First-Timer / New User';
   const updated: UserSession = {
     ...session,
     previousRole: session.role,
     role: newRole,
-    isFirstTimer: false,
+    isFirstTimer: isFT,
     lastActiveAt: new Date().toISOString()
   };
   saveSession(updated);

@@ -900,6 +900,7 @@ function App() {
         portalMode={portalMode}
         onTogglePortalMode={setPortalMode}
         onSwitchRole={handleSwitchRole}
+        onSelectRole={handleActivateRoleProfile}
         onOpenRoleSelector={() => setShowRoleSelectorModal(true)}
         onOpenOnboardingHub={session.memberType === 'new_member' ? () => setViewingOnboardingHub(true) : undefined}
         activeTab={activeTab} 

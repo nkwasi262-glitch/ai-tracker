@@ -19,7 +19,7 @@ import {
   Lock,
   Clock
 } from 'lucide-react';
-import { UserSession } from '../data/authTypes';
+import { UserSession, ActiveRole } from '../data/authTypes';
 import { HeaderProfile } from './HeaderProfile';
 import { AppModuleId, canAccessModule } from '../services/rbacPolicy';
 
@@ -27,6 +27,7 @@ interface LayoutProps {
   session: UserSession;
   onSwitchRole: () => void;
   onOpenRoleSelector?: () => void;
+  onSelectRole?: (role: ActiveRole) => void;
   onOpenOnboardingHub?: () => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
@@ -39,6 +40,7 @@ export const Layout: React.FC<LayoutProps> = ({
   session, 
   onSwitchRole, 
   onOpenRoleSelector,
+  onSelectRole,
   onOpenOnboardingHub,
   activeTab, 
   setActiveTab, 
@@ -309,6 +311,7 @@ export const Layout: React.FC<LayoutProps> = ({
               session={session} 
               onSwitchRole={onSwitchRole} 
               onOpenRoleSelector={onOpenRoleSelector}
+              onSelectRole={onSelectRole}
             />
           </div>
         </header>
