@@ -1269,7 +1269,7 @@ export function ensureFirstTimerMdaProject(
   projects: AIProject[],
   institution: string,
   officerName?: string,
-  officerEmail?: string
+  _officerEmail?: string
 ): { projects: AIProject[]; mdaProject: AIProject; changed: boolean } {
   const { mdaName, mdaCode, sector, slug } = resolveMdaMetadata(institution);
   const targetId = `proj-mda-onboard-${slug}`;
@@ -1280,10 +1280,10 @@ export function ensureFirstTimerMdaProject(
 
   projects.forEach(p => {
     const isSameMdaProj = p.id === targetId || p.mda.trim().toLowerCase() === mdaName.toLowerCase();
+    if (!isSameMdaProj) return; // Strict boundary: never pull or leak documents from other MDAs
     (p.documents || []).forEach(d => {
-      const docMdaMatch = d.uploadedByMda && d.uploadedByMda.trim().toLowerCase() === mdaName.toLowerCase();
-      const docEmailMatch = officerEmail && d.uploadedByEmail && d.uploadedByEmail.trim().toLowerCase() === officerEmail.trim().toLowerCase();
-      if ((isSameMdaProj && p.id === targetId) || docMdaMatch || docEmailMatch) {
+      const docMdaMatch = !d.uploadedByMda || d.uploadedByMda.trim().toLowerCase() === mdaName.toLowerCase();
+      if (docMdaMatch) {
         if (!seenDocIds.has(d.id)) {
           seenDocIds.add(d.id);
           matchingMdaDocs.push({

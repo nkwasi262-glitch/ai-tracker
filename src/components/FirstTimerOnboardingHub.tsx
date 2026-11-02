@@ -10,9 +10,6 @@ import {
   Clock, 
   Send,
   Info,
-  MessageSquare,
-  Eye,
-  Download,
   Lock,
   Building2
 } from 'lucide-react';
@@ -32,16 +29,11 @@ import { recordAuditEvent } from '../services/auditService';
 import { 
   generateAssessmentFromDocuments, 
   getDocumentOcrText, 
-  getFullDocumentText,
   registerUploadedDocumentOcr,
   registerUploadedFullDocument,
   readAndStoreRealUploadedFile,
-  downloadOriginalDocument,
-  getRealDocumentPreviewUrl,
-  hasRealUploadedFile,
   onRealFilesHydrated
 } from '../services/assessmentEngine';
-import { DocumentReviewGradeModal } from './DocumentReviewGradeModal';
 
 interface FirstTimerOnboardingHubProps {
   session: UserSession;
@@ -72,7 +64,7 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
   projects,
   onAddDocument,
   onUpdateProjectAssessment,
-  onReviewDocument,
+  onReviewDocument: _onReviewDocument,
   onSubmitForApproval,
   onProceedToMonitoring,
   onSwitchRole
@@ -95,22 +87,15 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
 
   // Modal confirmation state
   const [showPendingModal, setShowPendingModal] = useState(false);
-  const [reviewingDoc, setReviewingDoc] = useState<DocumentAsset | null>(null);
-  const [expandedFullDocId, setExpandedFullDocId] = useState<string | null>(null);
   const [, setHydrationTick] = useState(0);
 
   useEffect(() => {
     return onRealFilesHydrated(() => setHydrationTick(t => t + 1));
   }, []);
 
-  const canReview = session.role === 'Super Admin' || session.role === 'Director General' || session.role === 'Technical Clearance Team' || session.role === 'Technical Director';
-
   // Active project assessment metrics
   const auto = activeProject ? generateAssessmentFromDocuments(activeProject, session) : null;
   const compliance = auto?.compliance || activeProject?.compliance;
-  const avgGovernance = compliance
-    ? Math.round((compliance.fairness + compliance.transparency + compliance.accountability + compliance.privacy + compliance.security) / 5)
-    : 0;
   const readinessScore = auto?.readinessScore ?? activeProject?.readinessScore ?? 0;
   const zeroAudit = auto?.zeroAssumptionAudit || activeProject?.zeroAssumptionAudit;
 
@@ -173,7 +158,6 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
 
       // Add document to project
       onAddDocument(activeProject.id, newDoc);
-      setExpandedFullDocId(nextDocId);
 
       // Real-time re-grading by Governance & Ethics and AI Readiness
       const updatedDocs = [newDoc, ...(activeProject.documents || [])];
@@ -620,324 +604,7 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
           ))}
         </div>
 
-        {/* Uploaded Documents Table */}
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
-            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-              Attached Project Documents Under {session.institution} ({(activeProject?.documents || []).length})
-            </div>
-            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#a7f3d0', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <ShieldCheck size={14} className="text-emerald-400" />
-              <span>All documents grouped under MDA: {session.institution} • Auto-Graded: {compliance?.overallGrade || 'Moderate'} ({avgGovernance}%) & Readiness {readinessScore}%</span>
-            </div>
-          </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {(activeProject?.documents || []).map((doc) => (
-              <div
-                key={doc.id}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '10px',
-                  padding: '14px 16px',
-                  borderRadius: '10px',
-                  background: 'rgba(255, 255, 255, 0.02)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <FileText size={20} className="text-amber-400 flex-shrink-0" />
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: '0.86rem', fontWeight: 700, color: '#fff' }}>
-                          {doc.fileName}
-                        </span>
-                        <span style={{
-                          padding: '2px 8px',
-                          borderRadius: '9999px',
-                          fontSize: '0.65rem',
-                          fontWeight: 800,
-                          background: 'rgba(16, 185, 129, 0.16)',
-                          color: '#6ee7b7',
-                          border: '1px solid rgba(16, 185, 129, 0.4)'
-                        }}>
-                          🏛️ MDA: {doc.uploadedByMda || activeProject?.mda || session.institution}
-                        </span>
-                        <span style={{
-                          padding: '2px 8px',
-                          borderRadius: '9999px',
-                          fontSize: '0.65rem',
-                          fontWeight: 700,
-                          background: 'rgba(56, 189, 248, 0.15)',
-                          color: '#7dd3fc',
-                          border: '1px solid rgba(56, 189, 248, 0.35)'
-                        }}>
-                          ⚡ Auto-Graded: {compliance?.overallGrade || 'Moderate'} ({avgGovernance}%) • Readiness {readinessScore}%
-                        </span>
-                        <span style={{
-                          padding: '2px 8px',
-                          borderRadius: '9999px',
-                          fontSize: '0.66rem',
-                          fontWeight: 700,
-                          background: doc.reviewStatus === 'Reviewed & Verified' ? 'rgba(16, 185, 129, 0.2)' :
-                                      doc.reviewStatus === 'Requires Re-submission' ? 'rgba(239, 68, 68, 0.2)' :
-                                      doc.reviewStatus === 'Under Review' ? 'rgba(59, 130, 246, 0.2)' :
-                                      'rgba(251, 191, 36, 0.2)',
-                          color: doc.reviewStatus === 'Reviewed & Verified' ? '#10b981' :
-                                 doc.reviewStatus === 'Requires Re-submission' ? '#f87171' :
-                                 doc.reviewStatus === 'Under Review' ? '#60a5fa' :
-                                 '#fbbf24',
-                          border: '1px solid currentColor'
-                        }}>
-                          {doc.reviewStatus || 'Pending Review'}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                        MDA: {doc.uploadedByMda || activeProject?.mda || session.institution} ({activeProject?.projectCode}) • Uploaded: {doc.uploadedAt} • Version {doc.version} • Format: {doc.fileType.toUpperCase()}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    <button
-                      type="button"
-                      onClick={() => setExpandedFullDocId(expandedFullDocId === doc.id ? null : doc.id)}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        padding: '5px 12px',
-                        borderRadius: '6px',
-                        background: expandedFullDocId === doc.id ? 'rgba(56, 189, 248, 0.25)' : 'rgba(56, 189, 248, 0.12)',
-                        border: '1px solid rgba(56, 189, 248, 0.45)',
-                        color: '#7dd3fc',
-                        fontSize: '0.72rem',
-                        fontWeight: 700,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <Eye size={13} />
-                      <span>{expandedFullDocId === doc.id ? 'Hide Full Document ▲' : 'View Full Document ▼'}</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => downloadOriginalDocument(doc, activeProject)}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        padding: '5px 12px',
-                        borderRadius: '6px',
-                        background: 'rgba(16, 185, 129, 0.16)',
-                        border: '1px solid rgba(16, 185, 129, 0.42)',
-                        color: '#6ee7b7',
-                        fontSize: '0.72rem',
-                        fontWeight: 700,
-                        cursor: 'pointer'
-                      }}
-                      title={`Download original file: ${doc.fileName}`}
-                    >
-                      <Download size={13} />
-                      <span>Download ({doc.fileName})</span>
-                    </button>
-
-                    {canReview && (
-                      <button
-                        type="button"
-                        onClick={() => setReviewingDoc(doc)}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          padding: '5px 12px',
-                          borderRadius: '6px',
-                          background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.3))',
-                          border: '1px solid rgba(16, 185, 129, 0.5)',
-                          color: '#a7f3d0',
-                          fontSize: '0.72rem',
-                          fontWeight: 700,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <Award size={13} />
-                        <span>Review & Grade Document</span>
-                      </button>
-                    )}
-
-                    <span style={{
-                      padding: '3px 10px',
-                      borderRadius: '6px',
-                      background: 'rgba(16, 185, 129, 0.15)',
-                      border: '1px solid rgba(16, 185, 129, 0.3)',
-                      color: '#a7f3d0',
-                      fontSize: '0.7rem',
-                      fontWeight: 700
-                    }}>
-                      {hasRealUploadedFile(doc.id, doc) ? '✓ Original File Stored & Graded' : '✓ OCR Parsed & Graded'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Expandable Full Uploaded Document Viewer */}
-                {expandedFullDocId === doc.id && (() => {
-                  const previewUrl = getRealDocumentPreviewUrl(doc.id, doc);
-                  const isPdf = doc.fileType.toLowerCase() === 'pdf' || doc.fileName.toLowerCase().endsWith('.pdf');
-                  const isImg = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(doc.fileType.toLowerCase());
-                  return (
-                    <div style={{
-                      padding: '14px 16px',
-                      borderRadius: '8px',
-                      background: 'rgba(2, 6, 23, 0.78)',
-                      border: '1px solid rgba(56, 189, 248, 0.35)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '10px'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-                        <span style={{ fontSize: '0.76rem', fontWeight: 800, color: '#38bdf8', textTransform: 'uppercase' }}>
-                          📄 {hasRealUploadedFile(doc.id, doc) ? 'Original Uploaded Document' : 'Full Uploaded Document & OCR Dossier'} — {doc.fileName} ({doc.fileSize || 'Original File'})
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => downloadOriginalDocument(doc, activeProject)}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            padding: '5px 12px',
-                            borderRadius: '6px',
-                            background: 'rgba(16, 185, 129, 0.18)',
-                            border: '1px solid rgba(16, 185, 129, 0.4)',
-                            color: '#6ee7b7',
-                            fontSize: '0.72rem',
-                            fontWeight: 700,
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <Download size={12} />
-                          <span>Download Original File ({doc.fileName})</span>
-                        </button>
-                      </div>
-
-                      {previewUrl && isPdf && (
-                        <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(56, 189, 248, 0.3)', background: '#fff' }}>
-                          <iframe
-                            src={previewUrl}
-                            title={`Uploaded PDF: ${doc.fileName}`}
-                            style={{ width: '100%', height: '520px', border: 'none', display: 'block' }}
-                          />
-                        </div>
-                      )}
-
-                      {previewUrl && isImg && (
-                        <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(56, 189, 248, 0.3)', background: '#0f172a', padding: '12px', textAlign: 'center' }}>
-                          <img
-                            src={previewUrl}
-                            alt={doc.fileName}
-                            style={{ maxWidth: '100%', maxHeight: '480px', borderRadius: '6px' }}
-                          />
-                        </div>
-                      )}
-
-                      <pre style={{
-                        margin: 0,
-                        maxHeight: previewUrl && isPdf ? '220px' : '380px',
-                        overflowY: 'auto',
-                        padding: '12px',
-                        borderRadius: '6px',
-                        background: 'rgba(0, 0, 0, 0.45)',
-                        border: '1px solid rgba(255, 255, 255, 0.08)',
-                        color: '#e2e8f0',
-                        fontSize: '0.74rem',
-                        lineHeight: 1.55,
-                        whiteSpace: 'pre-wrap',
-                        fontFamily: 'monospace'
-                      }}>
-                        {getFullDocumentText(doc, activeProject)}
-                      </pre>
-                    </div>
-                  );
-                })()}
-
-                {/* Reviewer Directives & Official Comments Card */}
-                {doc.reviewerComments && doc.reviewerComments.length > 0 ? (
-                  <div style={{
-                    marginTop: '4px',
-                    padding: '12px 14px',
-                    borderRadius: '8px',
-                    background: 'rgba(0, 0, 0, 0.4)',
-                    border: '1px solid rgba(59, 130, 246, 0.35)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '10px'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '6px' }}>
-                      <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#93c5fd', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                        <MessageSquare size={14} className="text-sky-400" />
-                        <span>Official Review Directives & Comments from Authorities ({doc.reviewerComments.length})</span>
-                      </span>
-                      <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                        Reviewed by Director General / Super Admin / Technical Clearance Team
-                      </span>
-                    </div>
-
-                    {doc.reviewerComments.map((comm) => (
-                      <div key={comm.id} style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.76rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
-                          <span style={{ color: '#fde68a', fontWeight: 700 }}>
-                            {comm.reviewerRole}: {comm.reviewerName} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({comm.reviewerEmail})</span>
-                          </span>
-                          <span style={{
-                            fontSize: '0.66rem',
-                            padding: '1px 8px',
-                            borderRadius: '4px',
-                            fontWeight: 700,
-                            background: comm.verdict === 'Approved' ? 'rgba(16, 185, 129, 0.25)' :
-                                        comm.verdict === 'Changes Requested' ? 'rgba(239, 68, 68, 0.25)' :
-                                        comm.verdict === 'Conditionally Cleared' ? 'rgba(251, 191, 36, 0.25)' :
-                                        'rgba(59, 130, 246, 0.25)',
-                            color: comm.verdict === 'Approved' ? '#10b981' :
-                                   comm.verdict === 'Changes Requested' ? '#f87171' :
-                                   comm.verdict === 'Conditionally Cleared' ? '#fbbf24' :
-                                   '#60a5fa'
-                          }}>
-                            Verdict: {comm.verdict}
-                          </span>
-                        </div>
-
-                        <div style={{ color: '#e2e8f0', background: 'rgba(255,255,255,0.02)', padding: '8px 10px', borderRadius: '6px', borderLeft: '3px solid #3b82f6', lineHeight: 1.4 }}>
-                          "{comm.comment}"
-                        </div>
-
-                        {comm.governanceAdjustment && (
-                          <div style={{ fontSize: '0.7rem', color: '#a7f3d0', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                            <span>🏛️ Governance & Ethics Grade: <strong>{comm.governanceAdjustment.overallGrade}</strong></span>
-                            <span>Fairness: {comm.governanceAdjustment.fairness}%</span>
-                            <span>Privacy: {comm.governanceAdjustment.privacy}%</span>
-                            <span>Security: {comm.governanceAdjustment.security}%</span>
-                          </div>
-                        )}
-
-                        {comm.readinessAdjustment !== undefined && (
-                          <div style={{ fontSize: '0.7rem', color: '#fde68a' }}>
-                            🚀 AI Readiness Capability Graded: <strong>{comm.readinessAdjustment}%</strong>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic', paddingLeft: '4px' }}>
-                    Awaiting official directive comments from Director General or Technical Clearance Team reviewers.
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
 
         {/* National Registry — Registered MDAs & Submitted Documents (Cross-Government Registry View) */}
         <div style={{
@@ -1255,23 +922,6 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
             </button>
           </div>
         </div>
-      )}
-
-      {/* DOCUMENT REVIEW & GRADING MODAL FOR ACTIVE ROLE PROFILES */}
-      {reviewingDoc && activeProject && (
-        <DocumentReviewGradeModal
-          isOpen={!!reviewingDoc}
-          onClose={() => setReviewingDoc(null)}
-          document={reviewingDoc}
-          project={activeProject}
-          session={session}
-          onSaveReview={(projectId, docId, comment, comp, read, stat) => {
-            if (onReviewDocument) {
-              onReviewDocument(projectId, docId, comment, comp, read, stat);
-            }
-            setReviewingDoc(null);
-          }}
-        />
       )}
     </div>
   );
