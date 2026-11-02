@@ -16,6 +16,7 @@ import { EntryGateModal } from './components/EntryGateModal';
 import { AccessDenied } from './components/AccessDenied';
 import { ActiveRoleSelectorModal } from './components/ActiveRoleSelectorModal';
 import { FirstTimerOnboardingHub } from './components/FirstTimerOnboardingHub';
+import { PublicRegistrationPage } from './components/PublicRegistrationPage';
 import { PendingApprovalNotice } from './components/PendingApprovalNotice';
 import { SignOutConfirmModal } from './components/SignOutConfirmModal';
 import { AIProject, ComplianceScore, DocumentAsset, DocumentReviewComment, ReviewWorkflowStatus, AutoAssessmentDetails, ZeroAssumptionAudit, ensureFirstTimerMdaProject, getFirstTimerMdaProjectId } from './data/sampleProjects';
@@ -89,6 +90,14 @@ function App() {
     if (s?.role === 'First-Timer / New User') return 'documents';
     return 'dashboard';
   });
+  const [portalMode, setPortalMode] = useState<'public' | 'admin'>(() => {
+    const s = getStoredSession();
+    if (s?.role === 'Public User' || s?.role === 'First-Timer / New User') {
+      return 'public';
+    }
+    return 'admin';
+  });
+
   const [showRoleSelectorModal, setShowRoleSelectorModal] = useState<boolean>(false);
   const [viewingOnboardingHub, setViewingOnboardingHub] = useState<boolean>(false);
   const [showSignOutConfirmModal, setShowSignOutConfirmModal] = useState<boolean>(false);
@@ -129,10 +138,18 @@ function App() {
     const updated = elevateFromFirstTimer(selectedRole);
     if (updated) {
       setSession(updated);
-      const targetTab = selectedRole === 'Director General' ? 'dg_queue' :
-                        selectedRole === 'Finance Minister' ? 'finance' :
-                        'dashboard';
-      setActiveTab(targetTab);
+      if (selectedRole === 'Public User') {
+        setPortalMode('public');
+      } else {
+        setPortalMode('admin');
+        const targetTab = selectedRole === 'Director General' ? 'dg_queue' :
+                          selectedRole === 'Finance Minister' ? 'finance' :
+                          selectedRole === 'Technical Director' ? 'documents' :
+                          selectedRole === 'Technical Clearance Team' ? 'documents' :
+                          selectedRole === 'AI Manager' ? 'registry' :
+                          'dashboard';
+        setActiveTab(targetTab);
+      }
     }
   };
 
@@ -686,14 +703,18 @@ function App() {
       <EntryGateModal 
         onSuccess={(newSession) => {
           setSession(newSession);
-          const initialTab = newSession.role === 'Director General' ? 'dg_queue' :
-                            newSession.role === 'Finance Minister' ? 'finance' :
-                            newSession.role === 'Technical Director' ? 'documents' :
-                            newSession.role === 'Technical Clearance Team' ? 'documents' :
-                            newSession.role === 'AI Manager' ? 'registry' :
-                            newSession.role === 'First-Timer / New User' ? 'documents' :
-                            'dashboard';
-          setActiveTab(initialTab);
+          if (newSession.role === 'Public User' || newSession.role === 'First-Timer / New User') {
+            setPortalMode('public');
+          } else {
+            setPortalMode('admin');
+            const initialTab = newSession.role === 'Director General' ? 'dg_queue' :
+                              newSession.role === 'Finance Minister' ? 'finance' :
+                              newSession.role === 'Technical Director' ? 'documents' :
+                              newSession.role === 'Technical Clearance Team' ? 'documents' :
+                              newSession.role === 'AI Manager' ? 'registry' :
+                              'dashboard';
+            setActiveTab(initialTab);
+          }
         }} 
       />
     );
@@ -739,6 +760,19 @@ function App() {
 
   // 6. Conditional Tab Routing Canvas
   const renderTabContent = () => {
+    // If user is currently in Public Registration & Upload mode
+    if (portalMode === 'public') {
+      return (
+        <PublicRegistrationPage
+          session={session}
+          projects={projects}
+          onAddProject={handleAddProject}
+          onAddDocument={handleAddDocument}
+          onNavigateToAdmin={() => setPortalMode('admin')}
+        />
+      );
+    }
+
     // If user is in pending_approval onboarding status, check if module is restricted
     if (session.onboardingStatus === 'pending_approval') {
       if (!['dashboard', 'gis', 'chat'].includes(activeTab)) {
@@ -863,6 +897,8 @@ function App() {
     <>
       <Layout 
         session={session}
+        portalMode={portalMode}
+        onTogglePortalMode={setPortalMode}
         onSwitchRole={handleSwitchRole}
         onOpenRoleSelector={() => setShowRoleSelectorModal(true)}
         onOpenOnboardingHub={session.memberType === 'new_member' ? () => setViewingOnboardingHub(true) : undefined}

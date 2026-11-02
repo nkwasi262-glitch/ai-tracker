@@ -30,6 +30,8 @@ interface LayoutProps {
   onOpenOnboardingHub?: () => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  portalMode?: 'public' | 'admin';
+  onTogglePortalMode?: (mode: 'public' | 'admin') => void;
   children: React.ReactNode;
 }
 
@@ -40,6 +42,8 @@ export const Layout: React.FC<LayoutProps> = ({
   onOpenOnboardingHub,
   activeTab, 
   setActiveTab, 
+  portalMode = 'admin',
+  onTogglePortalMode,
   children 
 }) => {
   // Navigation tabs definition
@@ -80,47 +84,104 @@ export const Layout: React.FC<LayoutProps> = ({
         </div>
 
         <nav className="sidebar-menu">
-          <div style={{ padding: '0 12px 8px 12px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
-            {isPendingApproval ? 'All System Modules' : 'Authorized Modules'}
-          </div>
-          {displayedMenuItems.map((item) => {
-            const isLockedForPending = isPendingApproval && !['dashboard', 'gis', 'chat'].includes(item.id);
-            return (
-              <div
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`menu-item ${activeTab === item.id ? 'active' : ''}`}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  opacity: isLockedForPending ? 0.78 : 1
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  {item.icon}
-                  <span>{item.label}</span>
-                </div>
-                {isLockedForPending && (
-                  <span style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    fontSize: '0.62rem',
-                    padding: '2px 7px',
-                    borderRadius: '4px',
-                    background: 'rgba(239, 68, 68, 0.16)',
-                    border: '1px solid rgba(239, 68, 68, 0.42)',
-                    color: '#fca5a5',
-                    fontWeight: 800
-                  }}>
-                    <Lock size={10} />
-                    <span>Lock</span>
-                  </span>
-                )}
+          {portalMode === 'public' ? (
+            <>
+              <div style={{ padding: '0 12px 8px 12px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--ghana-emerald)' }}>
+                Public Registration Portal
               </div>
-            );
-          })}
+              <div
+                className="menu-item active"
+                style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
+              >
+                <FilePlus2 size={18} />
+                <span>Project Registration</span>
+              </div>
+              <div
+                className="menu-item"
+                style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
+              >
+                <Files size={18} />
+                <span>Upload Documents</span>
+              </div>
+              <div
+                className="menu-item"
+                style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
+              >
+                <FileCheck2 size={18} />
+                <span>Registration Status</span>
+              </div>
+
+              {onTogglePortalMode && (
+                <div style={{ marginTop: '16px', padding: '0 8px' }}>
+                  <button
+                    onClick={() => onTogglePortalMode('admin')}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      background: 'rgba(59, 130, 246, 0.15)',
+                      border: '1px solid rgba(59, 130, 246, 0.4)',
+                      color: '#93c5fd',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <ShieldCheck size={14} />
+                    <span>Go to Admin Monitoring</span>
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div style={{ padding: '0 12px 8px 12px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
+                {isPendingApproval ? 'All System Modules' : 'Admin Monitoring Modules'}
+              </div>
+              {displayedMenuItems.map((item) => {
+                const isLockedForPending = isPendingApproval && !['dashboard', 'gis', 'chat'].includes(item.id);
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => setActiveTab(item.id)}
+                    className={`menu-item ${activeTab === item.id ? 'active' : ''}`}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      opacity: isLockedForPending ? 0.78 : 1
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      {item.icon}
+                      <span>{item.label}</span>
+                    </div>
+                    {isLockedForPending && (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        fontSize: '0.62rem',
+                        padding: '2px 7px',
+                        borderRadius: '4px',
+                        background: 'rgba(239, 68, 68, 0.16)',
+                        border: '1px solid rgba(239, 68, 68, 0.42)',
+                        color: '#fca5a5',
+                        fontWeight: 800
+                      }}>
+                        <Lock size={10} />
+                        <span>Lock</span>
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </>
+          )}
         </nav>
 
         <div style={{
@@ -186,6 +247,63 @@ export const Layout: React.FC<LayoutProps> = ({
               National AI Projects Registry & Monitoring System
             </div>
           </div>
+
+          {/* Portal Switcher: Public Registration vs Admin Monitoring */}
+          {onTogglePortalMode && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              background: 'rgba(255, 255, 255, 0.05)',
+              borderRadius: '9999px',
+              padding: '3px',
+              border: '1px solid rgba(255, 255, 255, 0.1)'
+            }}>
+              <button
+                type="button"
+                onClick={() => onTogglePortalMode('public')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 14px',
+                  borderRadius: '9999px',
+                  background: portalMode === 'public' ? 'var(--ghana-emerald)' : 'transparent',
+                  color: portalMode === 'public' ? '#fff' : 'var(--text-secondary)',
+                  border: 'none',
+                  fontSize: '0.76rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <FilePlus2 size={13} />
+                <span>Public Registration & Upload</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onTogglePortalMode('admin')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 14px',
+                  borderRadius: '9999px',
+                  background: portalMode === 'admin' ? 'linear-gradient(135deg, #3b82f6, #1d4ed8)' : 'transparent',
+                  color: portalMode === 'admin' ? '#fff' : 'var(--text-secondary)',
+                  border: 'none',
+                  fontSize: '0.76rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <ShieldCheck size={13} />
+                <span>Admin Monitoring Console</span>
+              </button>
+            </div>
+          )}
+
           <div className="top-bar-right">
             <HeaderProfile 
               session={session} 
@@ -197,94 +315,96 @@ export const Layout: React.FC<LayoutProps> = ({
 
         {/* Dynamic Component Canvas */}
         <main className="content-viewport animated-fade-in">
-          {/* Prominent Active Role Profile Banner on Main Page */}
-          <div style={{
-            margin: '0 0 20px 0',
-            padding: '14px 20px',
-            borderRadius: '14px',
-            background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.95) 0%, rgba(13, 20, 36, 0.95) 100%)',
-            border: '1px solid rgba(16, 185, 129, 0.35)',
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '14px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-              <div style={{
-                width: '42px',
-                height: '42px',
-                borderRadius: '12px',
-                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(251, 191, 36, 0.15))',
-                border: '1px solid rgba(16, 185, 129, 0.4)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--ghana-emerald)',
-                flexShrink: 0
-              }}>
-                <ShieldCheck size={22} />
-              </div>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
-                    ACTIVE ROLE PROFILE:
-                  </span>
-                  <span style={{
-                    fontSize: '0.82rem',
-                    fontWeight: 800,
-                    padding: '3px 10px',
-                    borderRadius: '9999px',
-                    background: 'rgba(16, 185, 129, 0.18)',
-                    border: '1px solid rgba(16, 185, 129, 0.45)',
-                    color: '#a7f3d0'
-                  }}>
-                    {session.role}
-                  </span>
-                  <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
-                    ({session.institution})
-                  </span>
-                </div>
-                <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                  <strong style={{ color: '#fff' }}>Authorized Pages:</strong>
-                  {displayedMenuItems.map(m => m.label).join(' • ')}
-                </div>
-              </div>
-            </div>
-
-            {onOpenRoleSelector && (
-              <button
-                onClick={onOpenRoleSelector}
-                style={{
-                  display: 'inline-flex',
+          {/* Active Role Profile Banner — Placed on the Admin Monitoring Page */}
+          {portalMode === 'admin' && (
+            <div style={{
+              margin: '0 0 20px 0',
+              padding: '14px 20px',
+              borderRadius: '14px',
+              background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.95) 0%, rgba(13, 20, 36, 0.95) 100%)',
+              border: '1px solid rgba(16, 185, 129, 0.35)',
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '14px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(251, 191, 36, 0.15))',
+                  border: '1px solid rgba(16, 185, 129, 0.4)',
+                  display: 'flex',
                   alignItems: 'center',
-                  gap: '8px',
-                  padding: '9px 16px',
-                  borderRadius: '10px',
-                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.2) 100%)',
-                  border: '1px solid rgba(16, 185, 129, 0.45)',
-                  color: '#a7f3d0',
-                  fontSize: '0.8rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  boxShadow: '0 2px 10px rgba(16, 185, 129, 0.15)'
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.35) 0%, rgba(5, 150, 105, 0.35) 100%)';
-                  e.currentTarget.style.color = '#fff';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.2) 100%)';
-                  e.currentTarget.style.color = '#a7f3d0';
-                }}
-              >
-                <Award size={15} className="text-emerald-400" />
-                <span>Switch Active Role Profile</span>
-              </button>
-            )}
-          </div>
+                  justifyContent: 'center',
+                  color: 'var(--ghana-emerald)',
+                  flexShrink: 0
+                }}>
+                  <ShieldCheck size={22} />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
+                      ACTIVE ROLE PROFILE:
+                    </span>
+                    <span style={{
+                      fontSize: '0.82rem',
+                      fontWeight: 800,
+                      padding: '3px 10px',
+                      borderRadius: '9999px',
+                      background: 'rgba(16, 185, 129, 0.18)',
+                      border: '1px solid rgba(16, 185, 129, 0.45)',
+                      color: '#a7f3d0'
+                    }}>
+                      {session.role}
+                    </span>
+                    <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
+                      ({session.institution})
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <strong style={{ color: '#fff' }}>Authorized Pages:</strong>
+                    {displayedMenuItems.map(m => m.label).join(' • ')}
+                  </div>
+                </div>
+              </div>
+
+              {onOpenRoleSelector && (
+                <button
+                  onClick={onOpenRoleSelector}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '9px 16px',
+                    borderRadius: '10px',
+                    background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.2) 100%)',
+                    border: '1px solid rgba(16, 185, 129, 0.45)',
+                    color: '#a7f3d0',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 2px 10px rgba(16, 185, 129, 0.15)'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.35) 0%, rgba(5, 150, 105, 0.35) 100%)';
+                    e.currentTarget.style.color = '#fff';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.2) 100%)';
+                    e.currentTarget.style.color = '#a7f3d0';
+                  }}
+                >
+                  <Award size={15} className="text-emerald-400" />
+                  <span>Switch Active Role Profile</span>
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Pending Approval Officer Banner */}
           {isPendingApproval && (
