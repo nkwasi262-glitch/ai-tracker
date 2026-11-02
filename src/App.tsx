@@ -17,6 +17,7 @@ import { AccessDenied } from './components/AccessDenied';
 import { ActiveRoleSelectorModal } from './components/ActiveRoleSelectorModal';
 import { FirstTimerOnboardingHub } from './components/FirstTimerOnboardingHub';
 import { PendingApprovalNotice } from './components/PendingApprovalNotice';
+import { SignOutConfirmModal } from './components/SignOutConfirmModal';
 import { AIProject, ComplianceScore, DocumentAsset, DocumentReviewComment, ReviewWorkflowStatus, AutoAssessmentDetails, ZeroAssumptionAudit, ensureFirstTimerMdaProject, getFirstTimerMdaProjectId } from './data/sampleProjects';
 import { UserSession, ActiveRole } from './data/authTypes';
 import { getStoredSession, clearSession, elevateFromFirstTimer, submitOnboardingForApproval } from './services/authService';
@@ -67,6 +68,7 @@ function App() {
   });
   const [showRoleSelectorModal, setShowRoleSelectorModal] = useState<boolean>(false);
   const [viewingOnboardingHub, setViewingOnboardingHub] = useState<boolean>(false);
+  const [showSignOutConfirmModal, setShowSignOutConfirmModal] = useState<boolean>(false);
 
   // Ensure active tab is reset if current role changes to one without permission (pending_approval users may browse all modules to see notices)
   useEffect(() => {
@@ -81,11 +83,22 @@ function App() {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
   }, [activeTab]);
 
-  // Handle Switch Role / Sign Out: clears session and immediately reveals Entry Gate
-  const handleSwitchRole = () => {
+  // Open the prominent Sign Out confirmation pop-up modal
+  const handleRequestSignOut = () => {
+    setShowSignOutConfirmModal(true);
+  };
+
+  // Officially confirm sign out: clears session and immediately reveals Entry Gate
+  const handleConfirmSignOut = () => {
+    setShowSignOutConfirmModal(false);
     clearSession();
     setSession(null);
     setActiveTab('dashboard');
+  };
+
+  // Immediate sign out (fallback)
+  const handleSwitchRole = () => {
+    handleRequestSignOut();
   };
 
   // Handle activation from First-Timer onboarding to an official active role profile
@@ -683,9 +696,16 @@ function App() {
               setViewingOnboardingHub(false);
               setActiveTab('dashboard');
             }}
-            onSwitchRole={handleSwitchRole}
+            onSwitchRole={handleRequestSignOut}
           />
         </div>
+
+        <SignOutConfirmModal
+          isOpen={showSignOutConfirmModal}
+          onConfirm={handleConfirmSignOut}
+          onCancel={() => setShowSignOutConfirmModal(false)}
+          session={session}
+        />
       </div>
     );
   }
@@ -833,6 +853,13 @@ function App() {
         isOpen={showRoleSelectorModal}
         onClose={() => setShowRoleSelectorModal(false)}
         onSelectRole={handleActivateRoleProfile}
+      />
+
+      <SignOutConfirmModal
+        isOpen={showSignOutConfirmModal}
+        onConfirm={handleConfirmSignOut}
+        onCancel={() => setShowSignOutConfirmModal(false)}
+        session={session}
       />
     </>
   );

@@ -105,17 +105,17 @@ export const Layout: React.FC<LayoutProps> = ({
                   <span style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '3px',
+                    gap: '4px',
                     fontSize: '0.62rem',
-                    padding: '2px 6px',
+                    padding: '2px 7px',
                     borderRadius: '4px',
-                    background: 'rgba(234, 179, 8, 0.15)',
-                    border: '1px solid rgba(234, 179, 8, 0.35)',
-                    color: '#fde68a',
-                    fontWeight: 700
+                    background: 'rgba(239, 68, 68, 0.16)',
+                    border: '1px solid rgba(239, 68, 68, 0.42)',
+                    color: '#fca5a5',
+                    fontWeight: 800
                   }}>
                     <Lock size={10} />
-                    <span>Pending</span>
+                    <span>Lock</span>
                   </span>
                 )}
               </div>

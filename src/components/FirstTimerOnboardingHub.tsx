@@ -12,7 +12,9 @@ import {
   Info,
   MessageSquare,
   Eye,
-  Download
+  Download,
+  Lock,
+  Building2
 } from 'lucide-react';
 import { 
   AIProject, 
@@ -934,6 +936,153 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
                 )}
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* National Registry — Registered MDAs & Submitted Documents (Cross-Government Registry View) */}
+        <div style={{
+          marginTop: '24px',
+          background: 'rgba(15, 23, 42, 0.65)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          borderRadius: '14px',
+          padding: '24px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <Building2 size={18} style={{ color: 'var(--ghana-emerald)' }} />
+                <h3 style={{ fontSize: '1.02rem', fontWeight: 800, color: '#fff', margin: 0 }}>
+                  National Registry: Cross-MDA AI Projects & Filed Documents
+                </h3>
+                <span style={{
+                  padding: '2px 8px',
+                  borderRadius: '9999px',
+                  background: 'rgba(239, 68, 68, 0.16)',
+                  border: '1px solid rgba(239, 68, 68, 0.35)',
+                  color: '#fca5a5',
+                  fontSize: '0.68rem',
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}>
+                  <Lock size={11} /> Documents Locked (Act 843 Protected)
+                </span>
+              </div>
+              <p style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', margin: '6px 0 0 0', lineHeight: 1.5 }}>
+                As an onboarding officer from <strong>{session.institution}</strong>, you can view the names of all Ministries, Departments, and Agencies (MDAs) across the Republic of Ghana, along with the statutory documents and categories they have registered. Direct access to download or inspect external MDA document payloads is locked under the Ghana Data Protection Act 2012 (Act 843).
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '14px' }}>
+            {projects.map((proj) => {
+              const isCurrentMda = (proj.mda || '').toLowerCase() === (session.institution || '').toLowerCase();
+              return (
+                <div key={proj.id} style={{
+                  background: isCurrentMda ? 'rgba(16, 185, 129, 0.08)' : 'rgba(0, 0, 0, 0.35)',
+                  border: isCurrentMda ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)',
+                  borderRadius: '10px',
+                  padding: '14px 16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                    <div>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#fff' }}>
+                        {proj.mda}
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--ghana-emerald)', fontWeight: 700 }}>
+                        {proj.projectCode} • {proj.name}
+                      </div>
+                    </div>
+                    {isCurrentMda ? (
+                      <span style={{
+                        fontSize: '0.65rem',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        background: 'rgba(16, 185, 129, 0.2)',
+                        border: '1px solid rgba(16, 185, 129, 0.4)',
+                        color: '#6ee7b7',
+                        fontWeight: 700
+                      }}>
+                        Your MDA
+                      </span>
+                    ) : (
+                      <span style={{
+                        fontSize: '0.65rem',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        background: 'rgba(239, 68, 68, 0.14)',
+                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                        color: '#fca5a5',
+                        fontWeight: 700,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px'
+                      }}>
+                        <Lock size={10} /> Locked
+                      </span>
+                    )}
+                  </div>
+
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                    <span style={{ fontWeight: 600, color: '#e2e8f0' }}>Submitted Documents ({proj.documents.length}):</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
+                      {proj.documents.length > 0 ? (
+                        proj.documents.map((doc) => (
+                          <div key={doc.id} style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '5px 8px',
+                            borderRadius: '6px',
+                            background: 'rgba(255, 255, 255, 0.03)',
+                            border: '1px solid rgba(255, 255, 255, 0.06)',
+                            fontSize: '0.68rem',
+                            gap: '6px'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                              <FileText size={12} style={{ color: '#93c5fd', flexShrink: 0 }} />
+                              <span style={{ color: '#fff', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={doc.fileName}>
+                                {doc.fileName}
+                              </span>
+                              <span style={{ color: '#fde68a', fontSize: '0.62rem', flexShrink: 0 }}>
+                                ({doc.documentCategory || doc.fileType.toUpperCase()})
+                              </span>
+                            </div>
+
+                            {isCurrentMda ? (
+                              <span style={{ color: '#6ee7b7', fontWeight: 700, fontSize: '0.62rem', flexShrink: 0 }}>
+                                Accessible
+                              </span>
+                            ) : (
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '2px',
+                                color: '#fca5a5',
+                                fontWeight: 700,
+                                fontSize: '0.62rem',
+                                flexShrink: 0
+                              }}>
+                                <Lock size={9} /> Restricted
+                              </span>
+                            )}
+                          </div>
+                        ))
+                      ) : (
+                        <span style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>No documents registered yet</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 

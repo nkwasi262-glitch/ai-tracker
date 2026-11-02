@@ -90,17 +90,8 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
   const firstTimerMdaProjectId = isFirstTimer && session?.institution
     ? getFirstTimerMdaProjectId(session.institution)
     : '';
-  const [selectedProjectId, setSelectedProjectId] = useState<string>(
-    firstTimerMdaProjectId || projects[0]?.id || ''
-  );
 
-  useEffect(() => {
-    if (isFirstTimer && firstTimerMdaProjectId && selectedProjectId !== firstTimerMdaProjectId) {
-      setSelectedProjectId(firstTimerMdaProjectId);
-    }
-  }, [isFirstTimer, firstTimerMdaProjectId, selectedProjectId]);
-
-  const activeProject = (() => {
+  const ownMdaProject = (() => {
     if (isFirstTimer && session?.institution) {
       const mdaProj = projects.find(p => p.id === firstTimerMdaProjectId) ||
         projects.find(p => (p.mda || '').toLowerCase() === session.institution.toLowerCase());
@@ -108,8 +99,27 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
       const ensured = ensureFirstTimerMdaProject(projects, session.institution, session.fullName, session.email);
       return ensured.mdaProject;
     }
-    return projects.find(p => p.id === selectedProjectId) || projects[0];
+    return null;
   })();
+
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(
+    firstTimerMdaProjectId || projects[0]?.id || ''
+  );
+
+  const activeProject = (() => {
+    if (selectedProjectId) {
+      const found = projects.find(p => p.id === selectedProjectId);
+      if (found) return found;
+    }
+    return ownMdaProject || projects[0];
+  })();
+
+  const isOwnMdaProject = !isFirstTimer || (
+    !!activeProject && (
+      (ownMdaProject && activeProject.id === ownMdaProject.id) ||
+      (activeProject.mda || '').toLowerCase() === (session?.institution || '').toLowerCase()
+    )
+  );
   const isSuperAdmin = session?.role === 'Super Admin' || currentRole === 'Super Admin';
   const isTechClearanceTeam = session?.role === 'Technical Clearance Team' || currentRole === 'Technical Clearance Team';
   const isTechDirector = session?.role === 'Technical Director' || currentRole === 'Technical Director';
@@ -192,11 +202,15 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
   const [generatingAssessment, setGeneratingAssessment] = useState(false);
   const [assessmentFeedback, setAssessmentFeedback] = useState<string | null>(null);
 
-  // Technical review states
-  const [techNotes, setTechNotes] = useState('');
-  const [statusFeedback, setStatusFeedback] = useState<string | null>(null);
+  // Dedicated Technical Clearance Team (Recommend to Technical Director) states
+  const [techClearanceNotes, setTechClearanceNotes] = useState('');
+  const [techClearanceFeedback, setTechClearanceFeedback] = useState<string | null>(null);
 
-  // Super Admin Registration Clearance states
+  // Dedicated Technical Director (Recommend to Director General) states
+  const [techDirectorNotes, setTechDirectorNotes] = useState('');
+  const [techDirectorFeedback, setTechDirectorFeedback] = useState<string | null>(null);
+
+  // Super Admin / Director General Registration Clearance states
   const [superAdminDirectiveNotes, setSuperAdminDirectiveNotes] = useState('');
   const [regFeedback, setRegFeedback] = useState<string | null>(null);
 
@@ -548,18 +562,41 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
     }, 500);
   };
 
-  // Super Admin Registration Decision: Approve, Pend, Reject
-  const handleRegistrationDecision = (verdict: 'Approved' | 'Pending' | 'Rejected') => {
-    if (!activeProject || !onUpdateProjectStatus) return;
+  // Super Admin / Director General Registration Decision: Approve, Pend, Reject
+  const handleRegistrationDecision = (
+    verdict: 'Approved' | 'Pending' | 'Rejected',
+    targetProj?: AIProject
+  ) => {
+    const proj = targetProj || activeProject;
+    if (!proj || !onUpdateProjectStatus) return;
 
     const defaultNotes = verdict === 'Approved'
-      ? 'Statutory project registration officially approved under NITA Act 771 and Ghana AI Framework 2026. All uploaded compliance documents validated.'
+      ? 'Statutory project registration officially approved under NITA Act 771 and Ghana AI Framework 2026. All uploaded compliance documents validated and published to the National AI Dashboard.'
       : verdict === 'Pending'
-      ? 'Project registration pended. Dossier requires additional Act 843 DPC certifications or technical clarifications before final clearance.'
+      ? 'Project registration pended (Requires More Understanding). Dossier requires additional Act 843 DPC certifications or technical clarifications before final clearance.'
       : 'Project registration rejected due to failure to satisfy mandatory Ghana National AI Ethics and data security requirements.';
 
     const finalNotes = superAdminDirectiveNotes.trim() || defaultNotes;
-    onUpdateProjectStatus(activeProject.id, verdict, finalNotes);
+    onUpdateProjectStatus(proj.id, verdict, finalNotes);
+
+    const targetDoc = selectedDoc || proj.documents?.[0];
+    if (onReviewDocument && targetDoc) {
+      const commentObj: DocumentReviewComment = {
+        id: `rev-dg-${Date.now()}`,
+        reviewerName: session?.fullName || 'Director General / Super Admin (NITA)',
+        reviewerRole: isDirectorGeneral ? 'Director General' : 'Super Admin',
+        reviewerEmail: session?.email || 'dg@nita.gov.gh',
+        comment: finalNotes,
+        verdict:
+          verdict === 'Approved'
+            ? 'Approved'
+            : verdict === 'Pending'
+            ? 'Changes Requested'
+            : 'Under Investigation',
+        createdAt: new Date().toISOString().replace('T', ' ').substring(0, 16) + ' GMT'
+      };
+      onReviewDocument(proj.id, targetDoc.id, commentObj, undefined, undefined, verdict);
+    }
 
     if (session) {
       const eventType = verdict === 'Approved' 
@@ -575,21 +612,60 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
         actorRole: session.role,
         actorInstitution: session.institution,
         targetModule: 'documents',
-        targetEntityId: activeProject.id,
-        actionDetails: `Super Admin issued registration verdict [${verdict.toUpperCase()}] for project ${activeProject.projectCode} (${activeProject.name}). Directive: ${finalNotes}`
+        targetEntityId: proj.id,
+        actionDetails: `Super Admin / Director General issued registration verdict [${verdict.toUpperCase()}] for project ${proj.projectCode} (${proj.name}). Directive: ${finalNotes}`
       });
     }
 
-    setRegFeedback(`Registration for ${activeProject.projectCode} officially marked as "${verdict.toUpperCase()}".`);
+    setRegFeedback(`Registration for ${proj.projectCode} officially marked as "${verdict.toUpperCase()}" & published to Dashboard.`);
     setSuperAdminDirectiveNotes('');
     setTimeout(() => setRegFeedback(null), 6000);
   };
 
-  // Technical Clearance Gate update handler
-  const handleUpdateStatus = (newStatus: ReviewWorkflowStatus) => {
-    if (!activeProject || !onUpdateProjectStatus) return;
-    onUpdateProjectStatus(activeProject.id, newStatus, techNotes.trim() || undefined);
-    
+  // Dedicated Technical Clearance Team Decision: Recommend to Technical Director, Pass Comment, or Needs Correction
+  const handleTechClearanceTeamDecision = (
+    decision: 'Recommended to Technical Director' | 'Comment Only' | 'Needs Correction',
+    targetProj?: AIProject
+  ) => {
+    const proj = targetProj || activeProject;
+    if (!proj) return;
+
+    const defaultNotes =
+      decision === 'Recommended to Technical Director'
+        ? 'Technical Clearance Team screened all uploaded compliance documents & OCR transcripts under Act 843 and NITA Act 771. Recommended to the Technical Director for endorsement.'
+        : decision === 'Needs Correction'
+        ? 'Technical Clearance Team flagged documentation gaps requiring correction before recommending to the Technical Director.'
+        : 'Official Technical Clearance Team review comment recorded on project dossier.';
+
+    const finalNotes = techClearanceNotes.trim() || defaultNotes;
+    const nextStatus: ReviewWorkflowStatus =
+      decision === 'Comment Only'
+        ? proj.reviewStatus || 'Under Technical Review'
+        : decision;
+
+    if (onUpdateProjectStatus) {
+      onUpdateProjectStatus(proj.id, nextStatus, finalNotes);
+    }
+
+    const targetDoc = selectedDoc || proj.documents?.[0];
+    if (onReviewDocument && targetDoc) {
+      const commentObj: DocumentReviewComment = {
+        id: `rev-tct-${Date.now()}`,
+        reviewerName: session?.fullName || 'Technical Clearance Team Officer',
+        reviewerRole: 'Technical Clearance Team',
+        reviewerEmail: session?.email || 'clearance@nita.gov.gh',
+        comment: finalNotes,
+        verdict:
+          decision === 'Recommended to Technical Director'
+            ? 'Approved'
+            : decision === 'Needs Correction'
+            ? 'Changes Requested'
+            : 'Conditionally Cleared',
+        createdAt: new Date().toISOString().replace('T', ' ').substring(0, 16) + ' GMT'
+      };
+      onReviewDocument(proj.id, targetDoc.id, commentObj, undefined, undefined, nextStatus);
+    }
+
     if (session) {
       recordAuditEvent({
         eventType: 'TECH_REVIEW_TRANSITION',
@@ -598,14 +674,88 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
         actorRole: session.role,
         actorInstitution: session.institution,
         targetModule: 'documents',
-        targetEntityId: activeProject.id,
-        actionDetails: `Technical status updated to "${newStatus}" for project ${activeProject.projectCode}. Notes: ${techNotes || 'Standard evaluation'}`
+        targetEntityId: proj.id,
+        actionDetails: `Technical Clearance Team issued [${decision.toUpperCase()}] for project ${proj.projectCode} (${proj.name}). Comment: "${finalNotes}"`
       });
     }
 
-    setStatusFeedback(`Project ${activeProject.projectCode} status updated to: ${newStatus}`);
-    setTechNotes('');
-    setTimeout(() => setStatusFeedback(null), 4000);
+    setTechClearanceFeedback(
+      decision === 'Recommended to Technical Director'
+        ? `${proj.projectCode} officially Recommended to Technical Director with comment.`
+        : decision === 'Needs Correction'
+        ? `${proj.projectCode} marked as Needs Correction with Technical Clearance Team comment.`
+        : `Technical Clearance Team comment saved on ${proj.projectCode}.`
+    );
+    setTechClearanceNotes('');
+    setTimeout(() => setTechClearanceFeedback(null), 6000);
+  };
+
+  // Dedicated Technical Director Decision: Recommend to Director General, Pass Comment, or Return for Correction
+  const handleTechDirectorDecision = (
+    decision: 'Recommended' | 'Comment Only' | 'Needs Correction',
+    targetProj?: AIProject
+  ) => {
+    const proj = targetProj || activeProject;
+    if (!proj) return;
+
+    const defaultNotes =
+      decision === 'Recommended'
+        ? 'Technical Director reviewed Technical Clearance Team findings, validated architectural & ethical compliance, and officially Recommended to the Director General for final verdict.'
+        : decision === 'Needs Correction'
+        ? 'Technical Director returned dossier for additional technical remediation prior to Director General escalation.'
+        : 'Official Technical Director review comment recorded on project dossier.';
+
+    const finalNotes = techDirectorNotes.trim() || defaultNotes;
+    const nextStatus: ReviewWorkflowStatus =
+      decision === 'Comment Only'
+        ? proj.reviewStatus || 'Recommended to Technical Director'
+        : decision;
+
+    if (onUpdateProjectStatus) {
+      onUpdateProjectStatus(proj.id, nextStatus, finalNotes);
+    }
+
+    const targetDoc = selectedDoc || proj.documents?.[0];
+    if (onReviewDocument && targetDoc) {
+      const commentObj: DocumentReviewComment = {
+        id: `rev-td-${Date.now()}`,
+        reviewerName: session?.fullName || 'Technical Director (NITA)',
+        reviewerRole: 'Technical Director',
+        reviewerEmail: session?.email || 'tech.director@nita.gov.gh',
+        comment: finalNotes,
+        verdict:
+          decision === 'Recommended'
+            ? 'Approved'
+            : decision === 'Needs Correction'
+            ? 'Changes Requested'
+            : 'Conditionally Cleared',
+        createdAt: new Date().toISOString().replace('T', ' ').substring(0, 16) + ' GMT'
+      };
+      onReviewDocument(proj.id, targetDoc.id, commentObj, undefined, undefined, nextStatus);
+    }
+
+    if (session) {
+      recordAuditEvent({
+        eventType: 'TECH_REVIEW_TRANSITION',
+        actorName: session.fullName,
+        actorEmail: session.email,
+        actorRole: session.role,
+        actorInstitution: session.institution,
+        targetModule: 'documents',
+        targetEntityId: proj.id,
+        actionDetails: `Technical Director issued [${decision === 'Recommended' ? 'RECOMMENDED TO DIRECTOR GENERAL' : decision.toUpperCase()}] for project ${proj.projectCode} (${proj.name}). Comment: "${finalNotes}"`
+      });
+    }
+
+    setTechDirectorFeedback(
+      decision === 'Recommended'
+        ? `${proj.projectCode} officially Recommended to Director General with Technical Director comment.`
+        : decision === 'Needs Correction'
+        ? `${proj.projectCode} returned for correction with Technical Director comment.`
+        : `Technical Director comment saved on ${proj.projectCode}.`
+    );
+    setTechDirectorNotes('');
+    setTimeout(() => setTechDirectorFeedback(null), 6000);
   };
 
   const canEdit = ['Super Administrator', 'Institution Administrator', 'Project Manager', 'Super Admin'].includes(currentRole as string) || isFirstTimer;
@@ -969,28 +1119,126 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <button
-                      type="button"
-                      onClick={() => setInspectingItem(activeOnboarderItem)}
-                      style={{
-                        padding: '5px 10px',
+                    {isFirstTimer && (activeOnboarderItem.project.mda || '').toLowerCase() !== (session?.institution || '').toLowerCase() ? (
+                      <span style={{
+                        padding: '4px 9px',
                         borderRadius: '6px',
-                        background: 'rgba(255,255,255,0.08)',
-                        border: '1px solid rgba(255,255,255,0.18)',
-                        color: '#fff',
-                        fontSize: '0.7rem',
-                        fontWeight: 600,
-                        cursor: 'pointer',
+                        background: 'rgba(239, 68, 68, 0.16)',
+                        border: '1px solid rgba(239, 68, 68, 0.35)',
+                        color: '#fca5a5',
+                        fontSize: '0.68rem',
+                        fontWeight: 700,
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '4px'
-                      }}
-                    >
-                      <Eye size={12} /> Full-Screen Reader
-                    </button>
+                      }}>
+                        <Lock size={12} /> Access Restricted (Other MDA)
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setInspectingItem(activeOnboarderItem)}
+                        style={{
+                          padding: '5px 10px',
+                          borderRadius: '6px',
+                          background: 'rgba(255,255,255,0.08)',
+                          border: '1px solid rgba(255,255,255,0.18)',
+                          color: '#fff',
+                          fontSize: '0.7rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <Eye size={12} /> Full-Screen Reader
+                      </button>
+                    )}
                   </div>
                 </div>
 
+                {/* If first timer viewing another MDA's document, show protected statutory notice */}
+                {isFirstTimer && (activeOnboarderItem.project.mda || '').toLowerCase() !== (session?.institution || '').toLowerCase() ? (
+                  <div style={{
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.8) 0%, rgba(10, 15, 30, 0.95) 100%)',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(239, 68, 68, 0.35)',
+                    padding: '24px 20px',
+                    textAlign: 'center',
+                    gap: '12px'
+                  }}>
+                    <div style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      background: 'rgba(239, 68, 68, 0.15)',
+                      border: '1px solid rgba(239, 68, 68, 0.4)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#f87171'
+                    }}>
+                      <Lock size={24} />
+                    </div>
+
+                    <div>
+                      <div style={{ fontSize: '0.96rem', fontWeight: 800, color: '#fff', marginBottom: '4px' }}>
+                        Act 843 Statutory Document Protection
+                      </div>
+                      <div style={{ fontSize: '0.74rem', color: '#fca5a5', fontWeight: 600 }}>
+                        Originating MDA: {activeOnboarderItem.project.mda}
+                      </div>
+                    </div>
+
+                    <div style={{
+                      background: 'rgba(0, 0, 0, 0.4)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      borderRadius: '8px',
+                      padding: '12px 16px',
+                      maxWidth: '460px',
+                      width: '100%',
+                      fontSize: '0.72rem',
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: '8px',
+                      textAlign: 'left'
+                    }}>
+                      <div>
+                        <span style={{ color: 'var(--text-muted)' }}>Document: </span>
+                        <strong style={{ color: '#fff' }}>{activeOnboarderItem.doc.fileName}</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: 'var(--text-muted)' }}>Document Kind: </span>
+                        <strong style={{ color: '#fbbf24' }}>{activeOnboarderItem.doc.documentCategory || 'Statutory Project Document'}</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: 'var(--text-muted)' }}>Format & Size: </span>
+                        <strong style={{ color: '#93c5fd' }}>{activeOnboarderItem.doc.fileType.toUpperCase()} • {activeOnboarderItem.doc.fileSize || 'Standard Archive'}</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: 'var(--text-muted)' }}>Submission Status: </span>
+                        <strong style={{ color: '#10b981' }}>{activeOnboarderItem.doc.reviewStatus || 'Submitted & Registered'}</strong>
+                      </div>
+                    </div>
+
+                    <p style={{
+                      fontSize: '0.73rem',
+                      color: 'var(--text-secondary)',
+                      lineHeight: 1.5,
+                      maxWidth: '480px',
+                      margin: 0
+                    }}>
+                      As an Onboarder/First-Timer representing <strong>{session?.institution || 'your MDA'}</strong>, you can view the registry status and document classifications across other MDAs, but cannot read, view OCR content, or download confidential files belonging to <strong>{activeOnboarderItem.project.mda}</strong> under Ghana Data Protection Act 2012 (Act 843).
+                    </p>
+                  </div>
+                ) : (
+                  <>
                 {/* Reader Mode Tabs & Search Bar */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
@@ -1144,6 +1392,8 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                     </div>
                   );
                 })()}
+                </>
+                )}
               </div>
             ) : null}
 
@@ -1401,7 +1651,9 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                   </>
                 ) : (
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                    You can read and download the complete uploaded document here. Statutory module grading is reserved for Super Admin, Director General, Technical Director, and Technical Clearance Team.
+                    {isFirstTimer && (activeOnboarderItem.project.mda || '').toLowerCase() !== (session?.institution || '').toLowerCase()
+                      ? `Access to view, inspect, or download document payloads from ${activeOnboarderItem.project.mda} is restricted under Act 843. Statutory clearance and grading are reserved for the National Technical Clearance Committee.`
+                      : 'You can read and download your complete uploaded document here. Statutory module grading is reserved for Super Admin, Director General, Technical Director, and Technical Clearance Team.'}
                   </div>
                 )}
 
@@ -1619,75 +1871,121 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                         </td>
                         <td style={{ padding: '12px 16px', textAlign: 'right' }}>
                           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                            {canReviewAndGrade && (
-                              <button
-                                type="button"
-                                onClick={() => setReviewingItem({ doc, project })}
-                                style={{
+                            {isFirstTimer && (project.mda || '').toLowerCase() !== (session?.institution || '').toLowerCase() ? (
+                              <>
+                                <span style={{
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   gap: '4px',
-                                  padding: '6px 12px',
+                                  padding: '5px 10px',
                                   borderRadius: '6px',
-                                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.3))',
-                                  border: '1px solid rgba(16, 185, 129, 0.5)',
-                                  color: '#a7f3d0',
-                                  fontSize: '0.74rem',
-                                  fontWeight: 700,
-                                  cursor: 'pointer',
-                                  boxShadow: '0 2px 8px rgba(16, 185, 129, 0.2)'
-                                }}
-                              >
-                                <Award size={13} />
-                                <span>Review & Grade (Full Doc)</span>
-                              </button>
+                                  background: 'rgba(239, 68, 68, 0.12)',
+                                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                                  color: '#fca5a5',
+                                  fontSize: '0.72rem',
+                                  fontWeight: 600
+                                }}>
+                                  <Lock size={12} />
+                                  <span>Act 843 Locked</span>
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedProjectId(project.id);
+                                    setSelectedDoc(doc);
+                                    setViewMode('project');
+                                  }}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    padding: '5px 10px',
+                                    borderRadius: '6px',
+                                    background: 'rgba(255, 255, 255, 0.05)',
+                                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                                    color: '#e2e8f0',
+                                    fontSize: '0.72rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  <span>Details</span>
+                                  <ArrowRight size={12} />
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                {canReviewAndGrade && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setReviewingItem({ doc, project })}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px',
+                                      padding: '6px 12px',
+                                      borderRadius: '6px',
+                                      background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.3))',
+                                      border: '1px solid rgba(16, 185, 129, 0.5)',
+                                      color: '#a7f3d0',
+                                      fontSize: '0.74rem',
+                                      fontWeight: 700,
+                                      cursor: 'pointer',
+                                      boxShadow: '0 2px 8px rgba(16, 185, 129, 0.2)'
+                                    }}
+                                  >
+                                    <Award size={13} />
+                                    <span>Review & Grade (Full Doc)</span>
+                                  </button>
+                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={() => setInspectingItem({ doc, project })}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    padding: '6px 12px',
+                                    borderRadius: '6px',
+                                    background: 'rgba(59, 130, 246, 0.15)',
+                                    border: '1px solid rgba(59, 130, 246, 0.3)',
+                                    color: '#93c5fd',
+                                    fontSize: '0.74rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  <BookOpen size={13} />
+                                  <span>Read Full Doc</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedProjectId(project.id);
+                                    setSelectedDoc(doc);
+                                    setViewMode('project');
+                                  }}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    padding: '6px 12px',
+                                    borderRadius: '6px',
+                                    background: 'rgba(255, 255, 255, 0.05)',
+                                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                                    color: '#e2e8f0',
+                                    fontSize: '0.74rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  <span>Vault</span>
+                                  <ArrowRight size={13} />
+                                </button>
+                              </>
                             )}
-
-                            <button
-                              type="button"
-                              onClick={() => setInspectingItem({ doc, project })}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                padding: '6px 12px',
-                                borderRadius: '6px',
-                                background: 'rgba(59, 130, 246, 0.15)',
-                                border: '1px solid rgba(59, 130, 246, 0.3)',
-                                color: '#93c5fd',
-                                fontSize: '0.74rem',
-                                fontWeight: 700,
-                                cursor: 'pointer'
-                              }}
-                            >
-                              <BookOpen size={13} />
-                              <span>Read Full Doc</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedProjectId(project.id);
-                                setSelectedDoc(doc);
-                                setViewMode('project');
-                              }}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                padding: '6px 12px',
-                                borderRadius: '6px',
-                                background: 'rgba(255, 255, 255, 0.05)',
-                                border: '1px solid rgba(255, 255, 255, 0.12)',
-                                color: '#e2e8f0',
-                                fontSize: '0.74rem',
-                                fontWeight: 600,
-                                cursor: 'pointer'
-                              }}
-                            >
-                              <span>Vault</span>
-                              <ArrowRight size={13} />
-                            </button>
                           </div>
                         </td>
                       </tr>
@@ -1715,39 +2013,60 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                   </p>
                 </div>
                 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                   <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-                    {isFirstTimer ? 'Logged-In MDA:' : 'Project:'}
+                    {isFirstTimer ? 'MDA / Project:' : 'Project:'}
                   </span>
-                  {isFirstTimer ? (
-                    <div style={{
+                  <select
+                    value={selectedProjectId}
+                    onChange={(e) => {
+                      setSelectedProjectId(e.target.value);
+                      setSelectedDoc(null);
+                    }}
+                    className="form-select"
+                    style={{
+                      width: '320px',
                       padding: '6px 12px',
-                      borderRadius: '8px',
-                      background: 'rgba(16, 185, 129, 0.14)',
-                      border: '1px solid rgba(16, 185, 129, 0.45)',
-                      color: '#6ee7b7',
-                      fontSize: '0.78rem',
-                      fontWeight: 800
-                    }}>
-                      🏛️ {session?.institution || activeProject?.mda} ({activeProject?.projectCode})
-                    </div>
-                  ) : (
-                    <select
-                      value={selectedProjectId}
-                      onChange={(e) => {
-                        setSelectedProjectId(e.target.value);
-                        setSelectedDoc(null);
-                      }}
-                      className="form-select"
-                      style={{ width: '250px', padding: '6px 12px', fontSize: '0.8rem' }}
-                    >
-                      {projects.map(p => (
-                        <option key={p.id} value={p.id}>{p.projectCode} - {p.name} ({p.mdaCode})</option>
+                      fontSize: '0.8rem',
+                      border: isFirstTimer && !isOwnMdaProject ? '1px solid rgba(251, 191, 36, 0.6)' : undefined
+                    }}
+                  >
+                    {isFirstTimer && ownMdaProject && (
+                      <option value={ownMdaProject.id} style={{ fontWeight: 'bold' }}>
+                        🏛️ {ownMdaProject.mda} ({ownMdaProject.projectCode}) — Your Logged-In MDA
+                      </option>
+                    )}
+                    {projects
+                      .filter(p => !isFirstTimer || p.id !== ownMdaProject?.id)
+                      .map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.mda} • {p.projectCode} - {p.name}
+                        </option>
                       ))}
-                    </select>
-                  )}
+                  </select>
                 </div>
               </div>
+
+              {/* Notice for First-Timers viewing other MDAs */}
+              {isFirstTimer && !isOwnMdaProject && activeProject && (
+                <div style={{
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  background: 'rgba(234, 179, 8, 0.12)',
+                  border: '1px solid rgba(234, 179, 8, 0.35)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  marginBottom: '14px',
+                  fontSize: '0.76rem',
+                  color: '#fde68a'
+                }}>
+                  <Lock size={16} className="text-amber-400 flex-shrink-0" />
+                  <div>
+                    <strong>Viewing Submissions for {activeProject.mda} ({activeProject.projectCode})</strong>. As a first-timer/onboarder, you can see the name of the MDA and the kinds of documents sent, but document reading and downloading are restricted to the submitting MDA under Act 843.
+                  </div>
+                </div>
+              )}
 
               {activeProject && (
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -1926,89 +2245,109 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                               </div>
 
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                {canReviewAndGrade && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setReviewingItem({ doc: d, project: activeProject });
-                                    }}
-                                    style={{
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: '4px',
-                                      padding: '5px 10px',
-                                      borderRadius: '6px',
-                                      background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.3))',
-                                      border: '1px solid rgba(16, 185, 129, 0.5)',
-                                      color: '#a7f3d0',
-                                      fontSize: '0.72rem',
-                                      fontWeight: 700,
-                                      cursor: 'pointer'
-                                    }}
-                                  >
-                                    <Award size={12} />
-                                    <span>Review & Grade (Full Doc)</span>
-                                  </button>
-                                )}
-
-                                {d.signedBy.length > 0 ? (
-                                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', color: 'var(--ghana-emerald)', fontWeight: 600 }}>
-                                    <ShieldCheck className="w-4 h-4" />
-                                    <span>Signed ({d.signedBy.length})</span>
+                                {isFirstTimer && !isOwnMdaProject ? (
+                                  <span style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '5px',
+                                    padding: '5px 10px',
+                                    borderRadius: '6px',
+                                    background: 'rgba(239, 68, 68, 0.14)',
+                                    border: '1px solid rgba(239, 68, 68, 0.38)',
+                                    color: '#fca5a5',
+                                    fontSize: '0.72rem',
+                                    fontWeight: 700
+                                  }}>
+                                    <Lock size={12} />
+                                    <span>Access Restricted (Other MDA)</span>
                                   </span>
                                 ) : (
-                                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Unsigned</span>
+                                  <>
+                                    {canReviewAndGrade && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setReviewingItem({ doc: d, project: activeProject });
+                                        }}
+                                        style={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '4px',
+                                          padding: '5px 10px',
+                                          borderRadius: '6px',
+                                          background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.3))',
+                                          border: '1px solid rgba(16, 185, 129, 0.5)',
+                                          color: '#a7f3d0',
+                                          fontSize: '0.72rem',
+                                          fontWeight: 700,
+                                          cursor: 'pointer'
+                                        }}
+                                      >
+                                        <Award size={12} />
+                                        <span>Review & Grade (Full Doc)</span>
+                                      </button>
+                                    )}
+
+                                    {d.signedBy.length > 0 ? (
+                                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', color: 'var(--ghana-emerald)', fontWeight: 600 }}>
+                                        <ShieldCheck className="w-4 h-4" />
+                                        <span>Signed ({d.signedBy.length})</span>
+                                      </span>
+                                    ) : (
+                                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Unsigned</span>
+                                    )}
+
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setInspectReaderTab('full');
+                                        setInspectSectionIdx(0);
+                                        setInspectingItem({ doc: d, project: activeProject });
+                                      }}
+                                      title="Read complete uploaded document & extracted OCR text"
+                                      style={{
+                                        padding: '4px 8px',
+                                        borderRadius: '4px',
+                                        background: 'rgba(59, 130, 246, 0.16)',
+                                        border: '1px solid rgba(59, 130, 246, 0.35)',
+                                        color: '#93c5fd',
+                                        fontSize: '0.7rem',
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px'
+                                      }}
+                                    >
+                                      <BookOpen size={12} /> Read Full Document
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDownloadFullDocument(d, activeProject);
+                                      }}
+                                      title="Download full uploaded document"
+                                      style={{
+                                        padding: '4px 8px',
+                                        borderRadius: '4px',
+                                        background: 'rgba(255, 255, 255, 0.08)',
+                                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                                        color: '#fff',
+                                        fontSize: '0.7rem',
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px'
+                                      }}
+                                    >
+                                      <Download size={12} />
+                                    </button>
+                                  </>
                                 )}
-
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setInspectReaderTab('full');
-                                    setInspectSectionIdx(0);
-                                    setInspectingItem({ doc: d, project: activeProject });
-                                  }}
-                                  title="Read complete uploaded document & extracted OCR text"
-                                  style={{
-                                    padding: '4px 8px',
-                                    borderRadius: '4px',
-                                    background: 'rgba(59, 130, 246, 0.16)',
-                                    border: '1px solid rgba(59, 130, 246, 0.35)',
-                                    color: '#93c5fd',
-                                    fontSize: '0.7rem',
-                                    fontWeight: 700,
-                                    cursor: 'pointer',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '4px'
-                                  }}
-                                >
-                                  <BookOpen size={12} /> Read Full Document
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDownloadFullDocument(d, activeProject);
-                                  }}
-                                  title="Download full uploaded document"
-                                  style={{
-                                    padding: '4px 8px',
-                                    borderRadius: '4px',
-                                    background: 'rgba(255, 255, 255, 0.08)',
-                                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                                    color: '#fff',
-                                    fontSize: '0.7rem',
-                                    cursor: 'pointer',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '4px'
-                                  }}
-                                >
-                                  <Download size={12} />
-                                </button>
                               </div>
                             </div>
 
@@ -2282,11 +2621,370 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
 
           </div>
 
-          {/* RIGHT COLUMN: Digital Auditing Drawer, OCR Search, Clearance Gates */}
+          {/* RIGHT COLUMN: Dedicated Special Clearance Spaces, Digital Auditing Drawer, OCR Search */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             
-            {/* SUPER ADMIN REGISTRATION CLEARANCE SUITE (APPROVE / PEND / REJECT) */}
-            {isSuperAdmin && activeProject && (
+            {/* ============================================================================
+                SPECIAL SPACE 1: TECHNICAL CLEARANCE TEAM CLEARANCE SUITE
+                (Recommend to Technical Director + Pass Comment + Needs Correction)
+               ============================================================================ */}
+            {canAccessTechnicalClearanceGate && activeProject && (
+              <div className="glass-card" style={{
+                border: '1px solid rgba(56, 189, 248, 0.38)',
+                background: 'linear-gradient(145deg, rgba(56, 189, 248, 0.09), rgba(17, 24, 39, 0.95))',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '14px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <ShieldCheck className="w-5 h-5 text-sky-400" />
+                    <div>
+                      <h3 style={{ fontSize: '0.96rem', fontWeight: 700, margin: 0, color: '#7dd3fc' }}>
+                        Technical Clearance Team Clearance
+                      </h3>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        Step 1 • Recommend to Technical Director & Pass Review Comment
+                      </div>
+                    </div>
+                  </div>
+
+                  <span style={{
+                    fontSize: '0.68rem',
+                    padding: '2px 8px',
+                    borderRadius: '9999px',
+                    fontWeight: 700,
+                    whiteSpace: 'nowrap',
+                    background: (activeProject.technicalClearanceReview || activeProject.reviewStatus === 'Recommended to Technical Director' || activeProject.reviewStatus === 'Recommended' || activeProject.reviewStatus === 'Approved')
+                      ? 'rgba(16, 185, 129, 0.25)'
+                      : activeProject.reviewStatus === 'Needs Correction'
+                      ? 'rgba(251, 191, 36, 0.25)'
+                      : 'rgba(56, 189, 248, 0.22)',
+                    color: (activeProject.technicalClearanceReview || activeProject.reviewStatus === 'Recommended to Technical Director' || activeProject.reviewStatus === 'Recommended' || activeProject.reviewStatus === 'Approved')
+                      ? '#10b981'
+                      : activeProject.reviewStatus === 'Needs Correction'
+                      ? '#fbbf24'
+                      : '#38bdf8'
+                  }}>
+                    {(activeProject.technicalClearanceReview || activeProject.reviewStatus === 'Recommended to Technical Director' || activeProject.reviewStatus === 'Recommended' || activeProject.reviewStatus === 'Approved')
+                      ? '✓ Recommended to Tech Director'
+                      : activeProject.reviewStatus === 'Needs Correction'
+                      ? 'Needs Correction'
+                      : 'Awaiting Step 1 Screening'}
+                  </span>
+                </div>
+
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>
+                  Screen uploaded compliance documents and OCR transcripts, pass official Technical Clearance Team comments, and recommend the project to the <strong>Technical Director</strong>:
+                </p>
+
+                {/* Recorded Technical Clearance Team Comment / Recommendation Box */}
+                {activeProject.technicalClearanceReview && (
+                  <div style={{
+                    padding: '9px 11px',
+                    borderRadius: '8px',
+                    background: 'rgba(56, 189, 248, 0.08)',
+                    border: '1px solid rgba(56, 189, 248, 0.28)',
+                    fontSize: '0.73rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#7dd3fc', fontWeight: 700, fontSize: '0.68rem' }}>
+                      <span>Recorded by: {activeProject.technicalClearanceReview.reviewerName}</span>
+                      <span>{activeProject.technicalClearanceReview.reviewedAt}</span>
+                    </div>
+                    <div style={{ color: '#e0f2fe', fontStyle: 'italic' }}>
+                      "{activeProject.technicalClearanceReview.recommendationNotes}"
+                    </div>
+                  </div>
+                )}
+
+                {(isTechClearanceTeam || isSuperAdmin) ? (
+                  <>
+                    <textarea
+                      rows={2}
+                      value={techClearanceNotes}
+                      onChange={(e) => setTechClearanceNotes(e.target.value)}
+                      placeholder="Enter Technical Clearance Team comments, Act 843/771 screening observations, or recommendation notes to the Technical Director..."
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: '6px',
+                        background: 'rgba(255, 255, 255, 0.04)',
+                        border: '1px solid rgba(56, 189, 248, 0.28)',
+                        color: '#fff',
+                        fontSize: '0.78rem',
+                        outline: 'none',
+                        resize: 'none'
+                      }}
+                    />
+
+                    {/* 3 Technical Clearance Team Actions: Recommend to Technical Director, Pass Comment, Needs Correction */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1.35fr 1fr 1fr', gap: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleTechClearanceTeamDecision('Recommended to Technical Director')}
+                        style={{
+                          padding: '9px 8px',
+                          borderRadius: '6px',
+                          background: 'linear-gradient(135deg, #38bdf8, #0284c7)',
+                          color: '#06131f',
+                          fontWeight: 800,
+                          fontSize: '0.73rem',
+                          border: 'none',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <ArrowRight size={13} /> Recommend to Tech Director
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleTechClearanceTeamDecision('Comment Only')}
+                        style={{
+                          padding: '9px 8px',
+                          borderRadius: '6px',
+                          background: 'rgba(56, 189, 248, 0.16)',
+                          border: '1px solid rgba(56, 189, 248, 0.42)',
+                          color: '#bae6fd',
+                          fontWeight: 700,
+                          fontSize: '0.73rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <MessageSquare size={13} /> Pass Comment
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleTechClearanceTeamDecision('Needs Correction')}
+                        style={{
+                          padding: '9px 8px',
+                          borderRadius: '6px',
+                          background: 'rgba(245, 158, 11, 0.18)',
+                          border: '1px solid rgba(245, 158, 11, 0.4)',
+                          color: '#fde68a',
+                          fontWeight: 700,
+                          fontSize: '0.73rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <RotateCcw size={13} /> Needs Correction
+                      </button>
+                    </div>
+
+                    {techClearanceFeedback && (
+                      <div style={{ fontSize: '0.72rem', color: '#38bdf8', textAlign: 'center', fontWeight: 700 }}>
+                        ✓ {techClearanceFeedback}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                    {activeProject.technicalClearanceReview
+                      ? '✓ Technical Clearance Team has completed Step 1 recommendation to the Technical Director.'
+                      : '⏳ Waiting for Technical Clearance Team to complete Step 1 screening and recommend to Technical Director.'}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ============================================================================
+                SPECIAL SPACE 2: TECHNICAL DIRECTOR RECOMMENDATION SUITE
+                (Recommend to Director General + Pass Comment + Return for Correction)
+               ============================================================================ */}
+            {canAccessTechnicalClearanceGate && activeProject && (
+              <div className="glass-card" style={{
+                border: '1px solid rgba(16, 185, 129, 0.38)',
+                background: 'linear-gradient(145deg, rgba(16, 185, 129, 0.09), rgba(17, 24, 39, 0.95))',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '14px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Award className="w-5 h-5 text-emerald-400" />
+                    <div>
+                      <h3 style={{ fontSize: '0.96rem', fontWeight: 700, margin: 0, color: '#6ee7b7' }}>
+                        Technical Director Recommendation
+                      </h3>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        Step 2 • Recommend to Director General & Pass Review Comment
+                      </div>
+                    </div>
+                  </div>
+
+                  <span style={{
+                    fontSize: '0.68rem',
+                    padding: '2px 8px',
+                    borderRadius: '9999px',
+                    fontWeight: 700,
+                    whiteSpace: 'nowrap',
+                    background: (activeProject.technicalDirectorReview || activeProject.reviewStatus === 'Recommended' || activeProject.reviewStatus === 'Approved')
+                      ? 'rgba(251, 191, 36, 0.25)'
+                      : activeProject.reviewStatus === 'Recommended to Technical Director'
+                      ? 'rgba(16, 185, 129, 0.25)'
+                      : 'rgba(148, 163, 184, 0.2)',
+                    color: (activeProject.technicalDirectorReview || activeProject.reviewStatus === 'Recommended' || activeProject.reviewStatus === 'Approved')
+                      ? '#fbbf24'
+                      : activeProject.reviewStatus === 'Recommended to Technical Director'
+                      ? '#10b981'
+                      : '#94a3b8'
+                  }}>
+                    {(activeProject.technicalDirectorReview || activeProject.reviewStatus === 'Recommended' || activeProject.reviewStatus === 'Approved')
+                      ? '✓ Recommended to Director General'
+                      : activeProject.reviewStatus === 'Recommended to Technical Director'
+                      ? '⚡ Ready for Tech Director'
+                      : 'Awaiting Step 1'}
+                  </span>
+                </div>
+
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>
+                  Review the Technical Clearance Team's findings, pass official Technical Director comments, and recommend the project to the <strong>Director General</strong> for final sign-off:
+                </p>
+
+                {/* Recorded Technical Director Comment / Recommendation Box */}
+                {activeProject.technicalDirectorReview && (
+                  <div style={{
+                    padding: '9px 11px',
+                    borderRadius: '8px',
+                    background: 'rgba(16, 185, 129, 0.08)',
+                    border: '1px solid rgba(16, 185, 129, 0.28)',
+                    fontSize: '0.73rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#6ee7b7', fontWeight: 700, fontSize: '0.68rem' }}>
+                      <span>Endorsed by: {activeProject.technicalDirectorReview.reviewerName}</span>
+                      <span>{activeProject.technicalDirectorReview.reviewedAt}</span>
+                    </div>
+                    <div style={{ color: '#d1fae5', fontStyle: 'italic' }}>
+                      "{activeProject.technicalDirectorReview.recommendationNotes}"
+                    </div>
+                  </div>
+                )}
+
+                {(isTechDirector || isSuperAdmin) ? (
+                  <>
+                    <textarea
+                      rows={2}
+                      value={techDirectorNotes}
+                      onChange={(e) => setTechDirectorNotes(e.target.value)}
+                      placeholder="Enter Technical Director comments, architectural endorsement notes, or recommendation summary to the Director General..."
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: '6px',
+                        background: 'rgba(255, 255, 255, 0.04)',
+                        border: '1px solid rgba(16, 185, 129, 0.28)',
+                        color: '#fff',
+                        fontSize: '0.78rem',
+                        outline: 'none',
+                        resize: 'none'
+                      }}
+                    />
+
+                    {/* 3 Technical Director Actions: Recommend to Director General, Pass Comment, Return for Correction */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1.35fr 1fr 1fr', gap: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleTechDirectorDecision('Recommended')}
+                        style={{
+                          padding: '9px 8px',
+                          borderRadius: '6px',
+                          background: 'linear-gradient(135deg, var(--ghana-emerald), #059669)',
+                          color: '#0b0f19',
+                          fontWeight: 800,
+                          fontSize: '0.73rem',
+                          border: 'none',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <ArrowRight size={13} /> Recommend to DG
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleTechDirectorDecision('Comment Only')}
+                        style={{
+                          padding: '9px 8px',
+                          borderRadius: '6px',
+                          background: 'rgba(16, 185, 129, 0.16)',
+                          border: '1px solid rgba(16, 185, 129, 0.42)',
+                          color: '#a7f3d0',
+                          fontWeight: 700,
+                          fontSize: '0.73rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <MessageSquare size={13} /> Pass Comment
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleTechDirectorDecision('Needs Correction')}
+                        style={{
+                          padding: '9px 8px',
+                          borderRadius: '6px',
+                          background: 'rgba(245, 158, 11, 0.18)',
+                          border: '1px solid rgba(245, 158, 11, 0.4)',
+                          color: '#fde68a',
+                          fontWeight: 700,
+                          fontSize: '0.73rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <RotateCcw size={13} /> Return Correction
+                      </button>
+                    </div>
+
+                    {techDirectorFeedback && (
+                      <div style={{ fontSize: '0.72rem', color: '#10b981', textAlign: 'center', fontWeight: 700 }}>
+                        ✓ {techDirectorFeedback}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                    {activeProject.technicalDirectorReview
+                      ? '✓ Technical Director has recommended this project to the Director General.'
+                      : '⏳ Waiting for Technical Director endorsement and recommendation to the Director General.'}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ============================================================================
+                SPECIAL SPACE 3: SUPER ADMIN / DIRECTOR GENERAL REGISTRATION CLEARANCE
+                (Approve / Pend / Reject -> Published on Dashboard)
+               ============================================================================ */}
+            {(isSuperAdmin || isDirectorGeneral) && activeProject && (
               <div className="glass-card" style={{
                 border: '1px solid rgba(239, 68, 68, 0.35)',
                 background: 'linear-gradient(145deg, rgba(239, 68, 68, 0.08), rgba(17, 24, 39, 0.95))',
@@ -2299,10 +2997,10 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                     <ShieldAlert className="w-5 h-5 text-red-400" />
                     <div>
                       <h3 style={{ fontSize: '0.98rem', fontWeight: 700, margin: 0, color: '#fca5a5' }}>
-                        Super Admin Registration Clearance
+                        {isDirectorGeneral ? 'Director General Final Verdict Clearance' : 'Super Admin Registration Clearance'}
                       </h3>
                       <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                        Statutory authority to Approve, Pend, or Reject project registration
+                        Step 3 • Statutory authority to Approve, Pend, or Reject project registration (Published on Dashboard)
                       </div>
                     </div>
                   </div>
@@ -2314,14 +3012,14 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                     fontWeight: 700,
                     background: activeProject.reviewStatus === 'Approved'
                       ? 'rgba(16, 185, 129, 0.25)'
-                      : activeProject.reviewStatus === 'Pending'
+                      : activeProject.reviewStatus === 'Pending' || activeProject.reviewStatus === 'Returned'
                       ? 'rgba(251, 191, 36, 0.25)'
                       : activeProject.reviewStatus === 'Rejected'
                       ? 'rgba(239, 68, 68, 0.25)'
                       : 'rgba(59, 130, 246, 0.25)',
                     color: activeProject.reviewStatus === 'Approved'
                       ? '#10b981'
-                      : activeProject.reviewStatus === 'Pending'
+                      : activeProject.reviewStatus === 'Pending' || activeProject.reviewStatus === 'Returned'
                       ? '#fbbf24'
                       : activeProject.reviewStatus === 'Rejected'
                       ? '#f87171'
@@ -2332,14 +3030,35 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                 </div>
 
                 <p style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', margin: 0 }}>
-                  After reviewing all uploaded documents and the auto-generated Governance & Ethics and AI Readiness ratings above, execute the final registration decree:
+                  After reviewing the Technical Clearance Team and Technical Director recommendations along with the Governance & Ethics and AI Readiness ratings, execute the final registration decree:
                 </p>
+
+                {activeProject.dgFinalVerdict && (
+                  <div style={{
+                    padding: '9px 11px',
+                    borderRadius: '8px',
+                    background: 'rgba(239, 68, 68, 0.08)',
+                    border: '1px solid rgba(239, 68, 68, 0.28)',
+                    fontSize: '0.73rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#fca5a5', fontWeight: 700, fontSize: '0.68rem' }}>
+                      <span>Signed by: {activeProject.dgFinalVerdict.signedByName} [{activeProject.dgFinalVerdict.finalStatusLabel}]</span>
+                      <span>{activeProject.dgFinalVerdict.signedAt}</span>
+                    </div>
+                    <div style={{ color: '#fee2e2', fontStyle: 'italic' }}>
+                      "{activeProject.dgFinalVerdict.reasons}"
+                    </div>
+                  </div>
+                )}
 
                 <textarea
                   rows={2}
                   value={superAdminDirectiveNotes}
                   onChange={(e) => setSuperAdminDirectiveNotes(e.target.value)}
-                  placeholder="Enter official Super Admin registration directive, required amendments, or statutory approval comments..."
+                  placeholder="Enter official Super Admin / Director General registration directive, required amendments, or statutory approval comments..."
                   style={{
                     width: '100%',
                     padding: '8px 10px',
@@ -2427,398 +3146,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
               </div>
             )}
 
-            {/* TECHNICAL CLEARANCE GATE: 3-TIER STATUTORY CHAIN (Tech Clearance Team -> Tech Director -> Director General -> Dashboard) */}
-            {canAccessTechnicalClearanceGate ? (
-              activeProject && (
-                <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', border: '1px solid rgba(16, 185, 129, 0.32)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Award className="w-4 h-4 text-emerald-400" />
-                      <div>
-                        <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0 }}>
-                          Statutory 3-Tier Clearance & Recommendation Gate
-                        </h3>
-                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                          Tech Clearance Team → Technical Director → Director General Final Sign-Off
-                        </div>
-                      </div>
-                    </div>
-                    <span style={{
-                      fontSize: '0.68rem',
-                      padding: '2px 8px',
-                      borderRadius: '9999px',
-                      fontWeight: 700,
-                      background: activeProject.reviewStatus === 'Approved'
-                        ? 'rgba(16, 185, 129, 0.2)'
-                        : activeProject.reviewStatus === 'Recommended'
-                        ? 'rgba(251, 191, 36, 0.2)'
-                        : activeProject.reviewStatus === 'Recommended to Technical Director'
-                        ? 'rgba(56, 189, 248, 0.2)'
-                        : activeProject.reviewStatus === 'Rejected'
-                        ? 'rgba(239, 68, 68, 0.2)'
-                        : 'rgba(59, 130, 246, 0.2)',
-                      color: activeProject.reviewStatus === 'Approved'
-                        ? '#10b981'
-                        : activeProject.reviewStatus === 'Recommended'
-                        ? '#fbbf24'
-                        : activeProject.reviewStatus === 'Recommended to Technical Director'
-                        ? '#38bdf8'
-                        : activeProject.reviewStatus === 'Rejected'
-                        ? '#f87171'
-                        : '#60a5fa'
-                    }}>
-                      {activeProject.reviewStatus === 'Recommended'
-                        ? 'Recommended to Director General'
-                        : activeProject.reviewStatus || 'Under Technical Review'}
-                    </span>
-                  </div>
-
-                  {/* Live 3-Step Pipeline Tracker */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '10px 12px', borderRadius: '8px', background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                    {/* Step 1: Technical Clearance Team -> Technical Director */}
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', fontSize: '0.72rem' }}>
-                      <div>
-                        <div style={{ fontWeight: 700, color: (activeProject.technicalClearanceReview || activeProject.reviewStatus === 'Recommended to Technical Director' || activeProject.reviewStatus === 'Recommended' || activeProject.reviewStatus === 'Approved') ? '#6ee7b7' : '#cbd5e1' }}>
-                          1. Technical Clearance Team → Technical Director
-                        </div>
-                        <div style={{ fontSize: '0.67rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                          {activeProject.technicalClearanceReview
-                            ? `✓ Recommended by ${activeProject.technicalClearanceReview.reviewerName}: "${activeProject.technicalClearanceReview.recommendationNotes}"`
-                            : activeProject.reviewStatus === 'Recommended to Technical Director' || activeProject.reviewStatus === 'Recommended' || activeProject.reviewStatus === 'Approved'
-                            ? '✓ Screened and recommended to Technical Director'
-                            : '⏳ Awaiting Technical Clearance Team screening & recommendation to Technical Director'}
-                        </div>
-                      </div>
-                      <span style={{
-                        fontSize: '0.64rem',
-                        fontWeight: 800,
-                        padding: '2px 7px',
-                        borderRadius: '9999px',
-                        whiteSpace: 'nowrap',
-                        background: (activeProject.technicalClearanceReview || activeProject.reviewStatus === 'Recommended to Technical Director' || activeProject.reviewStatus === 'Recommended' || activeProject.reviewStatus === 'Approved')
-                          ? 'rgba(16, 185, 129, 0.18)'
-                          : 'rgba(255, 255, 255, 0.06)',
-                        color: (activeProject.technicalClearanceReview || activeProject.reviewStatus === 'Recommended to Technical Director' || activeProject.reviewStatus === 'Recommended' || activeProject.reviewStatus === 'Approved')
-                          ? '#10b981'
-                          : '#94a3b8'
-                      }}>
-                        {(activeProject.technicalClearanceReview || activeProject.reviewStatus === 'Recommended to Technical Director' || activeProject.reviewStatus === 'Recommended' || activeProject.reviewStatus === 'Approved')
-                          ? '✓ Recommended to TD'
-                          : 'Pending Step 1'}
-                      </span>
-                    </div>
-
-                    {/* Step 2: Technical Director -> Director General */}
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', fontSize: '0.72rem', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '7px' }}>
-                      <div>
-                        <div style={{ fontWeight: 700, color: (activeProject.technicalDirectorReview || activeProject.reviewStatus === 'Recommended' || activeProject.reviewStatus === 'Approved') ? '#fde68a' : '#cbd5e1' }}>
-                          2. Technical Director → Director General
-                        </div>
-                        <div style={{ fontSize: '0.67rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                          {activeProject.technicalDirectorReview
-                            ? `✓ Endorsed by ${activeProject.technicalDirectorReview.reviewerName}: "${activeProject.technicalDirectorReview.recommendationNotes}"`
-                            : activeProject.reviewStatus === 'Recommended' || activeProject.reviewStatus === 'Approved'
-                            ? '✓ Endorsed by Technical Director and recommended to Director General'
-                            : activeProject.reviewStatus === 'Recommended to Technical Director'
-                            ? '⚡ Ready for Technical Director endorsement to Director General'
-                            : '⏳ Awaiting Step 1 recommendation from Technical Clearance Team'}
-                        </div>
-                      </div>
-                      <span style={{
-                        fontSize: '0.64rem',
-                        fontWeight: 800,
-                        padding: '2px 7px',
-                        borderRadius: '9999px',
-                        whiteSpace: 'nowrap',
-                        background: (activeProject.technicalDirectorReview || activeProject.reviewStatus === 'Recommended' || activeProject.reviewStatus === 'Approved')
-                          ? 'rgba(251, 191, 36, 0.2)'
-                          : activeProject.reviewStatus === 'Recommended to Technical Director'
-                          ? 'rgba(56, 189, 248, 0.18)'
-                          : 'rgba(255, 255, 255, 0.06)',
-                        color: (activeProject.technicalDirectorReview || activeProject.reviewStatus === 'Recommended' || activeProject.reviewStatus === 'Approved')
-                          ? '#fbbf24'
-                          : activeProject.reviewStatus === 'Recommended to Technical Director'
-                          ? '#38bdf8'
-                          : '#94a3b8'
-                      }}>
-                        {(activeProject.technicalDirectorReview || activeProject.reviewStatus === 'Recommended' || activeProject.reviewStatus === 'Approved')
-                          ? '✓ Recommended to DG'
-                          : activeProject.reviewStatus === 'Recommended to Technical Director'
-                          ? 'Ready for TD'
-                          : 'Pending Step 2'}
-                      </span>
-                    </div>
-
-                    {/* Step 3: Director General Final Sign-Off -> Dashboard */}
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', fontSize: '0.72rem', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '7px' }}>
-                      <div>
-                        <div style={{ fontWeight: 700, color: activeProject.dgFinalVerdict ? '#10b981' : '#cbd5e1' }}>
-                          3. Director General Final Verdict → Published on Dashboard
-                        </div>
-                        <div style={{ fontSize: '0.67rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                          {activeProject.dgFinalVerdict
-                            ? `✓ Signed by ${activeProject.dgFinalVerdict.signedByName} [${activeProject.dgFinalVerdict.finalStatusLabel.toUpperCase()}] — Live on National AI Dashboard: "${activeProject.dgFinalVerdict.reasons}"`
-                            : activeProject.reviewStatus === 'Recommended'
-                            ? '⚡ Recommended by Technical Director — Awaiting Director General Final Verdict Sign-Off'
-                            : '⏳ Awaiting Technical Director recommendation to Director General'}
-                        </div>
-                      </div>
-                      <span style={{
-                        fontSize: '0.64rem',
-                        fontWeight: 800,
-                        padding: '2px 7px',
-                        borderRadius: '9999px',
-                        whiteSpace: 'nowrap',
-                        background: activeProject.dgFinalVerdict
-                          ? activeProject.dgFinalVerdict.finalStatusLabel === 'Approved'
-                            ? 'rgba(16, 185, 129, 0.22)'
-                            : activeProject.dgFinalVerdict.finalStatusLabel === 'Rejected'
-                            ? 'rgba(239, 68, 68, 0.22)'
-                            : 'rgba(245, 158, 11, 0.22)'
-                          : 'rgba(255, 255, 255, 0.06)',
-                        color: activeProject.dgFinalVerdict
-                          ? activeProject.dgFinalVerdict.finalStatusLabel === 'Approved'
-                            ? '#10b981'
-                            : activeProject.dgFinalVerdict.finalStatusLabel === 'Rejected'
-                            ? '#f87171'
-                            : '#fbbf24'
-                          : '#94a3b8'
-                      }}>
-                        {activeProject.dgFinalVerdict
-                          ? `✓ DG: ${activeProject.dgFinalVerdict.finalStatusLabel}`
-                          : 'Awaiting DG'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {onUpdateProjectStatus && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      <textarea
-                        rows={2}
-                        value={techNotes}
-                        onChange={(e) => setTechNotes(e.target.value)}
-                        placeholder={
-                          isTechClearanceTeam
-                            ? 'Enter Technical Clearance Team screening notes for recommendation to the Technical Director...'
-                            : isTechDirector
-                            ? 'Enter Technical Director endorsement notes for recommendation to the Director General...'
-                            : 'Enter statutory clearance notes, recommendation summary, or Director General final verdict rationale...'
-                        }
-                        style={{
-                          width: '100%',
-                          padding: '8px 10px',
-                          borderRadius: '6px',
-                          background: 'rgba(255, 255, 255, 0.04)',
-                          border: '1px solid rgba(255, 255, 255, 0.1)',
-                          color: '#fff',
-                          fontSize: '0.78rem',
-                          outline: 'none',
-                          resize: 'none'
-                        }}
-                      />
-
-                      {/* Role-Specific Recommendation Buttons */}
-                      {isTechClearanceTeam && (
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateStatus('Recommended to Technical Director')}
-                            style={{
-                              padding: '9px 10px',
-                              borderRadius: '6px',
-                              background: 'linear-gradient(135deg, #38bdf8, #0284c7)',
-                              color: '#06131f',
-                              fontWeight: 800,
-                              fontSize: '0.75rem',
-                              border: 'none',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '4px'
-                            }}
-                          >
-                            <ArrowRight size={13} /> Recommend to Technical Director
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateStatus('Needs Correction')}
-                            style={{
-                              padding: '9px 10px',
-                              borderRadius: '6px',
-                              background: 'rgba(245, 158, 11, 0.15)',
-                              border: '1px solid rgba(245, 158, 11, 0.3)',
-                              color: '#fde68a',
-                              fontWeight: 600,
-                              fontSize: '0.75rem',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '4px'
-                            }}
-                          >
-                            <RotateCcw size={13} /> Needs Correction
-                          </button>
-                        </div>
-                      )}
-
-                      {isTechDirector && (
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateStatus('Recommended')}
-                            style={{
-                              padding: '9px 10px',
-                              borderRadius: '6px',
-                              background: 'linear-gradient(135deg, var(--ghana-emerald), #059669)',
-                              color: '#0b0f19',
-                              fontWeight: 800,
-                              fontSize: '0.75rem',
-                              border: 'none',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '4px'
-                            }}
-                          >
-                            <ArrowRight size={13} /> Recommend to Director General
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateStatus('Needs Correction')}
-                            style={{
-                              padding: '9px 10px',
-                              borderRadius: '6px',
-                              background: 'rgba(245, 158, 11, 0.15)',
-                              border: '1px solid rgba(245, 158, 11, 0.3)',
-                              color: '#fde68a',
-                              fontWeight: 600,
-                              fontSize: '0.75rem',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '4px'
-                            }}
-                          >
-                            <RotateCcw size={13} /> Return for Correction
-                          </button>
-                        </div>
-                      )}
-
-                      {(isSuperAdmin || isDirectorGeneral) && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                            <button
-                              type="button"
-                              onClick={() => handleUpdateStatus('Recommended to Technical Director')}
-                              style={{
-                                padding: '8px 10px',
-                                borderRadius: '6px',
-                                background: 'rgba(56, 189, 248, 0.18)',
-                                border: '1px solid rgba(56, 189, 248, 0.45)',
-                                color: '#7dd3fc',
-                                fontWeight: 700,
-                                fontSize: '0.73rem',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '4px'
-                              }}
-                            >
-                              <ArrowRight size={13} /> 1. Tech Clearance → Recommend to Tech Director
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleUpdateStatus('Recommended')}
-                              style={{
-                                padding: '8px 10px',
-                                borderRadius: '6px',
-                                background: 'linear-gradient(135deg, var(--ghana-emerald), #059669)',
-                                color: '#0b0f19',
-                                fontWeight: 800,
-                                fontSize: '0.73rem',
-                                border: 'none',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '4px'
-                              }}
-                            >
-                              <ArrowRight size={13} /> 2. Tech Director → Recommend to DG
-                            </button>
-                          </div>
-
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
-                            <button
-                              type="button"
-                              onClick={() => handleUpdateStatus('Approved')}
-                              style={{
-                                padding: '8px 8px',
-                                borderRadius: '6px',
-                                background: 'rgba(16, 185, 129, 0.2)',
-                                border: '1px solid rgba(16, 185, 129, 0.5)',
-                                color: '#6ee7b7',
-                                fontWeight: 800,
-                                fontSize: '0.7rem',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              ✓ 3. DG Sign & Approve (Dashboard)
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleUpdateStatus('Returned')}
-                              style={{
-                                padding: '8px 8px',
-                                borderRadius: '6px',
-                                background: 'rgba(245, 158, 11, 0.18)',
-                                border: '1px solid rgba(245, 158, 11, 0.45)',
-                                color: '#fde68a',
-                                fontWeight: 700,
-                                fontSize: '0.7rem',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              ⚠ DG: Needs Understanding
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleUpdateStatus('Rejected')}
-                              style={{
-                                padding: '8px 8px',
-                                borderRadius: '6px',
-                                background: 'rgba(239, 68, 68, 0.18)',
-                                border: '1px solid rgba(239, 68, 68, 0.45)',
-                                color: '#fca5a5',
-                                fontWeight: 700,
-                                fontSize: '0.7rem',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              ✕ DG Sign & Reject
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {statusFeedback && (
-                        <div style={{ fontSize: '0.72rem', color: '#10b981', textAlign: 'center', fontWeight: 700 }}>
-                          ✓ {statusFeedback}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )
-            ) : isFirstTimer ? (
+            {!canAccessTechnicalClearanceGate && isFirstTimer ? (
               /* Notice explaining that Technical Clearance Gate is strictly restricted for First-Timers */
               <div className="glass-card" style={{
                 border: '1px solid rgba(251, 191, 36, 0.3)',
@@ -2834,7 +3162,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                 </div>
                 <p style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
                   First-Timer Onboarding Mode does not have access to Technical Clearance Gate controls or role activation. 
-                  Super Admin will review your uploaded documents and decide project registration.
+                  The Technical Clearance Team, Technical Director, and Director General / Super Admin will review your uploaded documents and decide project registration.
                 </p>
               </div>
             ) : null}
@@ -2892,6 +3220,62 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
               <h3 style={{ fontSize: '0.98rem', fontWeight: 700, marginBottom: '16px' }}>Digital Auditing & Full Document Drawer</h3>
               
               {selectedDoc ? (
+                isFirstTimer && !isOwnMdaProject ? (
+                  <div style={{
+                    padding: '20px 16px',
+                    borderRadius: '12px',
+                    background: 'rgba(239, 68, 68, 0.08)',
+                    border: '1px solid rgba(239, 68, 68, 0.35)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px',
+                    textAlign: 'left'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#f87171' }}>
+                      <Lock size={22} />
+                      <div>
+                        <div style={{ fontSize: '0.9rem', fontWeight: 800 }}>Document Content Protected</div>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Ghana Data Protection Act (Act 843) Sovereign Isolation</div>
+                      </div>
+                    </div>
+
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+                      You are viewing submission metadata for <strong>{activeProject.mda}</strong>:
+                      <div style={{ marginTop: '8px', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div><strong>Document:</strong> {selectedDoc.fileName}</div>
+                        <div><strong>Kind / Classification:</strong> {selectedDoc.documentCategory || 'Institutional Compliance Dossier'}</div>
+                        <div><strong>Format:</strong> {selectedDoc.fileType.toUpperCase()} ({selectedDoc.pageCount || 6} Pages • {selectedDoc.fileSize || '1.8 MB'})</div>
+                        <div><strong>Statutory Status:</strong> {selectedDoc.reviewStatus || 'Pending Review'}</div>
+                        <div><strong>Submitting MDA:</strong> {activeProject.mda} ({activeProject.mdaCode})</div>
+                      </div>
+                      <p style={{ marginTop: '10px', fontSize: '0.72rem', color: '#fca5a5', lineHeight: 1.5 }}>
+                        🔒 Under Act 843, onboarders can view the names of MDAs and the kinds of documents sent, but are not authorized to view, read, or download the document contents of other institutions.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled
+                      style={{
+                        padding: '9px',
+                        borderRadius: '6px',
+                        background: 'rgba(239, 68, 68, 0.14)',
+                        border: '1px solid rgba(239, 68, 68, 0.35)',
+                        color: '#fca5a5',
+                        fontSize: '0.76rem',
+                        fontWeight: 700,
+                        cursor: 'not-allowed',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <Lock size={13} />
+                      <span>Document Access Restricted (Other MDA)</span>
+                    </button>
+                  </div>
+                ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
                   <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
                     {selectedDoc.fileName}
@@ -3004,6 +3388,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                   </div>
 
                 </div>
+                )
               ) : (
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', textAlign: 'center', padding: '10px' }}>
                   <HelpCircle className="w-10 h-10 text-slate-500 mb-8" />
@@ -3084,26 +3469,44 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <button
-                  type="button"
-                  onClick={() => handleDownloadFullDocument(inspectingItem.doc, inspectingItem.project)}
-                  style={{
-                    background: 'rgba(59, 130, 246, 0.16)',
-                    border: '1px solid rgba(59, 130, 246, 0.4)',
-                    color: '#93c5fd',
-                    borderRadius: '8px',
-                    padding: '6px 12px',
-                    cursor: 'pointer',
-                    fontSize: '0.74rem',
-                    fontWeight: 700,
+                {isFirstTimer && (inspectingItem.project.mda || '').toLowerCase() !== (session?.institution || '').toLowerCase() ? (
+                  <span style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '6px'
-                  }}
-                >
-                  <Download size={14} />
-                  <span>Download Full Document</span>
-                </button>
+                    gap: '6px',
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    background: 'rgba(239, 68, 68, 0.16)',
+                    border: '1px solid rgba(239, 68, 68, 0.35)',
+                    color: '#fca5a5',
+                    fontSize: '0.74rem',
+                    fontWeight: 700
+                  }}>
+                    <Lock size={14} />
+                    <span>Download Restricted (Act 843)</span>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadFullDocument(inspectingItem.doc, inspectingItem.project)}
+                    style={{
+                      background: 'rgba(59, 130, 246, 0.16)',
+                      border: '1px solid rgba(59, 130, 246, 0.4)',
+                      color: '#93c5fd',
+                      borderRadius: '8px',
+                      padding: '6px 12px',
+                      cursor: 'pointer',
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <Download size={14} />
+                    <span>Download Full Document</span>
+                  </button>
+                )}
 
                 <button
                   type="button"
@@ -3158,6 +3561,96 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
               </div>
             </div>
 
+            {/* If inspecting another MDA as a first timer, show locked statutory screen */}
+            {isFirstTimer && (inspectingItem.project.mda || '').toLowerCase() !== (session?.institution || '').toLowerCase() ? (
+              <div style={{
+                flex: 1,
+                minHeight: '340px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.85) 0%, rgba(10, 15, 30, 0.95) 100%)',
+                borderRadius: '10px',
+                border: '1px solid rgba(239, 68, 68, 0.35)',
+                padding: '32px 24px',
+                textAlign: 'center',
+                gap: '16px'
+              }}>
+                <div style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '50%',
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  border: '1px solid rgba(239, 68, 68, 0.4)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#f87171'
+                }}>
+                  <Lock size={32} />
+                </div>
+
+                <div>
+                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff', marginBottom: '6px' }}>
+                    Ghana Data Protection Act 2012 (Act 843) Confidentiality Protection
+                  </div>
+                  <div style={{ fontSize: '0.82rem', color: '#fca5a5', fontWeight: 600 }}>
+                    Statutory Document Payload Restricted to {inspectingItem.project.mda}
+                  </div>
+                </div>
+
+                <div style={{
+                  background: 'rgba(0, 0, 0, 0.45)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '10px',
+                  padding: '16px 20px',
+                  maxWidth: '600px',
+                  width: '100%',
+                  fontSize: '0.78rem',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, 1fr)',
+                  gap: '12px',
+                  textAlign: 'left'
+                }}>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)' }}>Originating Agency: </span>
+                    <strong style={{ color: '#fff' }}>{inspectingItem.project.mda}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)' }}>Registered Project: </span>
+                    <strong style={{ color: 'var(--ghana-emerald)' }}>{inspectingItem.project.projectCode}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)' }}>Document Filename: </span>
+                    <strong style={{ color: '#fff' }}>{inspectingItem.doc.fileName}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)' }}>Document Category: </span>
+                    <strong style={{ color: '#fbbf24' }}>{inspectingItem.doc.documentCategory || 'Statutory Project Document'}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)' }}>Format & Size: </span>
+                    <strong style={{ color: '#93c5fd' }}>{inspectingItem.doc.fileType.toUpperCase()} • {inspectingItem.doc.fileSize || 'Standard Archive'}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)' }}>Statutory Review: </span>
+                    <strong style={{ color: '#10b981' }}>{inspectingItem.doc.reviewStatus || 'Submitted & Registered'}</strong>
+                  </div>
+                </div>
+
+                <p style={{
+                  fontSize: '0.78rem',
+                  color: 'var(--text-secondary)',
+                  lineHeight: 1.6,
+                  maxWidth: '560px',
+                  margin: 0
+                }}>
+                  First-timers and onboarders from <strong>{session?.institution || 'other MDAs'}</strong> are granted transparency into the national repository to observe which government institutions have filed required compliance documents and their respective categories. However, raw document reading, OCR extraction text, and binary downloads are restricted exclusively to the originating MDA and the National Technical Clearance Team.
+                </p>
+              </div>
+            ) : (
+              <>
             {/* Reader Mode Tabs & Search */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
@@ -3308,6 +3801,8 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                 );
               })()}
             </div>
+            </>
+            )}
 
             {/* Modal Footer with Review & Grade Action */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: '12px', flexWrap: 'wrap', gap: '10px' }}>

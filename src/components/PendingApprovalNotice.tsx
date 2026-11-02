@@ -1,9 +1,9 @@
 import React from 'react';
 import { 
-  Clock, 
   LayoutDashboard, 
   Map, 
-  MessageSquareCode
+  MessageSquareCode,
+  Lock
 } from 'lucide-react';
 import { UserSession } from '../data/authTypes';
 
@@ -43,15 +43,15 @@ export const PendingApprovalNotice: React.FC<PendingApprovalNoticeProps> = ({
           width: '64px',
           height: '64px',
           borderRadius: '18px',
-          background: 'rgba(234, 179, 8, 0.15)',
-          border: '1px solid rgba(234, 179, 8, 0.4)',
+          background: 'rgba(239, 68, 68, 0.15)',
+          border: '1px solid rgba(239, 68, 68, 0.45)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           margin: '0 auto',
-          color: 'var(--ghana-gold)'
+          color: '#f87171'
         }}>
-          <Clock size={32} />
+          <Lock size={32} />
         </div>
 
         <div>
@@ -59,14 +59,18 @@ export const PendingApprovalNotice: React.FC<PendingApprovalNoticeProps> = ({
             fontSize: '0.74rem',
             padding: '4px 14px',
             borderRadius: '9999px',
-            background: 'rgba(234, 179, 8, 0.15)',
-            border: '1px solid rgba(234, 179, 8, 0.35)',
-            color: '#fde68a',
+            background: 'rgba(239, 68, 68, 0.15)',
+            border: '1px solid rgba(239, 68, 68, 0.4)',
+            color: '#fca5a5',
             fontWeight: 800,
             letterSpacing: '0.06em',
-            textTransform: 'uppercase'
+            textTransform: 'uppercase',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px'
           }}>
-            Module Access Restricted • Statutory Review In Progress
+            <Lock size={12} />
+            <span>Module Locked • Statutory Review In Progress</span>
           </span>
 
           {/* Exact phrase requested */}
@@ -88,7 +92,7 @@ export const PendingApprovalNotice: React.FC<PendingApprovalNoticeProps> = ({
             maxWidth: '560px',
             margin: '0 auto'
           }}>
-            Access to <strong>{targetModuleLabel}</strong> is restricted while your institutional project registration is pending executive approval. Our technical clearance taskforce will review your submitted files and send a confirmation email to <strong style={{ color: '#fff' }}>{session.email}</strong> once approved.
+            Access to <strong>{targetModuleLabel}</strong> is locked while your institutional project registration is pending executive approval. Our technical clearance taskforce will review your submitted files and send a confirmation email to <strong style={{ color: '#fff' }}>{session.email}</strong> once approved.
           </p>
         </div>
 

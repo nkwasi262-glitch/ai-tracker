@@ -1,9 +1,33 @@
+# Dependencies and build outputs
 node_modules
 dist
+dist-ssr
+build
+coverage
+
+# Version control and editor metadata
 .git
 .gitignore
 .gitattributes
-architecture
-README.md
-*.log
+.vscode
+.idea
 .gemini
+
+# Environment files (never bake local secrets into container images)
+.env
+.env.*
+!.env.example
+
+# Documentation not required inside container build context
+architecture
+docs
+README.md
+HANDOVER_AND_SCOPE.md
+DOKPLOY_DEPLOYMENT.md
+link.txt
+
+# Logs and OS artifacts
+*.log
+npm-debug.log*
+Thumbs.db
+.DS_Store
