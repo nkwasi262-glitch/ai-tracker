@@ -7,11 +7,11 @@ import {
   User, 
   AlertTriangle, 
   ArrowRight, 
-  Award, 
   Search, 
-  CheckCircle2, 
-  KeyRound,
-  Database
+  Database,
+  Lock,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { 
   ActiveRole, 
@@ -30,100 +30,6 @@ interface EntryGateModalProps {
   onSuccess: (session: UserSession) => void;
 }
 
-interface RoleSecurityConfig {
-  isRestricted: boolean;
-  clearanceLevel: string;
-  pin: string;
-  authorizedAgency: string;
-  badge: string;
-  color: string;
-  desc: string;
-  specificPages: string;
-}
-
-export const ROLE_SECURITY_MAP: Record<ActiveRole, RoleSecurityConfig> = {
-  'Super Admin': {
-    isRestricted: true,
-    clearanceLevel: 'Tier-1 Presidential & Security Directorate',
-    pin: 'NITA-ADMIN-2026',
-    authorizedAgency: 'NITA Cyber Security Command',
-    badge: 'Tier-1 Security Oversight',
-    color: '#ef4444',
-    desc: 'Complete system oversight, audit trails, registry CRUD, and user configurations.',
-    specificPages: 'All 12 Modules (Full Executive & System Administration)'
-  },
-  'Director General': {
-    isRestricted: true,
-    clearanceLevel: 'Executive Statutory Clearance',
-    pin: 'DG-CLEARANCE',
-    authorizedAgency: 'Director General Executive Office',
-    badge: 'Executive Statutory Clearance',
-    color: '#fbbf24',
-    desc: 'Passes final statutory verdicts, directives, and approvals on recommended AI projects.',
-    specificPages: 'DG Decision Queue, Dashboard, GIS, Finance, Reports, Audit, AI Assistant'
-  },
-  'Technical Director': {
-    isRestricted: true,
-    clearanceLevel: 'Technical Leadership Clearance',
-    pin: 'TECH-DIR-2026',
-    authorizedAgency: 'Technical Operations Directorate',
-    badge: 'Clearance Leadership',
-    color: '#6366f1',
-    desc: 'Supervises national technical evaluations, ethical rubrics, and project dossier recommendations.',
-    specificPages: 'Documents & OCR, DG Decision Queue, Registry, Governance, Readiness, Risk, Reports, Dashboard, GIS, Audit, Chat'
-  },
-  'Technical Clearance Team': {
-    isRestricted: true,
-    clearanceLevel: 'Statutory Inspector Clearance',
-    pin: 'INSPECT-2026',
-    authorizedAgency: 'AI Technical Clearance Inspection Taskforce',
-    badge: 'Technical Inspector',
-    color: '#10b981',
-    desc: 'Evaluates architectural dossiers, OCR models, data pipelines, and ethics matrices.',
-    specificPages: 'Documents & OCR, Governance & Ethics, AI Readiness, Registry, Risk, Reports, Dashboard, GIS, Audit, Chat'
-  },
-  'AI Manager': {
-    isRestricted: true,
-    clearanceLevel: 'Institutional Operations Lead',
-    pin: 'AIMANAGER-2026',
-    authorizedAgency: 'Registered MDAs / MMDAs / SOEs',
-    badge: 'Institutional Lead',
-    color: '#06b6d4',
-    desc: 'Registers and manages institutional project portfolios, milestone tracking, and readiness surveys.',
-    specificPages: 'Project Registry, Documents & OCR, Governance, AI Readiness, Risk, Reports, Dashboard, GIS, Chat'
-  },
-  'Finance Minister': {
-    isRestricted: true,
-    clearanceLevel: 'Sovereign Fiscal Authority',
-    pin: 'MOF-FISCAL-2026',
-    authorizedAgency: 'Ministry of Finance',
-    badge: 'Fiscal Authority',
-    color: '#f59e0b',
-    desc: 'Accesses M&E dashboards, national AI budget caps, disbursements, and financial exports under Act 921.',
-    specificPages: 'Financial Suite & Exports, Fiscal Dashboard, AI Assistant'
-  },
-  'Public User': {
-    isRestricted: false,
-    clearanceLevel: 'Open Citizen Transparency',
-    pin: '',
-    authorizedAgency: 'General Public',
-    badge: 'Open Citizen Access',
-    color: '#94a3b8',
-    desc: 'General public overview of transparent AI initiatives, regional deployments, and GIS map.',
-    specificPages: 'Transparent Dashboard, GIS Map, Regulatory Assistant'
-  },
-  'First-Timer / New User': {
-    isRestricted: false,
-    clearanceLevel: 'Guided Orientation Mode',
-    pin: '',
-    authorizedAgency: 'Orientation Track',
-    badge: 'Guided Orientation',
-    color: '#10b981',
-    desc: 'Initial onboarding orientation for new institutional officers submitting project documents.',
-    specificPages: 'Documents & OCR, AI Readiness, Governance & Ethics'
-  }
-};
-
 export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => {
   // Form fields
   const [fullName, setFullName] = useState('');
@@ -133,19 +39,10 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
   const [instSearch, setInstSearch] = useState('');
   const [showInstDropdown, setShowInstDropdown] = useState(false);
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [consentGiven, setConsentGiven] = useState(false);
-
-  // Selected Active Role Profile (User Type)
-  const [selectedRole, setSelectedRole] = useState<ActiveRole>(() => {
-    const last = getLastSelectedRole();
-    if (last) return last;
-    return 'Super Admin';
-  });
-
-  // Statutory PIN security state
-  const [enteredPin, setEnteredPin] = useState('');
-  const [pinVerified, setPinVerified] = useState(false);
 
   // Postgres DB State: Auto-detection of existing user type
   const [isCheckingDb, setIsCheckingDb] = useState(false);
@@ -175,10 +72,6 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
           if (found.fullName && !fullName) {
             setFullName(found.fullName);
           }
-          if (found.role) {
-            setSelectedRole(found.role);
-            setPinVerified(true);
-          }
           if (found.institution) {
             const matched = STANDARD_INSTITUTIONS.find(i => i.name.toLowerCase() === found.institution.toLowerCase());
             if (matched) {
@@ -193,7 +86,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
         } else if (active) {
           setDbUserFound(null);
         }
-      } catch (err) {
+      } catch {
         if (active) setDbUserFound(null);
       } finally {
         if (active) setIsCheckingDb(false);
@@ -231,8 +124,6 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
     setShowInstDropdown(false);
   };
 
-  const currentRoleConfig = ROLE_SECURITY_MAP[selectedRole];
-
   // Submit Handler: Saves user type to PostgreSQL DB and routes STRAIGHT to Main Page!
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -256,12 +147,10 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
       return;
     }
 
-    // 4. Role PIN check (if restricted and not pre-verified from Postgres)
-    if (currentRoleConfig.isRestricted && currentRoleConfig.pin && !pinVerified) {
-      if (enteredPin.trim().toUpperCase() !== currentRoleConfig.pin.toUpperCase()) {
-        setErrorMessage(`Invalid statutory access key / password for ${selectedRole}. Please check clearance key.`);
-        return;
-      }
+    // 4. Password validation
+    if (!password.trim()) {
+      setErrorMessage('Password is required to authenticate.');
+      return;
     }
 
     // 5. Date validation
@@ -280,16 +169,24 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
 
     const institutionName = selectedInstId === 'other' ? customInstitution.trim() : getSelectedInstName();
 
+    // Determine initial active role:
+    // 1. Preserved role from Neon Postgres DB if user previously saved
+    // 2. Or last selected role
+    // 3. Or default to Super Admin for NITA, else AI Manager
+    const assignedRole: ActiveRole = dbUserFound?.role || 
+      getLastSelectedRole() || 
+      (cleanEmail.includes('nita.gov.gh') ? 'Super Admin' : 'AI Manager');
+
     try {
       // Process submission: saves to local cache & syncs directly to Neon PostgreSQL DB
       const result: GateResult = processGateSubmission({
         fullName: fullName.trim(),
         institution: institutionName,
         institutionCategory: instCategory,
-        role: selectedRole,
+        role: assignedRole,
         email: cleanEmail,
         submissionDate: date,
-        isFirstTimer: selectedRole === 'First-Timer / New User',
+        isFirstTimer: assignedRole === 'First-Timer / New User',
         memberType: 'in_member',
         onboardingStatus: 'approved'
       });
@@ -309,10 +206,10 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
         fullName: fullName.trim(),
         institution: institutionName,
         institutionCategory: instCategory,
-        role: selectedRole,
+        role: assignedRole,
         email: cleanEmail,
         submissionDate: date,
-        isFirstTimer: selectedRole === 'First-Timer / New User',
+        isFirstTimer: assignedRole === 'First-Timer / New User',
         memberType: 'in_member',
         onboardingStatus: 'approved'
       });
@@ -336,7 +233,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
     }}>
       {/* Container Box */}
       <div style={{
-        maxWidth: '760px',
+        maxWidth: '680px',
         width: '100%',
         margin: '0 auto',
         background: 'linear-gradient(170deg, #111827 0%, #0d121f 100%)',
@@ -392,7 +289,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
               National AI Projects Registry & Monitoring System
             </h1>
             <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px', margin: 0 }}>
-              Authenticate with your institutional identity. User type and credentials are saved to PostgreSQL DB.
+              Authenticate with your institutional identity. Active role profiles are managed directly on the main page.
             </p>
           </div>
         </div>
@@ -450,7 +347,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
           </div>
         )}
 
-        {/* Unified Login & Postgres Authentication Form */}
+        {/* Login Form */}
         <form onSubmit={handleSubmit} style={{ padding: '24px 32px 32px 32px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px' }}>
             
@@ -689,7 +586,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
               />
             </div>
 
-            {/* 4. ACTIVE ROLE PROFILE (USER TYPE) */}
+            {/* 4. PASSWORD FIELD (Replaces previous Active Role Profile block) */}
             <div style={{ gridColumn: 'span 2' }}>
               <label style={{
                 display: 'flex',
@@ -699,166 +596,61 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
                 fontWeight: 700,
                 color: 'var(--text-primary)',
                 letterSpacing: '0.04em',
-                marginBottom: '8px'
+                marginBottom: '6px'
               }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Award size={14} className="text-amber-400" />
-                  <span>ACTIVE ROLE PROFILE (USER TYPE) *</span>
+                  <Lock size={14} className="text-emerald-400" />
+                  <span>PASSWORD *</span>
                 </span>
                 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                  Saved & preserved permanently in Postgres DB
+                  Institutional Access Password
                 </span>
               </label>
-
-              {/* Role Selection Grid */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
-                gap: '10px',
-                marginBottom: '12px'
-              }}>
-                {(Object.keys(ROLE_SECURITY_MAP) as ActiveRole[]).map((role) => {
-                  const cfg = ROLE_SECURITY_MAP[role];
-                  const isSelected = selectedRole === role;
-                  return (
-                    <div
-                      key={role}
-                      onClick={() => {
-                        setSelectedRole(role);
-                        setPinVerified(false);
-                      }}
-                      style={{
-                        padding: '12px 14px',
-                        borderRadius: '10px',
-                        cursor: 'pointer',
-                        border: isSelected 
-                          ? `1px solid ${cfg.color}` 
-                          : '1px solid rgba(255, 255, 255, 0.08)',
-                        background: isSelected 
-                          ? `linear-gradient(135deg, ${cfg.color}15, rgba(255,255,255,0.02))` 
-                          : 'rgba(255, 255, 255, 0.02)',
-                        transition: 'all 0.2s ease',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '4px'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: '0.84rem', fontWeight: 700, color: isSelected ? '#fff' : '#cbd5e1' }}>
-                          {role}
-                        </span>
-                        {isSelected && <CheckCircle2 size={14} style={{ color: cfg.color }} />}
-                      </div>
-                      <span style={{
-                        fontSize: '0.64rem',
-                        fontWeight: 700,
-                        color: cfg.color,
-                        letterSpacing: '0.04em'
-                      }}>
-                        {cfg.badge}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Active Role Functions & Specific Pages Summary Card */}
-              <div style={{
-                padding: '14px 18px',
-                borderRadius: '10px',
-                background: 'rgba(255, 255, 255, 0.03)',
-                border: `1px solid ${currentRoleConfig.color}40`,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{
-                      padding: '3px 8px',
-                      borderRadius: '4px',
-                      background: `${currentRoleConfig.color}25`,
-                      color: currentRoleConfig.color,
-                      fontSize: '0.72rem',
-                      fontWeight: 800
-                    }}>
-                      {selectedRole}
-                    </span>
-                    <span style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
-                      {currentRoleConfig.desc}
-                    </span>
-                  </div>
-                </div>
-
-                <div style={{
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  background: 'rgba(0, 0, 0, 0.3)',
-                  fontSize: '0.74rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  <strong style={{ color: '#fff', whiteSpace: 'nowrap' }}>Specific Pages:</strong>
-                  <span style={{ color: 'var(--ghana-gold)', fontWeight: 600 }}>
-                    {currentRoleConfig.specificPages}
-                  </span>
-                </div>
-
-                {/* Statutory Access Key / PIN Input if restricted */}
-                {currentRoleConfig.isRestricted && currentRoleConfig.pin && !dbUserFound && (
-                  <div style={{ marginTop: '6px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                    <label style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      fontSize: '0.72rem',
-                      fontWeight: 700,
-                      color: '#fde68a',
-                      marginBottom: '4px'
-                    }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <KeyRound size={12} />
-                        <span>STATUTORY ACCESS KEY / CLEARANCE KEY *</span>
-                      </span>
-                      <span
-                        onClick={() => setEnteredPin(currentRoleConfig.pin)}
-                        style={{
-                          fontSize: '0.66rem',
-                          color: 'var(--ghana-emerald)',
-                          cursor: 'pointer',
-                          textDecoration: 'underline'
-                        }}
-                      >
-                        Use Key: {currentRoleConfig.pin}
-                      </span>
-                    </label>
-                    <input
-                      type="text"
-                      value={enteredPin}
-                      onChange={(e) => setEnteredPin(e.target.value)}
-                      placeholder={`Enter statutory access key for ${selectedRole}`}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        borderRadius: '6px',
-                        background: 'rgba(255, 255, 255, 0.05)',
-                        border: enteredPin.toUpperCase() === currentRoleConfig.pin.toUpperCase()
-                          ? '1px solid var(--ghana-emerald)'
-                          : '1px solid rgba(251, 191, 36, 0.4)',
-                        color: '#fff',
-                        fontSize: '0.82rem',
-                        fontFamily: 'monospace',
-                        outline: 'none'
-                      }}
-                    />
-                  </div>
-                )}
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your institutional password"
+                  style={{
+                    width: '100%',
+                    padding: '11px 40px 11px 14px',
+                    borderRadius: '8px',
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#fff',
+                    fontSize: '0.88rem',
+                    outline: 'none'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--ghana-emerald)'}
+                  onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.12)'}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
 
             {/* 5. ACCESS DATE */}
-            <div>
+            <div style={{ gridColumn: 'span 2' }}>
               <label style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -929,7 +721,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
 
           </div>
 
-          {/* Single Direct Submit Button — Sends User STRAIGHT to Main Page! */}
+          {/* Single Direct Submit Button */}
           <div style={{ marginTop: '24px' }}>
             <button
               type="submit"
@@ -953,7 +745,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
                 opacity: isSubmitting ? 0.7 : 1
               }}
             >
-              <span>{isSubmitting ? 'Syncing with Postgres DB...' : `Sign In & Proceed Straight to Main Page (${selectedRole})`}</span>
+              <span>{isSubmitting ? 'Authenticating with Postgres DB...' : 'Sign In & Enter System'}</span>
               <ArrowRight size={18} />
             </button>
           </div>

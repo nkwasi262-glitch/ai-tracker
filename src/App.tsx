@@ -864,7 +864,7 @@ function App() {
       <Layout 
         session={session}
         onSwitchRole={handleSwitchRole}
-        onOpenRoleSelector={session.role === 'First-Timer / New User' ? undefined : () => setShowRoleSelectorModal(true)}
+        onOpenRoleSelector={() => setShowRoleSelectorModal(true)}
         onOpenOnboardingHub={session.memberType === 'new_member' ? () => setViewingOnboardingHub(true) : undefined}
         activeTab={activeTab} 
         setActiveTab={setActiveTab}

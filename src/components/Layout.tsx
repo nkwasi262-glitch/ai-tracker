@@ -197,6 +197,95 @@ export const Layout: React.FC<LayoutProps> = ({
 
         {/* Dynamic Component Canvas */}
         <main className="content-viewport animated-fade-in">
+          {/* Prominent Active Role Profile Banner on Main Page */}
+          <div style={{
+            margin: '0 0 20px 0',
+            padding: '14px 20px',
+            borderRadius: '14px',
+            background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.95) 0%, rgba(13, 20, 36, 0.95) 100%)',
+            border: '1px solid rgba(16, 185, 129, 0.35)',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '14px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(251, 191, 36, 0.15))',
+                border: '1px solid rgba(16, 185, 129, 0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--ghana-emerald)',
+                flexShrink: 0
+              }}>
+                <ShieldCheck size={22} />
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
+                    ACTIVE ROLE PROFILE:
+                  </span>
+                  <span style={{
+                    fontSize: '0.82rem',
+                    fontWeight: 800,
+                    padding: '3px 10px',
+                    borderRadius: '9999px',
+                    background: 'rgba(16, 185, 129, 0.18)',
+                    border: '1px solid rgba(16, 185, 129, 0.45)',
+                    color: '#a7f3d0'
+                  }}>
+                    {session.role}
+                  </span>
+                  <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
+                    ({session.institution})
+                  </span>
+                </div>
+                <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                  <strong style={{ color: '#fff' }}>Authorized Pages:</strong>
+                  {displayedMenuItems.map(m => m.label).join(' • ')}
+                </div>
+              </div>
+            </div>
+
+            {onOpenRoleSelector && (
+              <button
+                onClick={onOpenRoleSelector}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '9px 16px',
+                  borderRadius: '10px',
+                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.2) 100%)',
+                  border: '1px solid rgba(16, 185, 129, 0.45)',
+                  color: '#a7f3d0',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 2px 10px rgba(16, 185, 129, 0.15)'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.35) 0%, rgba(5, 150, 105, 0.35) 100%)';
+                  e.currentTarget.style.color = '#fff';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.2) 100%)';
+                  e.currentTarget.style.color = '#a7f3d0';
+                }}
+              >
+                <Award size={15} className="text-emerald-400" />
+                <span>Switch Active Role Profile</span>
+              </button>
+            )}
+          </div>
+
           {/* Pending Approval Officer Banner */}
           {isPendingApproval && (
             <div style={{

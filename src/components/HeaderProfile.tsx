@@ -11,8 +11,7 @@ import {
   CheckCircle2, 
   AlertCircle,
   Building2,
-  Sparkles,
-  Lock
+  Sparkles
 } from 'lucide-react';
 import { UserSession, ActiveRole } from '../data/authTypes';
 
@@ -170,44 +169,22 @@ export const HeaderProfile: React.FC<HeaderProfileProps> = ({ session, onSwitchR
           <span>{session.role}</span>
         </div>
 
-        {/* First-Timer: Role Selection is Restricted During Guided Onboarding */}
-        {session.role === 'First-Timer / New User' ? (
-          <div
-            title="Role profile selection is restricted during guided onboarding. Super Admin audits uploaded project documents to authorize clearance."
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '5px',
-              padding: '4px 10px',
-              borderRadius: '9999px',
-              background: 'rgba(251, 191, 36, 0.08)',
-              border: '1px solid rgba(251, 191, 36, 0.25)',
-              color: '#fde68a',
-              fontSize: '0.7rem',
-              fontWeight: 600,
-              cursor: 'not-allowed'
-            }}
-          >
-            <Lock size={11} className="text-amber-400" />
-            <span>Role Selection Restricted</span>
-          </div>
-        ) : (
-          /* Switch Role Option for Elevated Roles */
-          <button
-            onClick={() => {
-              if (onOpenRoleSelector) {
-                onOpenRoleSelector();
-              } else {
-                onSwitchRole();
-              }
-            }}
-            title="Switch to another Active Role Profile"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '5px',
-              padding: '5px 10px',
-              borderRadius: '9999px',
+        {/* Switch Role Option */}
+        <button
+          onClick={() => {
+            if (onOpenRoleSelector) {
+              onOpenRoleSelector();
+            } else {
+              onSwitchRole();
+            }
+          }}
+          title="Switch Active Role Profile"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '5px',
+            padding: '5px 10px',
+            borderRadius: '9999px',
               background: 'rgba(255, 255, 255, 0.05)',
               border: '1px solid rgba(255, 255, 255, 0.12)',
               color: 'var(--text-secondary)',
@@ -228,7 +205,6 @@ export const HeaderProfile: React.FC<HeaderProfileProps> = ({ session, onSwitchR
             <RefreshCw size={12} />
             <span>Switch Role</span>
           </button>
-        )}
 
         {/* Prominent High-Visibility Sign Out Button */}
         <button
