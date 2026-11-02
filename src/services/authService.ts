@@ -129,7 +129,7 @@ export function submitOnboardingForApproval(): UserSession | null {
     actorRole: updated.role,
     actorInstitution: updated.institution,
     targetModule: 'gate',
-    actionDetails: `New Member ${updated.fullName} completed onboarding document submission. Request pending, will send you email when approved, THANK YOU.`
+    actionDetails: `New Member ${updated.fullName} completed onboarding document submission. Request pending, you will receive an email when approved, THANK YOU.`
   });
   return updated;
 }

@@ -796,7 +796,7 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
         </div>
       </div>
 
-      {/* STATUTORY CONFIRMATION MODAL: (request pendind will send you email when approved,THANK YOU) */}
+      {/* STATUTORY CONFIRMATION MODAL: (request pending you will receive an email when approved, THANK YOU) */}
       {showPendingModal && (
         <div style={{
           position: 'fixed',
@@ -862,7 +862,7 @@ export const FirstTimerOnboardingHub: React.FC<FirstTimerOnboardingHubProps> = (
                 marginBottom: '8px',
                 lineHeight: 1.3
               }}>
-                Request pending will send you email when approved, THANK YOU
+                Request pending you will receive an email when approved, THANK YOU
               </h2>
 
               <p style={{

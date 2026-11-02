@@ -550,8 +550,8 @@ test('New Member submission transitions to pending approval with exact confirmat
     onboardingStatus: 'pending_approval'
   };
 
-  const expectedNotice = 'Request pending will send you email when approved, THANK YOU';
-  assert(expectedNotice === 'Request pending will send you email when approved, THANK YOU', 'Confirmation message must match exact statutory phrase');
+  const expectedNotice = 'Request pending you will receive an email when approved, THANK YOU';
+  assert(expectedNotice === 'Request pending you will receive an email when approved, THANK YOU', 'Confirmation message must match exact statutory phrase');
   assert(pendingSession.onboardingStatus === 'pending_approval', 'Session must be in pending_approval');
 });
 

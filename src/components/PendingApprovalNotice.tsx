@@ -82,7 +82,7 @@ export const PendingApprovalNotice: React.FC<PendingApprovalNoticeProps> = ({
             marginBottom: '8px',
             lineHeight: 1.3
           }}>
-            Request pending will send you email when approved, THANK YOU
+            Request pending you will receive an email when approved, THANK YOU
           </h2>
 
           <p style={{

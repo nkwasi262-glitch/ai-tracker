@@ -229,7 +229,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 </div>
                 <div>
                   <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#fde68a' }}>
-                    Request pending will send you email when approved, THANK YOU
+                    Request pending you will receive an email when approved, THANK YOU
                   </div>
                   <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
                     Your project documents are under statutory review. You have active monitoring access to the <strong>M&E Dashboard</strong>, <strong>GIS Spatial Map</strong>, and <strong>AI Chat Assistant</strong>.

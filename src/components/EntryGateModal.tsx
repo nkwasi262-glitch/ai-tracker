@@ -991,7 +991,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
                   }}>
                     <li>Direct access to the <strong>First-Timer / Onboard Page</strong>.</li>
                     <li>Upload project documents with <strong>Governance & Ethics</strong> and <strong>AI Readiness</strong> live guidance and real-time grading.</li>
-                    <li>Submits request with confirmation: <em>"Request pending will send you email when approved, THANK YOU"</em>.</li>
+                    <li>Submits request with confirmation: <em>"Request pending you will receive an email when approved, THANK YOU"</em>.</li>
                     <li>Limited monitoring access to <strong>M&E Dashboard</strong>, <strong>GIS Spatial</strong>, and <strong>AI Chat Assistant</strong>.</li>
                   </ul>
                 </div>
