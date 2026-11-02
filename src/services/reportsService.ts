@@ -1,6 +1,7 @@
 import { InternalReport, ReportComment, ReportSeverity } from '../data/reportTypes';
 import { ActiveRole } from '../data/authTypes';
 import { recordAuditEvent } from './auditService';
+import { apiClient } from './apiClient';
 
 const REPORTS_STORAGE_KEY = 'gnaprms_internal_reports_v1';
 
@@ -82,13 +83,24 @@ export function getInternalReports(): InternalReport[] {
     const raw = localStorage.getItem(REPORTS_STORAGE_KEY);
     if (!raw) {
       localStorage.setItem(REPORTS_STORAGE_KEY, JSON.stringify(SEED_INTERNAL_REPORTS));
+      syncReportsWithNeon();
       return SEED_INTERNAL_REPORTS;
     }
+    syncReportsWithNeon();
     return JSON.parse(raw) as InternalReport[];
   } catch (e) {
     console.error('Failed to get internal reports:', e);
     return SEED_INTERNAL_REPORTS;
   }
+}
+
+async function syncReportsWithNeon() {
+  try {
+    const remote = await apiClient.fetchReports();
+    if (remote && Array.isArray(remote) && remote.length > 0) {
+      localStorage.setItem(REPORTS_STORAGE_KEY, JSON.stringify(remote));
+    }
+  } catch {}
 }
 
 export function createInternalReport(params: {
@@ -130,6 +142,9 @@ export function createInternalReport(params: {
 
   const updated = [newReport, ...current];
   localStorage.setItem(REPORTS_STORAGE_KEY, JSON.stringify(updated));
+
+  // Sync to Neon DB asynchronously
+  apiClient.saveReport(newReport).catch(() => {});
 
   recordAuditEvent({
     eventType: 'INTERNAL_REPORT_CREATED',

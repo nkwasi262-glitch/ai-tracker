@@ -1,0 +1,1409 @@
+{
+  "projects": [
+    {
+      "id": "proj-1",
+      "projectCode": "GN-AI-2026-001",
+      "name": "GhanaPostGPS (National Digital Addressing System)",
+      "description": "A national geospatial database assigning a unique digital address to every 5x5 meter square in Ghana. Integrates satellite positioning and automatic routing to aid emergency response, logistics, and address verification.",
+      "category": "Smart Cities",
+      "sector": "Local Government",
+      "stage": "Operational",
+      "status": "Delayed",
+      "startDate": "2017-10-18",
+      "endDate": "2028-12-31",
+      "expectedCompletionDate": "2028-12-31",
+      "latitude": 5.6037,
+      "longitude": -0.187,
+      "mda": "Ministry of Communications and Digitalisation (MoCD)",
+      "mdaCode": "MOCD",
+      "region": "Greater Accra",
+      "district": "Accra Metropolitan",
+      "budget": {
+        "totalAllocated": 24000000,
+        "disbursed": 22000000,
+        "utilized": 21500000,
+        "remaining": 2500000,
+        "primaryFundingSource": "Government",
+        "currency": "GHS",
+        "verificationStatus": "MoF Audited & Verified",
+        "mofWarrantNumber": "MOF/WARR/2026/014",
+        "lastAuditedDate": "2026-09-15",
+        "auditedBy": "MoF National AI Expenditure Taskforce",
+        "auditNotes": "Statutory treasury warrant verified under Act 921. Assumption eliminated.",
+        "hasAssumptionsFlag": false,
+        "assumptionWarnings": [],
+        "financeMinisterComments": "Tranche 2 disbursement fully verified against MoF Treasury Warrant. Proceed with emergency dispatch caching expansion in Q4.",
+        "financeMinisterCommentDate": "2026-09-18",
+        "financeMinisterCommentAuthor": "Hon. Dr. Mohammed Amin Adam (Finance Minister)"
+      },
+      "compliance": {
+        "fairness": 80,
+        "transparency": 75,
+        "accountability": 85,
+        "privacy": 80,
+        "security": 90,
+        "overallGrade": "Good"
+      },
+      "readinessScore": 85,
+      "milestones": [
+        {
+          "id": "m1-1",
+          "title": "National postal database launch",
+          "dueDate": "2018-05-01",
+          "progressPercent": 100,
+          "status": "Completed"
+        },
+        {
+          "id": "m1-2",
+          "title": "Emergency services dispatch sync",
+          "dueDate": "2020-11-12",
+          "progressPercent": 100,
+          "status": "Completed"
+        },
+        {
+          "id": "m1-3",
+          "title": "Offline digital map data caching integration",
+          "dueDate": "2026-10-15",
+          "progressPercent": 40,
+          "status": "Pending"
+        }
+      ],
+      "risks": [
+        {
+          "id": "r1-1",
+          "category": "Technical Risk",
+          "severity": "Medium",
+          "likelihood": 2,
+          "impact": 4,
+          "description": "Inaccurate satellite signals inside high-density settlements like Jamestown create misrouting logs.",
+          "mitigationPlan": "Integrate WiFi triangulation and cell-tower mapping to refine location coordinates.",
+          "status": "Mitigated"
+        },
+        {
+          "id": "r1-2",
+          "category": "Operational Risk",
+          "severity": "Low",
+          "likelihood": 2,
+          "impact": 2,
+          "description": "Low public familiarity with utilizing digital postal addresses for utility services.",
+          "mitigationPlan": "Deploy community communication clinics and work with Ghana Water and ECG to mandate digital codes.",
+          "status": "Open"
+        }
+      ],
+      "documents": [
+        {
+          "id": "doc-1-1",
+          "fileName": "GhanaPostGPS_GeoDesign_Specs.pdf",
+          "fileType": "pdf",
+          "uploadedAt": "2018-02-15",
+          "version": 1,
+          "signedBy": [
+            "Minister of Communications",
+            "NITA Director"
+          ],
+          "fileSize": "2.4 MB",
+          "pageCount": 6,
+          "documentCategory": "Technical Architecture & Model Card"
+        },
+        {
+          "id": "doc-onboard-1-2",
+          "fileName": "GhanaPostGPS_Onboarder_Act843_Ethics_Dossier.pdf",
+          "fileType": "pdf",
+          "uploadedAt": "2026-10-20",
+          "version": 1,
+          "signedBy": [
+            "First-Timer / New User"
+          ],
+          "uploadedByRole": "First-Timer / New User",
+          "uploadedByName": "Kwame Mensah (Onboarding Officer)",
+          "uploadedByEmail": "k.mensah@mocd.gov.gh",
+          "isFirstTimerUpload": true,
+          "reviewStatus": "Pending Review",
+          "fileSize": "1.8 MB",
+          "pageCount": 5,
+          "documentCategory": "Ethical Risk & Act 843 Compliance Dossier"
+        }
+      ],
+      "hasFirstTimerUpload": true,
+      "reviewStatus": "Recommended",
+      "technicalReview": {
+        "reviewerName": "Ing. Emmanuel Darko",
+        "reviewerRole": "Technical Director",
+        "reviewerEmail": "e.darko@mocd.gov.gh",
+        "reviewedAt": "2026-09-28T10:00:00Z",
+        "recommendationNotes": "Full architectural conformance verified. Recommended for Director General final statutory sign-off and budget release."
+      },
+      "dpcCertificateNumber": "GH-DPC-2026-092",
+      "zeroAssumptionAudit": {
+        "isFullyVerified": true,
+        "evidenceBackingScore": 94,
+        "verifiedSignals": [
+          "MoF Treasury Warrant MOF/WARR/2026/014 confirmed",
+          "DPC Certificate GH-DPC-2026-092 on file",
+          "NITA Sovereign Data Center hosting verified"
+        ],
+        "unverifiedAssumptions": [],
+        "lastAuditedDate": "2026-09-15",
+        "assumptionsEliminatedCount": 4
+      }
+    },
+    {
+      "id": "proj-2",
+      "projectCode": "GN-AI-2026-002",
+      "name": "GhanaCard AFIS & Biometric Registry",
+      "description": "National biometric identity verification system. Integrates automated fingerprint and facial recognition systems (AFIS) to provide instant user verification across banking, tax TIN verification, and telecom registers.",
+      "category": "Computer Vision",
+      "sector": "Security",
+      "stage": "Operational",
+      "status": "Delayed",
+      "startDate": "2018-06-04",
+      "endDate": "2029-12-31",
+      "expectedCompletionDate": "2029-12-31",
+      "latitude": 5.5786,
+      "longitude": -0.1821,
+      "mda": "National Identification Authority (NIA)",
+      "mdaCode": "NIA",
+      "region": "Greater Accra",
+      "district": "Accra Metropolitan",
+      "budget": {
+        "totalAllocated": 50000000,
+        "disbursed": 48000000,
+        "utilized": 47000000,
+        "remaining": 2000000,
+        "primaryFundingSource": "Government",
+        "currency": "GHS",
+        "verificationStatus": "MoF Audited & Verified",
+        "mofWarrantNumber": "MOF/WARR/2026/088",
+        "lastAuditedDate": "2026-10-01",
+        "auditedBy": "Auditor-General & MoF AI Review Board",
+        "auditNotes": "Verified against Bank of Ghana treasury disbursements.",
+        "hasAssumptionsFlag": false,
+        "assumptionWarnings": [],
+        "financeMinisterComments": "BoG treasury disbursement audit reconciled. Mandating biometric hardware integrity checks before final release.",
+        "financeMinisterCommentDate": "2026-10-02",
+        "financeMinisterCommentAuthor": "Hon. Dr. Mohammed Amin Adam (Finance Minister)"
+      },
+      "compliance": {
+        "fairness": 85,
+        "transparency": 70,
+        "accountability": 80,
+        "privacy": 85,
+        "security": 95,
+        "overallGrade": "Excellent"
+      },
+      "readinessScore": 90,
+      "milestones": [
+        {
+          "id": "m2-1",
+          "title": "National registration rollout launch",
+          "dueDate": "2019-04-20",
+          "progressPercent": 100,
+          "status": "Completed"
+        },
+        {
+          "id": "m2-2",
+          "title": "SSNIT and GRA card merger migration",
+          "dueDate": "2022-07-01",
+          "progressPercent": 100,
+          "status": "Completed"
+        },
+        {
+          "id": "m2-3",
+          "title": "Real-time banking KYC validation API link",
+          "dueDate": "2026-12-01",
+          "progressPercent": 65,
+          "status": "Pending"
+        }
+      ],
+      "risks": [
+        {
+          "id": "r2-1",
+          "category": "Cybersecurity Risk",
+          "severity": "Critical",
+          "likelihood": 1,
+          "impact": 5,
+          "description": "Potential database leak of national fingerprint registries via external APIs.",
+          "mitigationPlan": "Enforce hardware-security-modules (HSM) and encrypt biometric checks with ephemeral salted hashes.",
+          "status": "Mitigated"
+        }
+      ],
+      "documents": [
+        {
+          "id": "doc-2-1",
+          "fileName": "NIA_Biometric_Security_Protocol.pdf",
+          "fileType": "pdf",
+          "uploadedAt": "2019-01-10",
+          "version": 3,
+          "signedBy": [
+            "Executive Secretary NIA",
+            "DPO"
+          ],
+          "fileSize": "3.1 MB",
+          "pageCount": 6,
+          "documentCategory": "Cybersecurity & Biometric Protocol"
+        },
+        {
+          "id": "doc-onboard-2-2",
+          "fileName": "NIA_FirstTimer_AFIS_ModelCard_Readiness_Charter.pdf",
+          "fileType": "pdf",
+          "uploadedAt": "2026-10-22",
+          "version": 1,
+          "signedBy": [
+            "First-Timer / New User"
+          ],
+          "uploadedByRole": "First-Timer / New User",
+          "uploadedByName": "Abena Ofori (Onboarding Officer)",
+          "uploadedByEmail": "a.ofori@nia.gov.gh",
+          "isFirstTimerUpload": true,
+          "reviewStatus": "Pending Review",
+          "fileSize": "2.2 MB",
+          "pageCount": 5,
+          "documentCategory": "Model Card & Institutional Readiness Charter"
+        }
+      ],
+      "hasFirstTimerUpload": true,
+      "reviewStatus": "Recommended",
+      "technicalReview": {
+        "reviewerName": "Ama Osei-Bonsu",
+        "reviewerRole": "Technical Clearance Team",
+        "reviewerEmail": "a.osei@nita.gov.gh",
+        "reviewedAt": "2026-10-01T14:30:00Z",
+        "recommendationNotes": "Biometric security protocols tested and validated. HSM operational. Recommended for Director General final statutory verdict."
+      },
+      "dpcCertificateNumber": "GH-DPC-2026-118",
+      "zeroAssumptionAudit": {
+        "isFullyVerified": true,
+        "evidenceBackingScore": 96,
+        "verifiedSignals": [
+          "Treasury Warrant MOF/WARR/2026/088 verified",
+          "DPC Biometric Class 1 Certificate confirmed",
+          "Hardware Security Module (HSM) FIPS 140-2 Level 3 audit verified"
+        ],
+        "unverifiedAssumptions": [],
+        "lastAuditedDate": "2026-10-01",
+        "assumptionsEliminatedCount": 5
+      }
+    },
+    {
+      "id": "proj-3",
+      "projectCode": "GN-AI-2026-003",
+      "name": "Cocoa Management System (COCOBOD CMS)",
+      "description": "A comprehensive geospatial farm mapping registry. Employs remote sensing satellite indices to draw farm boundaries, audit yields, and optimize fertilizer allocation to eradicate subsidy smuggling.",
+      "category": "Predictive Analytics",
+      "sector": "Agriculture",
+      "stage": "Deployment",
+      "status": "Delayed",
+      "startDate": "2020-09-01",
+      "endDate": "2027-12-31",
+      "expectedCompletionDate": "2027-11-30",
+      "latitude": 6.2041,
+      "longitude": -1.7583,
+      "mda": "Ghana Cocoa Board (COCOBOD)",
+      "mdaCode": "COCOBOD",
+      "region": "Western North",
+      "district": "Sefwi Wiawso",
+      "budget": {
+        "totalAllocated": 15000000,
+        "disbursed": 13500000,
+        "utilized": 12000000,
+        "remaining": 1500000,
+        "primaryFundingSource": "Development Partners",
+        "currency": "GHS",
+        "verificationStatus": "Self-Reported (Unverified)",
+        "lastAuditedDate": "2026-08-10",
+        "hasAssumptionsFlag": true,
+        "assumptionWarnings": [
+          "MDA self-reported GHS 13.5M disbursement; pending MoF Treasury Warrant reconciliation.",
+          "Final contractor payment milestone unverified by physical audit."
+        ]
+      },
+      "compliance": {
+        "fairness": 90,
+        "transparency": 80,
+        "accountability": 85,
+        "privacy": 80,
+        "security": 85,
+        "overallGrade": "Good"
+      },
+      "readinessScore": 82,
+      "milestones": [
+        {
+          "id": "m3-1",
+          "title": "Western Region satellite boundaries plot",
+          "dueDate": "2022-03-14",
+          "progressPercent": 100,
+          "status": "Completed"
+        },
+        {
+          "id": "m3-2",
+          "title": "1.2 Million cocoa farmers registration",
+          "dueDate": "2024-11-20",
+          "progressPercent": 100,
+          "status": "Completed"
+        },
+        {
+          "id": "m3-3",
+          "title": "Automated fertilizer weighing and scan sync",
+          "dueDate": "2026-09-01",
+          "progressPercent": 50,
+          "status": "Pending"
+        }
+      ],
+      "risks": [
+        {
+          "id": "r3-1",
+          "category": "Operational Risk",
+          "severity": "Medium",
+          "likelihood": 3,
+          "impact": 3,
+          "description": "Discrepancy in land boundary definitions among local tribal leaders during satellite mapping.",
+          "mitigationPlan": "Consult local chiefs and establish physical boundary verification arbitration panels.",
+          "status": "Open"
+        }
+      ],
+      "documents": [
+        {
+          "id": "doc-3-1",
+          "fileName": "CMS_Farming_Data_Provenance.pdf",
+          "fileType": "pdf",
+          "uploadedAt": "2021-04-12",
+          "version": 1,
+          "signedBy": [
+            "CMS Project Lead"
+          ],
+          "fileSize": "1.9 MB",
+          "pageCount": 5,
+          "documentCategory": "Dataset Provenance & Inclusivity Charter"
+        },
+        {
+          "id": "doc-onboard-3-2",
+          "fileName": "COCOBOD_Onboarder_DPC_Filing_And_Fairness_Audit.pdf",
+          "fileType": "pdf",
+          "uploadedAt": "2026-10-24",
+          "version": 1,
+          "signedBy": [
+            "First-Timer / New User"
+          ],
+          "uploadedByRole": "First-Timer / New User",
+          "uploadedByName": "Yaw Boateng (Onboarding Officer)",
+          "uploadedByEmail": "y.boateng@cocobod.gov.gh",
+          "isFirstTimerUpload": true,
+          "reviewStatus": "Pending Review",
+          "fileSize": "2.6 MB",
+          "pageCount": 6,
+          "documentCategory": "Data Protection Commission Filing & Fairness Audit"
+        }
+      ],
+      "hasFirstTimerUpload": true,
+      "reviewStatus": "Recommended",
+      "technicalReview": {
+        "reviewerName": "Kofi Annan Jr.",
+        "reviewerRole": "Technical Clearance Team",
+        "reviewerEmail": "k.annan@nita.gov.gh",
+        "reviewedAt": "2026-10-02T11:20:00Z",
+        "recommendationNotes": "Cocoa farm boundary telemetry audited. 90% fairness score. Recommended for Director General final statutory verdict."
+      },
+      "dpcCertificateNumber": "PENDING-FILING",
+      "zeroAssumptionAudit": {
+        "isFullyVerified": false,
+        "evidenceBackingScore": 48,
+        "verifiedSignals": [
+          "Cocoa farm satellite boundary survey dataset confirmed"
+        ],
+        "unverifiedAssumptions": [
+          "Disbursement claims lack verified MoF Treasury Warrant",
+          "Data Protection Commission registration pending receipt of certificate",
+          "Field sensor calibration claims unverified by Ghana Standards Authority"
+        ],
+        "lastAuditedDate": "2026-08-10",
+        "assumptionsEliminatedCount": 1
+      }
+    },
+    {
+      "id": "proj-4",
+      "projectCode": "GN-AI-2026-004",
+      "name": "National E-Justice Court Tracking Registry",
+      "description": "An automated case management registry linking all high courts. Automates docket assignments to judge rosters, maps case progress, and transcribes audio recordings into catalogued text summaries.",
+      "category": "Natural Language Processing",
+      "sector": "Justice",
+      "stage": "Development",
+      "status": "Active",
+      "startDate": "2019-03-20",
+      "endDate": "2027-06-30",
+      "expectedCompletionDate": "2027-05-15",
+      "latitude": 5.5422,
+      "longitude": -0.2078,
+      "mda": "Ministry of Justice and Attorney General's Department",
+      "mdaCode": "MOJ",
+      "region": "Greater Accra",
+      "district": "Accra Metropolitan",
+      "budget": {
+        "totalAllocated": 8000000,
+        "disbursed": 6200000,
+        "utilized": 5500000,
+        "remaining": 700000,
+        "primaryFundingSource": "Development Partners",
+        "currency": "GHS",
+        "verificationStatus": "Flagged Discrepancy",
+        "lastAuditedDate": "2026-10-05",
+        "auditedBy": "MoF Internal Audit Directorate",
+        "auditNotes": "Variance detected between reported software expenditure and Bank of Ghana foreign exchange transfer receipts. Disbursements frozen.",
+        "hasAssumptionsFlag": true,
+        "assumptionWarnings": [
+          "Audit Discrepancy: Unreconciled variance of GHS 850,000 in judicial cloud licensing receipts.",
+          "Funds hold enforced under Public Financial Management Act (Act 921)."
+        ]
+      },
+      "compliance": {
+        "fairness": 75,
+        "transparency": 85,
+        "accountability": 90,
+        "privacy": 80,
+        "security": 85,
+        "overallGrade": "Good"
+      },
+      "readinessScore": 78,
+      "milestones": [
+        {
+          "id": "m4-1",
+          "title": "Accra High Court paper digitisation trial",
+          "dueDate": "2020-01-15",
+          "progressPercent": 100,
+          "status": "Completed"
+        },
+        {
+          "id": "m4-2",
+          "title": "Unified judicial database launch",
+          "dueDate": "2023-09-10",
+          "progressPercent": 100,
+          "status": "Completed"
+        },
+        {
+          "id": "m4-3",
+          "title": "Speech-to-text automated transcription deployment",
+          "dueDate": "2026-11-20",
+          "progressPercent": 20,
+          "status": "Pending"
+        }
+      ],
+      "risks": [
+        {
+          "id": "r4-1",
+          "category": "AI Ethics Risk",
+          "severity": "High",
+          "likelihood": 2,
+          "impact": 4,
+          "description": "Automatic audio transcription inaccuracies when analyzing regional court accents (Twi, Ewe, Ga).",
+          "mitigationPlan": "Partner with local speech labs (e.g. Ashesi AI) to fine-tune Whisper algorithms on local Ghanaian accents.",
+          "status": "Open"
+        }
+      ],
+      "documents": [
+        {
+          "id": "doc-4-1",
+          "fileName": "E-Justice_Audit_Report.pdf",
+          "fileType": "pdf",
+          "uploadedAt": "2023-11-05",
+          "version": 1,
+          "signedBy": [
+            "Judicial Secretary",
+            "Lead Auditor"
+          ]
+        }
+      ],
+      "reviewStatus": "Rejected",
+      "dgFinalVerdict": {
+        "verdict": "Reject",
+        "finalStatusLabel": "Rejected",
+        "reasons": "Statutory Rejection issued under NITA Act 771 & Public Financial Management Act (Act 921): (1) Unreconciled financial audit discrepancy of GHS 850,000 in judicial cloud licensing flagged by MoF Internal Audit Directorate; (2) Unacceptable speech-to-text transcription error rate (>18% word error rate) on regional Ghanaian languages (Akan/Twi, Ewe, Ga) risking wrongful court transcript records; and (3) Lack of certified judicial privacy encryption sign-off under Act 843.",
+        "signedByName": "Hon. Director General",
+        "signedByRole": "Director General",
+        "signedByEmail": "dg@nita.gov.gh",
+        "signedAt": "2026-10-15T16:40:00Z",
+        "signatureSeal": "DG-SEAL-NITA-2026-004R8B"
+      },
+      "dpcCertificateNumber": "GH-DPC-2026-015",
+      "zeroAssumptionAudit": {
+        "isFullyVerified": false,
+        "evidenceBackingScore": 32,
+        "verifiedSignals": [
+          "High Court speech corpus architecture documented"
+        ],
+        "unverifiedAssumptions": [
+          "Expenditure claims disputed by Internal Audit Directorate",
+          "Self-reported compliance with Act 843 judicial privacy uncertified"
+        ],
+        "lastAuditedDate": "2026-10-05",
+        "assumptionsEliminatedCount": 0
+      }
+    },
+    {
+      "id": "proj-5",
+      "projectCode": "GN-AI-2026-005",
+      "name": "NHIS Claims Biometric & AI Validation Engine",
+      "description": "An automated OCR and deep learning claims auditing system. Automatically scans medical treatment forms and prescriptions from local clinics to flags duplicates, audit costs, and verify biometric logs.",
+      "category": "Machine Learning",
+      "sector": "Health",
+      "stage": "Pilot",
+      "status": "Active",
+      "startDate": "2023-05-10",
+      "endDate": "2027-12-31",
+      "expectedCompletionDate": "2027-12-15",
+      "latitude": 5.5604,
+      "longitude": -0.1982,
+      "mda": "National Health Insurance Authority (NHIA)",
+      "mdaCode": "NHIA",
+      "region": "Greater Accra",
+      "district": "Accra Metropolitan",
+      "budget": {
+        "totalAllocated": 6000000,
+        "disbursed": 4500000,
+        "utilized": 4000000,
+        "remaining": 500000,
+        "primaryFundingSource": "Government",
+        "currency": "GHS",
+        "verificationStatus": "Self-Reported (Unverified)",
+        "hasAssumptionsFlag": true,
+        "assumptionWarnings": [
+          "Disbursement claimed without matching Treasury Warrant voucher.",
+          "Patient claims OCR processing speed self-reported; independent stress test pending."
+        ]
+      },
+      "compliance": {
+        "fairness": 80,
+        "transparency": 75,
+        "accountability": 80,
+        "privacy": 90,
+        "security": 85,
+        "overallGrade": "Good"
+      },
+      "readinessScore": 75,
+      "milestones": [
+        {
+          "id": "m5-1",
+          "title": "OCR training dataset creation",
+          "dueDate": "2024-02-18",
+          "progressPercent": 100,
+          "status": "Completed"
+        },
+        {
+          "id": "m5-2",
+          "title": "10-Clinic pilot validation integration",
+          "dueDate": "2025-09-01",
+          "progressPercent": 100,
+          "status": "Completed"
+        },
+        {
+          "id": "m5-3",
+          "title": "Nationwide claims validation portal launch",
+          "dueDate": "2026-09-30",
+          "progressPercent": 30,
+          "status": "Pending"
+        }
+      ],
+      "risks": [
+        {
+          "id": "r5-1",
+          "category": "Legal & Regulatory Risk",
+          "severity": "Medium",
+          "likelihood": 2,
+          "impact": 3,
+          "description": "Storing sensitive patient diagnostic codes violates Data Protection Act (Act 843).",
+          "mitigationPlan": "Anonymize doctor diagnostic logs and encrypt records using SHA-256 before scanning passes.",
+          "status": "Mitigated"
+        }
+      ],
+      "documents": [
+        {
+          "id": "doc-5-1",
+          "fileName": "NHIA_DPIA_Audit_Signoff.pdf",
+          "fileType": "pdf",
+          "uploadedAt": "2023-09-22",
+          "version": 1,
+          "signedBy": [
+            "NHIA DPO",
+            "External Auditor"
+          ]
+        }
+      ],
+      "reviewStatus": "Returned",
+      "dgFinalVerdict": {
+        "verdict": "Return for Further Review",
+        "finalStatusLabel": "Requires More Understanding",
+        "reasons": "Requires more understanding and technical clarification before final national deployment sign-off: (1) NHIA must provide a detailed breakdown of how false-positive AI claim rejections are manually appealed by rural district clinics; (2) Offline biometric verification fallback during cellular outages must be demonstrated; and (3) Self-reported GHS 4.5M disbursement requires matching MoF Treasury Warrant vouchers.",
+        "signedByName": "Hon. Director General",
+        "signedByRole": "Director General",
+        "signedByEmail": "dg@nita.gov.gh",
+        "signedAt": "2026-10-12T11:15:00Z",
+        "signatureSeal": "DG-SEAL-NITA-2026-005C4E"
+      },
+      "dpcCertificateNumber": "GH-DPC-2025-077",
+      "zeroAssumptionAudit": {
+        "isFullyVerified": false,
+        "evidenceBackingScore": 55,
+        "verifiedSignals": [
+          "DPC Health Registry Certificate GH-DPC-2025-077 verified",
+          "NHIA DPIA Audit Signoff document signed"
+        ],
+        "unverifiedAssumptions": [
+          "Capital expenditure disbursement is self-reported and unverified by MoF warrant"
+        ],
+        "lastAuditedDate": "2026-09-22",
+        "assumptionsEliminatedCount": 2
+      }
+    },
+    {
+      "id": "proj-6",
+      "projectCode": "GN-AI-2026-006",
+      "name": "LEAP Biometric Social Transfer Registry",
+      "description": "The Livelihood Empowerment Against Poverty (LEAP) beneficiary classification engine. Uses biometric validation and household survey scoring models to identify, audit, and disburse social transfers to vulnerable citizens.",
+      "category": "Predictive Analytics",
+      "sector": "Local Government",
+      "stage": "Operational",
+      "status": "Active",
+      "startDate": "2021-01-15",
+      "endDate": "2028-06-30",
+      "expectedCompletionDate": "2028-06-30",
+      "latitude": 9.4081,
+      "longitude": -0.8393,
+      "mda": "Ministry of Gender, Children and Social Protection",
+      "mdaCode": "MOGCSP",
+      "region": "Northern",
+      "district": "Tamale Metropolitan",
+      "budget": {
+        "totalAllocated": 12000000,
+        "disbursed": 11000000,
+        "utilized": 10800000,
+        "remaining": 200000,
+        "primaryFundingSource": "Development Partners",
+        "currency": "GHS",
+        "verificationStatus": "MoF Audited & Verified",
+        "mofWarrantNumber": "MOF/WARR/2026/041",
+        "lastAuditedDate": "2026-09-30",
+        "auditedBy": "MoF & World Bank Social Protection Joint Audit",
+        "auditNotes": "All social grant payment logs reconciled against Bank of Ghana treasury accounts.",
+        "hasAssumptionsFlag": false,
+        "assumptionWarnings": []
+      },
+      "compliance": {
+        "fairness": 85,
+        "transparency": 80,
+        "accountability": 85,
+        "privacy": 80,
+        "security": 90,
+        "overallGrade": "Good"
+      },
+      "readinessScore": 88,
+      "milestones": [
+        {
+          "id": "m6-1",
+          "title": "Regional social survey digitisation",
+          "dueDate": "2022-04-10",
+          "progressPercent": 100,
+          "status": "Completed"
+        },
+        {
+          "id": "m6-2",
+          "title": "Automated mobile money API sync",
+          "dueDate": "2023-11-15",
+          "progressPercent": 100,
+          "status": "Completed"
+        },
+        {
+          "id": "m6-3",
+          "title": "Beneficiary fingerprint audit cleanup run",
+          "dueDate": "2026-08-01",
+          "progressPercent": 45,
+          "status": "Pending"
+        }
+      ],
+      "risks": [
+        {
+          "id": "r6-1",
+          "category": "Operational Risk",
+          "severity": "Medium",
+          "likelihood": 2,
+          "impact": 4,
+          "description": "Mobile money SIM card swapping frauds redirecting transfers away from target beneficiaries.",
+          "mitigationPlan": "Mandate biometrics checking matching the target recipient's national GhanaCard database record.",
+          "status": "Mitigated"
+        }
+      ],
+      "documents": [
+        {
+          "id": "doc-6-1",
+          "fileName": "LEAP_Social_Inclusivity_Charter.pdf",
+          "fileType": "pdf",
+          "uploadedAt": "2021-03-12",
+          "version": 1,
+          "signedBy": [
+            "Minister of Gender",
+            "Director of Social Welfare"
+          ]
+        }
+      ],
+      "reviewStatus": "Approved",
+      "dgFinalVerdict": {
+        "verdict": "Approve",
+        "finalStatusLabel": "Approved",
+        "reasons": "Statutory compliance satisfied under NITA Act 771 and Data Protection Act 843. Biometric social transfer registry approved for operational deployment and MoF treasury warrant release.",
+        "signedByName": "Hon. Director General",
+        "signedByRole": "Director General",
+        "signedByEmail": "dg@nita.gov.gh",
+        "signedAt": "2026-09-30T14:20:10Z",
+        "signatureSeal": "DG-SEAL-NITA-2026-006A9F"
+      },
+      "dpcCertificateNumber": "GH-DPC-2026-440",
+      "zeroAssumptionAudit": {
+        "isFullyVerified": true,
+        "evidenceBackingScore": 92,
+        "verifiedSignals": [
+          "MoF Treasury Warrant MOF/WARR/2026/041 confirmed",
+          "DPC Social Protection Data Certificate active",
+          "Biometric match accuracy audited by independent university lab"
+        ],
+        "unverifiedAssumptions": [],
+        "lastAuditedDate": "2026-09-30",
+        "assumptionsEliminatedCount": 4
+      }
+    },
+    {
+      "id": "proj-7",
+      "projectCode": "GN-AI-2026-007",
+      "name": "Akosombo Dam Hydro-AI Smart Grid & Flood Forecaster",
+      "description": "An advanced predictive hydrological and turbine dispatch engine. Combines real-time radar satellite precipitation models with river basin inflow gauges to forecast reservoir spillway risks and optimize national power dispatch.",
+      "category": "Predictive Analytics",
+      "sector": "Energy",
+      "stage": "Deployment",
+      "status": "Active",
+      "startDate": "2022-03-15",
+      "endDate": "2028-12-31",
+      "expectedCompletionDate": "2028-11-30",
+      "latitude": 6.3,
+      "longitude": 0.05,
+      "mda": "Volta River Authority (VRA)",
+      "mdaCode": "VRA",
+      "region": "Eastern",
+      "district": "Asuogyaman",
+      "budget": {
+        "totalAllocated": 18000000,
+        "disbursed": 16500000,
+        "utilized": 15200000,
+        "remaining": 1500000,
+        "primaryFundingSource": "Government",
+        "currency": "GHS"
+      },
+      "compliance": {
+        "fairness": 90,
+        "transparency": 88,
+        "accountability": 92,
+        "privacy": 85,
+        "security": 95,
+        "overallGrade": "Excellent"
+      },
+      "readinessScore": 89,
+      "milestones": [
+        {
+          "id": "m7-1",
+          "title": "Volta Basin telemetry sensor calibration",
+          "dueDate": "2023-01-15",
+          "progressPercent": 100,
+          "status": "Completed"
+        },
+        {
+          "id": "m7-2",
+          "title": "Inflow flood predictive model release",
+          "dueDate": "2024-08-30",
+          "progressPercent": 100,
+          "status": "Completed"
+        },
+        {
+          "id": "m7-3",
+          "title": "Automated downstream spillway early warning sync",
+          "dueDate": "2026-11-10",
+          "progressPercent": 55,
+          "status": "Pending"
+        }
+      ],
+      "risks": [
+        {
+          "id": "r7-1",
+          "category": "Technical Risk",
+          "severity": "High",
+          "likelihood": 2,
+          "impact": 5,
+          "description": "Satellite communication latency delays during severe tropical squalls.",
+          "mitigationPlan": "Deploy local edge computing units with offline hydrological physics fallback models at dam control room.",
+          "status": "Mitigated"
+        }
+      ],
+      "documents": [
+        {
+          "id": "doc-7-1",
+          "fileName": "VRA_Hydro_AI_Operational_Manual.pdf",
+          "fileType": "pdf",
+          "uploadedAt": "2023-05-18",
+          "version": 2,
+          "signedBy": [
+            "VRA Chief Executive",
+            "Technical Director"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "proj-8",
+      "projectCode": "GN-AI-2026-008",
+      "name": "Kumasi Urban Mobility & Traffic Vision AI",
+      "description": "Computer vision and real-time edge telemetry for Kumasi's major transit corridors (Kejetia, Anloga, Sofoline). Optimizes smart traffic signaling, detects road blockages, and regulates trotro transit queue times.",
+      "category": "Computer Vision",
+      "sector": "Transport",
+      "stage": "Pilot",
+      "status": "Active",
+      "startDate": "2023-08-01",
+      "endDate": "2027-10-31",
+      "expectedCompletionDate": "2027-10-15",
+      "latitude": 6.6922,
+      "longitude": -1.6163,
+      "mda": "Ministry of Roads and Highways / KMA",
+      "mdaCode": "MRH",
+      "region": "Ashanti",
+      "district": "Kumasi Metropolitan",
+      "budget": {
+        "totalAllocated": 9500000,
+        "disbursed": 7200000,
+        "utilized": 6400000,
+        "remaining": 2300000,
+        "primaryFundingSource": "Development Partners",
+        "currency": "GHS"
+      },
+      "compliance": {
+        "fairness": 82,
+        "transparency": 78,
+        "accountability": 80,
+        "privacy": 85,
+        "security": 88,
+        "overallGrade": "Good"
+      },
+      "readinessScore": 80,
+      "milestones": [
+        {
+          "id": "m8-1",
+          "title": "Kejetia corridor optical edge camera trial",
+          "dueDate": "2024-03-20",
+          "progressPercent": 100,
+          "status": "Completed"
+        },
+        {
+          "id": "m8-2",
+          "title": "Adaptive traffic light timing controller",
+          "dueDate": "2025-06-15",
+          "progressPercent": 100,
+          "status": "Completed"
+        },
+        {
+          "id": "m8-3",
+          "title": "Citywide congestion heat map public API feed",
+          "dueDate": "2026-12-05",
+          "progressPercent": 35,
+          "status": "Pending"
+        }
+      ],
+      "risks": [
+        {
+          "id": "r8-1",
+          "category": "Operational Risk",
+          "severity": "Medium",
+          "likelihood": 3,
+          "impact": 3,
+          "description": "Intermittent power grid disruptions shutting down road intersection optical cameras.",
+          "mitigationPlan": "Equip all road camera poles with dedicated 400W solar photovoltaic arrays and LiFePO4 batteries.",
+          "status": "Mitigated"
+        }
+      ],
+      "documents": [
+        {
+          "id": "doc-8-1",
+          "fileName": "KMA_Traffic_Vision_Framework.pdf",
+          "fileType": "pdf",
+          "uploadedAt": "2023-10-01",
+          "version": 1,
+          "signedBy": [
+            "Metropolitan Chief Executive",
+            "Urban Roads Engineer"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "proj-9",
+      "projectCode": "GN-AI-2026-009",
+      "name": "Northern Savannah Climate-Smart Drought Forecaster",
+      "description": "A geospatial machine learning platform integrating Copernicus satellite imagery with ground moisture sensors across the Savannah zone. Yields localized microclimate forecasts and early drought warnings for smallholder farmers.",
+      "category": "Machine Learning",
+      "sector": "Environment",
+      "stage": "Development",
+      "status": "Active",
+      "startDate": "2023-02-10",
+      "endDate": "2027-12-31",
+      "expectedCompletionDate": "2027-11-20",
+      "latitude": 9.0833,
+      "longitude": -1.8167,
+      "mda": "Ministry of Environment, Science, Technology and Innovation (MESTI)",
+      "mdaCode": "MESTI",
+      "region": "Savannah",
+      "district": "West Gonja",
+      "budget": {
+        "totalAllocated": 7200000,
+        "disbursed": 5100000,
+        "utilized": 4600000,
+        "remaining": 2100000,
+        "primaryFundingSource": "Research Grants",
+        "currency": "GHS"
+      },
+      "compliance": {
+        "fairness": 88,
+        "transparency": 85,
+        "accountability": 82,
+        "privacy": 85,
+        "security": 85,
+        "overallGrade": "Good"
+      },
+      "readinessScore": 76,
+      "milestones": [
+        {
+          "id": "m9-1",
+          "title": "Savannah soil moisture sensor deployment",
+          "dueDate": "2023-11-12",
+          "progressPercent": 100,
+          "status": "Completed"
+        },
+        {
+          "id": "m9-2",
+          "title": "Localized drought risk algorithm training",
+          "dueDate": "2025-01-20",
+          "progressPercent": 100,
+          "status": "Completed"
+        },
+        {
+          "id": "m9-3",
+          "title": "Farmer USSD and regional voice alert gateway",
+          "dueDate": "2026-10-30",
+          "progressPercent": 40,
+          "status": "Pending"
+        }
+      ],
+      "risks": [
+        {
+          "id": "r9-1",
+          "category": "Operational Risk",
+          "severity": "Low",
+          "likelihood": 2,
+          "impact": 3,
+          "description": "Low cellular data network coverage across remote agricultural grazing reserves.",
+          "mitigationPlan": "Partner with telecom providers to deploy low-frequency LoRaWAN mesh gateways at agricultural extension offices.",
+          "status": "Open"
+        }
+      ],
+      "documents": [
+        {
+          "id": "doc-9-1",
+          "fileName": "Savannah_Climate_AI_Charter.pdf",
+          "fileType": "pdf",
+          "uploadedAt": "2023-04-14",
+          "version": 1,
+          "signedBy": [
+            "MESTI Coordinator"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "proj-10",
+      "projectCode": "GN-AI-2026-010",
+      "name": "Upper East Maternal Telehealth & Drone Logistics AI",
+      "description": "An autonomous medical supply delivery and emergency dispatch system. Optimizes flight routes, emergency blood distribution, and remote maternal clinical triaging across hard-to-reach northern clinics.",
+      "category": "Robotics",
+      "sector": "Health",
+      "stage": "Operational",
+      "status": "Active",
+      "startDate": "2021-07-01",
+      "endDate": "2029-06-30",
+      "expectedCompletionDate": "2029-06-30",
+      "latitude": 10.7856,
+      "longitude": -0.8514,
+      "mda": "Ghana Health Service (GHS)",
+      "mdaCode": "GHS",
+      "region": "Upper East",
+      "district": "Bolgatanga Municipal",
+      "budget": {
+        "totalAllocated": 14000000,
+        "disbursed": 13200000,
+        "utilized": 12900000,
+        "remaining": 800000,
+        "primaryFundingSource": "Government",
+        "currency": "GHS"
+      },
+      "compliance": {
+        "fairness": 92,
+        "transparency": 88,
+        "accountability": 90,
+        "privacy": 88,
+        "security": 94,
+        "overallGrade": "Excellent"
+      },
+      "readinessScore": 91,
+      "milestones": [
+        {
+          "id": "m10-1",
+          "title": "Bolgatanga regional drone hub commissioning",
+          "dueDate": "2022-09-10",
+          "progressPercent": 100,
+          "status": "Completed"
+        },
+        {
+          "id": "m10-2",
+          "title": "Maternal hemorrhage blood dispatch algorithm trial",
+          "dueDate": "2024-03-15",
+          "progressPercent": 100,
+          "status": "Completed"
+        },
+        {
+          "id": "m10-3",
+          "title": "Autonomous nocturnal flight clearance API sync",
+          "dueDate": "2026-09-15",
+          "progressPercent": 70,
+          "status": "Pending"
+        }
+      ],
+      "risks": [
+        {
+          "id": "r10-1",
+          "category": "Safety Risk",
+          "severity": "Critical",
+          "likelihood": 1,
+          "impact": 5,
+          "description": "Adverse Harmattan dust winds impacting flight vision sensors.",
+          "mitigationPlan": "Integrate LIDAR and dual-frequency barometer sensors with automatic return-to-base protocols.",
+          "status": "Mitigated"
+        }
+      ],
+      "documents": [
+        {
+          "id": "doc-10-1",
+          "fileName": "GHS_Drone_Aviation_Safety_Clearance.pdf",
+          "fileType": "pdf",
+          "uploadedAt": "2022-01-11",
+          "version": 2,
+          "signedBy": [
+            "Director General GHS",
+            "GCAA Aviation Authority"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "proj-11",
+      "projectCode": "GN-AI-2026-011",
+      "name": "Takoradi Port Autonomous Container OCR & Customs Vision",
+      "description": "Automated maritime container identification and manifest inspection. Employs deep optical character recognition and scanning analytics to accelerate cargo clearance and counter customs undervaluation.",
+      "category": "Computer Vision",
+      "sector": "Transport",
+      "stage": "Deployment",
+      "status": "Active",
+      "startDate": "2022-11-01",
+      "endDate": "2028-05-30",
+      "expectedCompletionDate": "2028-05-15",
+      "latitude": 4.934,
+      "longitude": -1.758,
+      "mda": "Ghana Ports and Harbours Authority (GPHA) / GRA",
+      "mdaCode": "GPHA",
+      "region": "Western",
+      "district": "Sekondi-Takoradi",
+      "budget": {
+        "totalAllocated": 11500000,
+        "disbursed": 9800000,
+        "utilized": 9100000,
+        "remaining": 1700000,
+        "primaryFundingSource": "Donors",
+        "currency": "GHS"
+      },
+      "compliance": {
+        "fairness": 84,
+        "transparency": 80,
+        "accountability": 86,
+        "privacy": 82,
+        "security": 91,
+        "overallGrade": "Good"
+      },
+      "readinessScore": 84,
+      "milestones": [
+        {
+          "id": "m11-1",
+          "title": "Port gate gantry optical sensor integration",
+          "dueDate": "2023-06-25",
+          "progressPercent": 100,
+          "status": "Completed"
+        },
+        {
+          "id": "m11-2",
+          "title": "ICUMS trade database automated link",
+          "dueDate": "2024-12-10",
+          "progressPercent": 100,
+          "status": "Completed"
+        },
+        {
+          "id": "m11-3",
+          "title": "Automated tare weight discrepancy anomaly model",
+          "dueDate": "2026-11-30",
+          "progressPercent": 60,
+          "status": "Pending"
+        }
+      ],
+      "risks": [
+        {
+          "id": "r11-1",
+          "category": "Operational Risk",
+          "severity": "Medium",
+          "likelihood": 2,
+          "impact": 4,
+          "description": "Corrosion of external camera sensors from coastal maritime salt spray.",
+          "mitigationPlan": "Enclose all optical sensors in IP68 marine-grade pressurized stainless steel casings.",
+          "status": "Mitigated"
+        }
+      ],
+      "documents": [
+        {
+          "id": "doc-11-1",
+          "fileName": "Takoradi_Port_OCR_Audit.pdf",
+          "fileType": "pdf",
+          "uploadedAt": "2023-08-20",
+          "version": 1,
+          "signedBy": [
+            "Director of Port",
+            "Customs Commissioner"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "proj-12",
+      "projectCode": "GN-AI-2026-012",
+      "name": "Cape Coast Coastal Erosion & Mangrove Satellite Monitor",
+      "description": "High-resolution satellite Earth observation engine monitoring shoreline retreat and mangrove biomass loss along the Central Coast. Triggers automated alerts to municipal authorities to mitigate coastal flooding.",
+      "category": "Predictive Analytics",
+      "sector": "Environment",
+      "stage": "Pilot",
+      "status": "Active",
+      "startDate": "2023-06-01",
+      "endDate": "2027-12-31",
+      "expectedCompletionDate": "2027-11-15",
+      "latitude": 5.1053,
+      "longitude": -1.2466,
+      "mda": "Environmental Protection Agency (EPA)",
+      "mdaCode": "EPA",
+      "region": "Central",
+      "district": "Cape Coast Metropolitan",
+      "budget": {
+        "totalAllocated": 5800000,
+        "disbursed": 4100000,
+        "utilized": 3700000,
+        "remaining": 1700000,
+        "primaryFundingSource": "Research Grants",
+        "currency": "GHS"
+      },
+      "compliance": {
+        "fairness": 86,
+        "transparency": 82,
+        "accountability": 84,
+        "privacy": 88,
+        "security": 86,
+        "overallGrade": "Good"
+      },
+      "readinessScore": 78,
+      "milestones": [
+        {
+          "id": "m12-1",
+          "title": "Cape Coast 10-year shoreline satellite dataset",
+          "dueDate": "2024-01-30",
+          "progressPercent": 100,
+          "status": "Completed"
+        },
+        {
+          "id": "m12-2",
+          "title": "Coastal retreat predictive neural network training",
+          "dueDate": "2025-05-18",
+          "progressPercent": 100,
+          "status": "Completed"
+        },
+        {
+          "id": "m12-3",
+          "title": "Fisherfolk coastal flood SMS warning pipeline",
+          "dueDate": "2026-10-15",
+          "progressPercent": 25,
+          "status": "Pending"
+        }
+      ],
+      "risks": [
+        {
+          "id": "r12-1",
+          "category": "Environmental Risk",
+          "severity": "High",
+          "likelihood": 3,
+          "impact": 4,
+          "description": "Cloud cover obscuring optical satellite imagery during rainy season.",
+          "mitigationPlan": "Fuse optical Sentinel-2 imagery with Synthetic Aperture Radar (SAR Sentinel-1) penetrates cloud cover.",
+          "status": "Mitigated"
+        }
+      ],
+      "documents": [
+        {
+          "id": "doc-12-1",
+          "fileName": "EPA_Coastal_Erosion_AI_Baseline.pdf",
+          "fileType": "pdf",
+          "uploadedAt": "2024-02-10",
+          "version": 1,
+          "signedBy": [
+            "Executive Director EPA",
+            "Marine Geologist"
+          ]
+        }
+      ]
+    }
+  ],
+  "verdicts": [
+    {
+      "id": "verd-001",
+      "projectId": "proj-6",
+      "projectCode": "GN-AI-2026-006",
+      "projectName": "LEAP Biometric Social Transfer Registry",
+      "mda": "Ministry of Gender, Children and Social Protection",
+      "verdict": "Approve",
+      "finalStatusLabel": "Approved",
+      "mandatoryComments": "Statutory compliance satisfied under NITA Act 771 and Data Protection Act 843. Biometric social transfer registry approved for operational deployment and MoF treasury warrant release.",
+      "reviewedByName": "Hon. Director General",
+      "reviewedByRole": "Director General",
+      "reviewedByEmail": "dg@nita.gov.gh",
+      "timestamp": "2026-09-30T14:20:10Z",
+      "technicalRecommendationSummary": "Technical clearance validated. 92% ethical compliance score.",
+      "complianceGradeAtReview": "Good",
+      "clearanceOfficer": "Ing. Emmanuel Darko (Technical Director)",
+      "signatureSeal": "DG-SEAL-NITA-2026-006A9F"
+    },
+    {
+      "id": "verd-002",
+      "projectId": "proj-5",
+      "projectCode": "GN-AI-2026-005",
+      "projectName": "NHIS Claims Biometric & AI Validation Engine",
+      "mda": "National Health Insurance Authority (NHIA)",
+      "verdict": "Return for Further Review",
+      "finalStatusLabel": "Requires More Understanding",
+      "mandatoryComments": "Requires more understanding and technical clarification before final national deployment sign-off: (1) NHIA must provide a detailed breakdown of how false-positive AI claim rejections are manually appealed by rural district clinics; (2) Offline biometric verification fallback during cellular outages must be demonstrated; and (3) Self-reported GHS 4.5M disbursement requires matching MoF Treasury Warrant vouchers.",
+      "reviewedByName": "Hon. Director General",
+      "reviewedByRole": "Director General",
+      "reviewedByEmail": "dg@nita.gov.gh",
+      "timestamp": "2026-10-12T11:15:00Z",
+      "technicalRecommendationSummary": "DPIA signed, but clinic dispute workflow and warrant reconciliation need further clarification.",
+      "complianceGradeAtReview": "Good",
+      "clearanceOfficer": "Ama Osei-Bonsu (Technical Clearance Team)",
+      "signatureSeal": "DG-SEAL-NITA-2026-005C4E"
+    },
+    {
+      "id": "verd-003",
+      "projectId": "proj-4",
+      "projectCode": "GN-AI-2026-004",
+      "projectName": "National E-Justice Court Tracking Registry",
+      "mda": "Ministry of Justice and Attorney General's Department",
+      "verdict": "Reject",
+      "finalStatusLabel": "Rejected",
+      "mandatoryComments": "Statutory clearance rejected under Act 843 Section 20. The submitted architecture lacks mandatory air-gapped cryptographic hashing for juvenile and sensitive judicial proceedings. Must undergo complete re-architecture before re-submission.",
+      "reviewedByName": "Hon. Director General",
+      "reviewedByRole": "Director General",
+      "reviewedByEmail": "dg@nita.gov.gh",
+      "timestamp": "2026-10-18T16:45:00Z",
+      "technicalRecommendationSummary": "Severe data protection deficiencies identified during statutory review.",
+      "complianceGradeAtReview": "High Risk",
+      "clearanceOfficer": "Ing. Emmanuel Darko (Technical Director)",
+      "signatureSeal": "DG-SEAL-NITA-2026-004F18"
+    }
+  ],
+  "auditLogs": [
+    {
+      "id": "audit-001",
+      "timestamp": "2026-09-28T08:15:30Z",
+      "eventType": "GATE_SUBMISSION",
+      "actorName": "Dr. Kwaku Mensah",
+      "actorEmail": "k.mensah@nita.gov.gh",
+      "actorRole": "Super Admin",
+      "actorInstitution": "National Information Technology Agency (NITA)",
+      "targetModule": "gate",
+      "actionDetails": "Institutional entry gate authenticated with institutional certificate.",
+      "integrityHash": "sha256-a1b2c3d4e5f60011",
+      "retentionUntil": "2031-09-28T08:15:30Z"
+    },
+    {
+      "id": "audit-002",
+      "timestamp": "2026-09-28T09:30:12Z",
+      "eventType": "DOCUMENT_UPLOAD",
+      "actorName": "Ing. Emmanuel Darko",
+      "actorEmail": "e.darko@mocd.gov.gh",
+      "actorRole": "Technical Director",
+      "actorInstitution": "Ministry of Communications and Digitalisation",
+      "targetModule": "documents",
+      "targetEntityId": "doc-1-1",
+      "actionDetails": "Uploaded Cocoa Disease Detection Model Architecture Specs (PDF, 4.2 MB) for GN-AI-2026-001.",
+      "integrityHash": "sha256-b2c3d4e5f6a10022",
+      "retentionUntil": "2031-09-28T09:30:12Z"
+    },
+    {
+      "id": "audit-003",
+      "timestamp": "2026-09-29T11:45:00Z",
+      "eventType": "TECH_REVIEW_TRANSITION",
+      "actorName": "Ama Osei-Bonsu",
+      "actorEmail": "a.osei@nita.gov.gh",
+      "actorRole": "Technical Clearance Team",
+      "actorInstitution": "National Information Technology Agency (NITA)",
+      "targetModule": "documents",
+      "targetEntityId": "proj-1",
+      "actionDetails": "Technical clearance validated. Recommended GN-AI-2026-001 for Director General final decision.",
+      "integrityHash": "sha256-c3d4e5f6a1b20033",
+      "retentionUntil": "2031-09-29T11:45:00Z"
+    }
+  ],
+  "reports": [
+    {
+      "id": "rep-001",
+      "reportCode": "RPT-2026-NITA-01",
+      "title": "Biometric Model Drift & Fairness Disparity in Ashanti Region Sub-clusters",
+      "summary": "Technical inspection of the GhanaPostGPS route intelligence model indicates localized degradation in peri-urban cluster boundaries. Requires retraining with verified GIS ground-truth.",
+      "projectId": "proj-1",
+      "projectCode": "GN-AI-2026-001",
+      "documentId": "doc-1-2",
+      "severity": "Urgent",
+      "status": "Open",
+      "createdByName": "Ing. Emmanuel Darko",
+      "createdByRole": "Technical Director",
+      "createdByEmail": "e.darko@mocd.gov.gh",
+      "createdAt": "2026-10-02T10:14:00Z",
+      "updatedAt": "2026-10-03T14:22:00Z",
+      "assignedRole": "Technical Clearance Team",
+      "readBy": [
+        "e.darko@mocd.gov.gh",
+        "k.mensah@nita.gov.gh"
+      ],
+      "comments": [
+        {
+          "id": "comm-1",
+          "reportId": "rep-001",
+          "authorName": "Ama Osei-Bonsu",
+          "authorRole": "Technical Clearance Team",
+          "authorEmail": "a.osei@nita.gov.gh",
+          "authorInstitution": "National Information Technology Agency (NITA)",
+          "timestamp": "2026-10-02T15:30:00Z",
+          "content": "Cross-checked against the ethical fairness checklist. Fairness grade dropped from 94% to 88% due to under-sampling in off-grid sectors. Recommend requesting updated dataset documentation before recommending to DG.",
+          "attachmentName": "ashanti_periurban_dataset_audit.pdf"
+        }
+      ]
+    }
+  ]
+}

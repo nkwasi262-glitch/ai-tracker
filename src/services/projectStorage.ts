@@ -1,4 +1,5 @@
 import { AIProject, sampleProjects } from '../data/sampleProjects';
+import { apiClient } from './apiClient';
 
 const PROJECTS_STORAGE_KEY = 'gnaprms_projects_v2';
 
@@ -15,6 +16,8 @@ export function loadStoredProjects(): AIProject[] {
     if (!raw) {
       // Seed initial storage
       localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(sampleProjects));
+      // Background trigger to sync with Neon DB if available
+      syncWithNeonDatabase();
       return sampleProjects;
     }
 
@@ -34,6 +37,8 @@ export function loadStoredProjects(): AIProject[] {
           dgFinalVerdict: proj.dgFinalVerdict || sample.dgFinalVerdict
         };
       });
+      // Trigger background sync with Neon DB
+      syncWithNeonDatabase();
       return merged;
     }
   } catch (error) {
@@ -44,7 +49,25 @@ export function loadStoredProjects(): AIProject[] {
 }
 
 /**
- * Persists the master projects array to localStorage.
+ * Fetches latest projects from the Neon PostgreSQL database and reconciles with localStorage.
+ */
+export async function syncWithNeonDatabase(): Promise<AIProject[] | null> {
+  try {
+    const remoteProjects = await apiClient.fetchProjects();
+    if (remoteProjects && Array.isArray(remoteProjects) && remoteProjects.length > 0) {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(remoteProjects));
+      }
+      return remoteProjects;
+    }
+  } catch (err) {
+    // Offline or serverless cold start - continue with local cache
+  }
+  return null;
+}
+
+/**
+ * Persists the master projects array to localStorage and syncs with Neon DB.
  */
 export function saveStoredProjects(projects: AIProject[]): void {
   if (typeof window === 'undefined' || !window.localStorage) {
@@ -55,6 +78,13 @@ export function saveStoredProjects(projects: AIProject[]): void {
     localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(projects));
   } catch (error) {
     console.error('Failed to save projects to localStorage:', error);
+  }
+
+  // Asynchronously sync modified projects to Neon PostgreSQL
+  if (Array.isArray(projects)) {
+    projects.forEach(p => {
+      apiClient.saveProject(p).catch(() => {});
+    });
   }
 }
 

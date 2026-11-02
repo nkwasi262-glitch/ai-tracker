@@ -1,5 +1,6 @@
 import { AuditLogEntry, AuditEventType } from '../data/auditTypes';
 import { ActiveRole } from '../data/authTypes';
+import { apiClient } from './apiClient';
 
 const AUDIT_STORAGE_KEY = 'gnaprms_audit_logs_v1';
 
@@ -92,13 +93,24 @@ export function getAuditLogs(): AuditLogEntry[] {
     const raw = localStorage.getItem(AUDIT_STORAGE_KEY);
     if (!raw) {
       localStorage.setItem(AUDIT_STORAGE_KEY, JSON.stringify(SEED_AUDIT_LOGS));
+      syncAuditLogsWithNeon();
       return SEED_AUDIT_LOGS;
     }
+    syncAuditLogsWithNeon();
     return JSON.parse(raw) as AuditLogEntry[];
   } catch (e) {
     console.error('Failed to load audit logs:', e);
     return SEED_AUDIT_LOGS;
   }
+}
+
+async function syncAuditLogsWithNeon() {
+  try {
+    const remote = await apiClient.fetchAuditLogs();
+    if (remote && Array.isArray(remote) && remote.length > 0) {
+      localStorage.setItem(AUDIT_STORAGE_KEY, JSON.stringify(remote));
+    }
+  } catch {}
 }
 
 export function recordAuditEvent(params: {
@@ -145,6 +157,9 @@ export function recordAuditEvent(params: {
   } catch (e) {
     console.error('Failed to write audit entry to storage:', e);
   }
+
+  // Sync to Neon DB asynchronously
+  apiClient.appendAuditLog(newEntry).catch(() => {});
 
   return newEntry;
 }

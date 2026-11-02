@@ -1,5 +1,6 @@
 import { DGVerdictRecord, DGVerdictDecision } from '../data/verdictTypes';
 import { recordAuditEvent } from './auditService';
+import { apiClient } from './apiClient';
 
 const VERDICTS_STORAGE_KEY = 'gnaprms_dg_verdicts_v3';
 
@@ -65,13 +66,24 @@ export function getDGVerdicts(): DGVerdictRecord[] {
     const raw = localStorage.getItem(VERDICTS_STORAGE_KEY);
     if (!raw) {
       localStorage.setItem(VERDICTS_STORAGE_KEY, JSON.stringify(SEED_VERDICTS));
+      syncVerdictsWithNeon();
       return SEED_VERDICTS;
     }
+    syncVerdictsWithNeon();
     return JSON.parse(raw) as DGVerdictRecord[];
   } catch (e) {
     console.error('Failed to get DG verdicts:', e);
     return SEED_VERDICTS;
   }
+}
+
+async function syncVerdictsWithNeon() {
+  try {
+    const remote = await apiClient.fetchVerdicts();
+    if (remote && Array.isArray(remote) && remote.length > 0) {
+      localStorage.setItem(VERDICTS_STORAGE_KEY, JSON.stringify(remote));
+    }
+  } catch {}
 }
 
 export function recordDGVerdict(params: {
@@ -120,6 +132,9 @@ export function recordDGVerdict(params: {
   // Replace any older verdict for the same project at the top while keeping history
   const updated = [newVerdict, ...current];
   localStorage.setItem(VERDICTS_STORAGE_KEY, JSON.stringify(updated));
+
+  // Sync to Neon DB asynchronously
+  apiClient.saveVerdict(newVerdict).catch(() => {});
 
   recordAuditEvent({
     eventType: 'DG_VERDICT_ISSUED',

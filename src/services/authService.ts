@@ -1,6 +1,7 @@
 import { UserSession, ActiveRole, InstitutionCategory } from '../data/authTypes';
 import { isApprovedInstitutionalEmail } from './rbacPolicy';
 import { recordAuditEvent } from './auditService';
+import { apiClient } from './apiClient';
 
 const SESSION_KEY = 'gnaprms_user_session_v1';
 const PENDING_OTP_KEY = 'gnaprms_pending_otp_v1';
@@ -66,6 +67,9 @@ export function saveSession(session: UserSession): void {
   } catch (e) {
     console.error('Failed to save user session:', e);
   }
+
+  // Sync session to Neon DB asynchronously
+  apiClient.syncSession(session).catch(() => {});
 }
 
 export function clearSession(): void {
