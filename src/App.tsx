@@ -20,16 +20,39 @@ import { PendingApprovalNotice } from './components/PendingApprovalNotice';
 import { SignOutConfirmModal } from './components/SignOutConfirmModal';
 import { AIProject, ComplianceScore, DocumentAsset, DocumentReviewComment, ReviewWorkflowStatus, AutoAssessmentDetails, ZeroAssumptionAudit, ensureFirstTimerMdaProject, getFirstTimerMdaProjectId } from './data/sampleProjects';
 import { UserSession, ActiveRole } from './data/authTypes';
-import { getStoredSession, clearSession, elevateFromFirstTimer, submitOnboardingForApproval } from './services/authService';
+import { getStoredSession, clearSession, elevateFromFirstTimer, submitOnboardingForApproval, saveSession } from './services/authService';
 import { AppModuleId, canAccessModule, MODULE_REGISTRY } from './services/rbacPolicy';
 import { generateAssessmentFromDocuments } from './services/assessmentEngine';
 import { loadStoredProjects, saveStoredProjects, resetProjectsStorage } from './services/projectStorage';
 import { recordAuditEvent } from './services/auditService';
 import { recordDGVerdict } from './services/verdictService';
+import { apiClient } from './services/apiClient';
 
 function App() {
   // 1. Session State from Mandatory Entry Gate
   const [session, setSession] = useState<UserSession | null>(() => getStoredSession());
+
+  // Keep session in sync with Neon PostgreSQL database
+  useEffect(() => {
+    async function syncSessionWithPostgres() {
+      const stored = getStoredSession();
+      if (stored?.email) {
+        try {
+          const remoteUser = await apiClient.fetchUserByEmail(stored.email);
+          if (remoteUser && remoteUser.role) {
+            if (remoteUser.role !== stored.role || remoteUser.fullName !== stored.fullName) {
+              const updatedSession = { ...stored, ...remoteUser };
+              saveSession(updatedSession);
+              setSession(updatedSession);
+            }
+          }
+        } catch {
+          // Graceful fallback to offline cached session
+        }
+      }
+    }
+    syncSessionWithPostgres();
+  }, []);
 
   // 2. Central Registry & Navigation States (Persistent across reloads)
   const [projects, setProjects] = useState<AIProject[]>(() => {
@@ -663,11 +686,12 @@ function App() {
       <EntryGateModal 
         onSuccess={(newSession) => {
           setSession(newSession);
-          const initialTab = newSession.role === 'First-Timer / New User' ? 'dashboard' :
-                            newSession.role === 'Director General' ? 'dg_queue' :
+          const initialTab = newSession.role === 'Director General' ? 'dg_queue' :
                             newSession.role === 'Finance Minister' ? 'finance' :
+                            newSession.role === 'Technical Director' ? 'documents' :
                             newSession.role === 'Technical Clearance Team' ? 'documents' :
                             newSession.role === 'AI Manager' ? 'registry' :
+                            newSession.role === 'First-Timer / New User' ? 'documents' :
                             'dashboard';
           setActiveTab(initialTab);
         }} 
@@ -675,8 +699,8 @@ function App() {
     );
   }
 
-  // 4b. If New Member in Onboarding Track (or viewing Onboard Hub), render FirstTimerOnboardingHub
-  if ((session.memberType === 'new_member' && session.onboardingStatus === 'onboarding') || viewingOnboardingHub) {
+  // 4b. Render FirstTimerOnboardingHub only if explicitly requested by the user
+  if (viewingOnboardingHub) {
     return (
       <div className="layout-wrapper" style={{ minHeight: '100vh', background: 'var(--bg-dark)', padding: '24px 16px' }}>
         <div style={{ maxWidth: '1240px', margin: '0 auto' }}>

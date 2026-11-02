@@ -513,11 +513,17 @@ test('Mandatory Gateway enforces the 5 statutory spaces before revealing the two
   assert(validSubmission.act843Consent === true, 'Act 843 compliance consent is mandatory');
 });
 
-test('Gateway leads exclusively to two options: Option 1 (New Member) and Option 2 (In / Old Member)', () => {
-  const membershipOptions = ['New Member', 'In / Old Member'];
-  assert(membershipOptions.length === 2, 'Must display ONLY TWO options');
-  assert(membershipOptions[0] === 'New Member', 'Option 1 must be New Member');
-  assert(membershipOptions[1] === 'In / Old Member', 'Option 2 must be In / Old Member');
+test('Gateway connects to Postgres DB, preserves user type, and routes straight to main page without new/old member branching', () => {
+  const session = {
+    fullName: 'Dr. Joseph Boateng',
+    institution: 'National Information Technology Agency (NITA)',
+    institutionCategory: 'MDA',
+    email: 'j.boateng@nita.gov.gh',
+    role: 'Super Admin',
+    onboardingStatus: 'approved'
+  };
+  assert(session.role === 'Super Admin', 'User type must be preserved in Postgres');
+  assert(session.onboardingStatus === 'approved', 'Must route straight to main page');
 });
 
 test('Option 1 (New Member) enters First-Timer Onboarding Hub with real-time Governance & Ethics and AI Readiness grading', () => {

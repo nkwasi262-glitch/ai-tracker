@@ -182,8 +182,28 @@ class ApiClient {
   }
 
   // ==========================================================================
-  // SESSIONS
+  // SESSIONS & USER TYPE PERSISTENCE (POSTGRESQL)
   // ==========================================================================
+
+  /**
+   * Looks up an existing user by institutional email directly from Neon PostgreSQL.
+   */
+  async fetchUserByEmail(email: string): Promise<UserSession | null> {
+    try {
+      const cleanEmail = email.trim().toLowerCase();
+      const res = await fetch(`${this.base}/auth/user/${encodeURIComponent(cleanEmail)}`, {
+        signal: AbortSignal.timeout(4000)
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (data && data.exists && data.user) {
+        return data.user as UserSession;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
 
   async syncSession(session: UserSession): Promise<boolean> {
     try {

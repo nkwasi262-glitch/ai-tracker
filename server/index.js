@@ -461,43 +461,98 @@ app.post('/api/reports', async (req, res) => {
 });
 
 // ============================================================================
-// 6. USER SESSIONS & AUTHENTICATION CACHE ENDPOINTS
+// 6. USER SESSIONS & AUTHENTICATION ENDPOINTS (NEON POSTGRESQL)
 // ============================================================================
+
+// Look up existing user type / profile from Neon PostgreSQL by email
+app.get('/api/auth/user/:email', async (req, res) => {
+  const email = (req.params.email || '').trim().toLowerCase();
+  if (!email) {
+    return res.status(400).json({ error: 'Missing email' });
+  }
+
+  const sql = getDb();
+  if (sql && isDbConfigured()) {
+    try {
+      const rows = await sql`
+        SELECT * FROM user_sessions 
+        WHERE LOWER(email) = ${email} 
+        LIMIT 1;
+      `;
+      if (rows && rows.length > 0) {
+        const u = rows[0];
+        const userObj = {
+          sessionId: u.id,
+          email: u.email,
+          fullName: u.full_name,
+          institution: u.institution,
+          institutionCategory: u.institution_category || 'MDA',
+          role: u.role,
+          memberType: u.member_type || 'in_member',
+          onboardingStatus: u.onboarding_status || 'approved',
+          isFirstTimer: u.is_first_timer || false,
+          authenticatedAt: u.authenticated_at,
+          lastActiveAt: u.last_active_at,
+          ...(u.session_data || {})
+        };
+        return res.json({ success: true, exists: true, user: userObj });
+      }
+      return res.json({ success: true, exists: false, user: null });
+    } catch (e) {
+      console.error('[API] Error fetching user by email:', e.message);
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  return res.json({ success: true, exists: false, user: null });
+});
+
+// Save or keep user type / session in Neon PostgreSQL
 app.post('/api/auth/session', async (req, res) => {
   const s = req.body;
   if (!s || !s.email) {
     return res.status(400).json({ error: 'Missing session email' });
   }
 
+  const cleanEmail = s.email.trim().toLowerCase();
   const sql = getDb();
   if (sql && isDbConfigured()) {
     try {
-      const sessionId = s.id || `sess-${Date.now()}`;
+      const sessionId = s.sessionId || s.id || `sess-${Date.now()}`;
       await sql`
         INSERT INTO user_sessions (
           id, email, full_name, institution, institution_category,
           role, member_type, onboarding_status, is_first_timer,
           authenticated_at, last_active_at, session_data
         ) VALUES (
-          ${sessionId}, ${s.email}, ${s.fullName || 'Authorized Officer'}, ${s.institution || 'Government of Ghana'},
+          ${sessionId}, ${cleanEmail}, ${s.fullName || 'Authorized Officer'}, ${s.institution || 'Government of Ghana'},
           ${s.institutionCategory || 'MDA'}, ${s.role || 'Public User'}, ${s.memberType || 'in_member'},
           ${s.onboardingStatus || 'approved'}, ${s.isFirstTimer || false},
           NOW(), NOW(), ${JSON.stringify(s)}
         )
         ON CONFLICT (email) DO UPDATE SET
+          full_name = EXCLUDED.full_name,
+          institution = EXCLUDED.institution,
+          institution_category = EXCLUDED.institution_category,
           role = EXCLUDED.role,
           member_type = EXCLUDED.member_type,
           onboarding_status = EXCLUDED.onboarding_status,
+          is_first_timer = EXCLUDED.is_first_timer,
           last_active_at = NOW(),
           session_data = EXCLUDED.session_data;
       `;
-      return res.json({ success: true, message: 'Session synced with Neon DB' });
+      return res.json({ 
+        success: true, 
+        message: 'Session and user type saved to Neon PostgreSQL',
+        user: { ...s, email: cleanEmail }
+      });
     } catch (e) {
-      console.error('[API] Error updating user session:', e.message);
+      console.error('[API] Error updating user session in Postgres:', e.message);
+      return res.status(500).json({ error: e.message });
     }
   }
 
-  return res.json({ success: true, message: 'Session saved in memory' });
+  return res.json({ success: true, message: 'Session saved in memory', user: s });
 });
 
 // ============================================================================
