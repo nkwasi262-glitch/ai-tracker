@@ -119,9 +119,14 @@ function App() {
 
   // 3. Global State Mutation Callback Handlers
   
-  // Appends new projects to state
+  // Appends new projects to state and navigates straight to Dashboard
   const handleAddProject = (newProject: AIProject) => {
-    setProjects(prev => [newProject, ...prev]);
+    setProjects(prev => {
+      const updated = [newProject, ...prev];
+      saveStoredProjects(updated);
+      return updated;
+    });
+    setActiveTab('dashboard');
   };
 
   // Deletes projects from state
@@ -490,6 +495,7 @@ function App() {
             onDeleteProject={handleDeleteProject}
             onClearAllProjects={handleClearAllProjects}
             currentRole={session.role as any} 
+            onNavigate={(tab) => setActiveTab(tab)}
           />
         );
       case 'gis':

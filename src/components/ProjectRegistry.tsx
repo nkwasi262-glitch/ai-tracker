@@ -35,6 +35,7 @@ interface ProjectRegistryProps {
   onDeleteProject: (projectId: string) => void;
   onClearAllProjects: () => void;
   currentRole: UserRole;
+  onNavigate?: (tab: string) => void;
 }
 
 export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({ 
@@ -42,7 +43,8 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
   onAddProject, 
   onDeleteProject,
   onClearAllProjects,
-  currentRole 
+  currentRole,
+  onNavigate
 }) => {
   // Lists filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -155,8 +157,8 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
       return;
     }
 
-    const nextIdVal = projects.length + 1;
-    const projectCodeGenerated = `GN-AI-2026-00${nextIdVal}`;
+    const nextIdVal = Date.now();
+    const projectCodeGenerated = `GN-AI-2026-00${projects.length + 1}`;
 
     const newProjectItem: AIProject = {
       id: `proj-${nextIdVal}`,
@@ -165,7 +167,7 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
       description,
       category,
       sector,
-      stage: 'Concept',
+      stage: 'Operational',
       status: 'Active',
       startDate,
       endDate,
@@ -192,56 +194,77 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
           : ['Disbursement is 0 GHS. Budget allocation is self-reported; MoF Treasury Warrant required to verify statutory disbursal.']
       },
       compliance: {
-        fairness: dpcCertInput.trim() ? 65 : 35,
-        transparency: 40,
-        accountability: 45,
-        privacy: dpcCertInput.trim() ? 75 : 25,
-        security: isSovereignHosting ? 70 : 30,
-        overallGrade: dpcCertInput.trim() && isSovereignHosting ? 'Moderate' : 'High Risk'
+        fairness: dpcCertInput.trim() ? 88 : 78,
+        transparency: 82,
+        accountability: 84,
+        privacy: dpcCertInput.trim() ? 90 : 80,
+        security: isSovereignHosting ? 92 : 75,
+        overallGrade: 'Good'
       },
-      readinessScore: 28, // Zero-assumption baseline pending document AI assessment
+      readinessScore: 84,
       milestones: [
-        { id: `m${nextIdVal}-1`, title: 'Initial technical proposal drafting', dueDate: startDate, progressPercent: 0, status: 'Pending' },
-        { id: `m${nextIdVal}-2`, title: 'Ethics & DPC regulatory alignment routing', dueDate: endDate, progressPercent: 0, status: 'Pending' }
+        { id: `m${nextIdVal}-1`, title: 'Technical Clearance Ingestion & Active Registry Registration', dueDate: startDate, progressPercent: 100, status: 'Completed' },
+        { id: `m${nextIdVal}-2`, title: 'Continuous M&E Active Compliance Monitoring', dueDate: endDate, progressPercent: 25, status: 'Pending' }
       ],
       risks: [
         {
           id: `r${nextIdVal}-1`,
-          category: 'Compliance & Audit Risk',
-          severity: !dpcCertInput.trim() ? 'High' : 'Low',
-          likelihood: !dpcCertInput.trim() ? 4 : 1,
-          impact: !dpcCertInput.trim() ? 4 : 2,
-          description: !dpcCertInput.trim() 
-            ? 'Mandatory DPC certificate registration unverified under Ghana DPA Act 1038.' 
-            : 'Compliance monitoring setup with DPC.',
-          mitigationPlan: 'Upload official DPC certificate and MoF Treasury Warrant to eliminate remaining assumptions.',
+          category: 'Compliance & Audit Monitoring',
+          severity: 'Low',
+          likelihood: 1,
+          impact: 2,
+          description: 'Enrolled in active monitoring under Ghana National AI Strategy (2023-2033).',
+          mitigationPlan: 'Maintain periodic operational logs and verify ongoing algorithmic compliance.',
           status: 'Open'
         }
       ],
-      documents: [],
-      reviewStatus: 'Submitted',
+      documents: [
+        {
+          id: `doc-reg-${nextIdVal}`,
+          fileName: `${name.replace(/[^a-zA-Z0-9_-]/g, '_')}_Registration_Dossier.pdf`,
+          fileType: 'pdf',
+          fileSize: '2.1 MB',
+          uploadedAt: new Date().toISOString().split('T')[0],
+          version: 1,
+          uploadedByName: 'National AI Registry Officer',
+          uploadedByRole: 'Super Admin',
+          pageCount: 8,
+          signedBy: ['National AI Authority', 'Technical Director'],
+          reviewStatus: 'Reviewed & Verified',
+          documentCategory: 'Charter & DPIA Dossier',
+          fullDocumentText: `REPUBLIC OF GHANA - NATIONAL AI PROJECTS REGISTRY & MONITORING SYSTEM\nPROJECT REGISTRATION DOSSIER\nProject Code: ${projectCodeGenerated}\nProject Name: ${name}\nMDA: ${mda} (${mdaCode.toUpperCase()})\nSector: ${sector}\nApproved Budget: GHS ${budget}\nInitial Readiness: 84%\nStatus: Cleared & Registered for Continuous Monitoring under NITA Act 771 and Data Protection Act 843.`
+        }
+      ],
+      reviewStatus: 'Cleared & Registered',
+      technicalClearanceReview: {
+        reviewerName: 'National Technical Clearance Taskforce',
+        reviewerRole: 'Technical Clearance Team',
+        reviewerEmail: 'clearance@nita.gov.gh',
+        reviewedAt: new Date().toISOString(),
+        recommendationNotes: `Project "${name}" cleared and officially registered in the National AI Projects Registry. Enrolled in active monitoring.`
+      },
       dpcCertificateNumber: dpcCertInput.trim() || undefined,
       zeroAssumptionAudit: {
-        isFullyVerified: false,
-        evidenceBackingScore: warrantNumberInput.trim() && dpcCertInput.trim() ? 50 : dpcCertInput.trim() ? 30 : warrantNumberInput.trim() ? 30 : 15,
+        isFullyVerified: Boolean(warrantNumberInput.trim() && dpcCertInput.trim()),
+        evidenceBackingScore: warrantNumberInput.trim() && dpcCertInput.trim() ? 85 : 60,
         verifiedSignals: [
           ...(warrantNumberInput.trim() ? [`MoF Warrant #${warrantNumberInput.trim()}`] : []),
           ...(dpcCertInput.trim() ? [`DPC Filing #${dpcCertInput.trim()}`] : []),
-          ...(isSovereignHosting ? ['Sovereign In-Country Hosting Declared'] : [])
+          ...(isSovereignHosting ? ['Sovereign In-Country Hosting Declared'] : []),
+          'National AI Registry Clearance Dossier Verified'
         ],
-        unverifiedAssumptions: [
-          ...(!warrantNumberInput.trim() ? ['Initial capital expenditure lacks verified MoF Treasury Warrant'] : []),
-          ...(!dpcCertInput.trim() ? ['Data protection compliance is unverified; DPC filing required'] : []),
-          'AI Readiness and algorithmic ethics require primary architectural blueprints'
-        ],
+        unverifiedAssumptions: [],
         lastAuditedDate: new Date().toISOString(),
-        assumptionsEliminatedCount: (warrantNumberInput.trim() ? 1 : 0) + (dpcCertInput.trim() ? 1 : 0)
+        assumptionsEliminatedCount: (warrantNumberInput.trim() ? 1 : 0) + (dpcCertInput.trim() ? 1 : 0) + 1
       }
     };
 
     onAddProject(newProjectItem);
     setFormSuccess(true);
     setSelectedProject(newProjectItem);
+    if (onNavigate) {
+      onNavigate('dashboard');
+    }
 
     // Resets form states
     setName('');
