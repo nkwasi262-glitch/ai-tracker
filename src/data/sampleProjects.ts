@@ -100,13 +100,17 @@ export interface DocumentAsset {
 }
 
 export type ReviewWorkflowStatus =
+  | 'Cleared & Registered'
+  | 'Operational'
+  | 'Active Monitoring'
+  | 'Under Review'
+  | 'Needs Attention'
+  | 'Approved'
   | 'Submitted'
   | 'Under Technical Review'
-  | 'Needs Correction'
   | 'Recommended to Technical Director'
   | 'Recommended'
-  | 'Under DG Review'
-  | 'Approved'
+  | 'Needs Correction'
   | 'Rejected'
   | 'Returned'
   | 'Pending';
@@ -279,13 +283,13 @@ export const sampleProjects: AIProject[] = [
         documentCategory: "Ethical Risk & Act 843 Compliance Dossier"
       }
     ],
-    reviewStatus: "Recommended",
+    reviewStatus: "Cleared & Registered",
     technicalReview: {
       reviewerName: "Ing. Emmanuel Darko",
       reviewerRole: "Technical Director",
       reviewerEmail: "e.darko@mocd.gov.gh",
       reviewedAt: "2026-09-28T10:00:00Z",
-      recommendationNotes: "Full architectural conformance verified. Recommended for Director General final statutory sign-off and budget release."
+      recommendationNotes: "Full architectural conformance verified. Received from Technical Clearance System and registered under active monitoring."
     },
     dpcCertificateNumber: "GH-DPC-2026-092",
     zeroAssumptionAudit: {
@@ -381,13 +385,13 @@ export const sampleProjects: AIProject[] = [
         documentCategory: "Model Card & Institutional Readiness Charter"
       }
     ],
-    reviewStatus: "Recommended",
+    reviewStatus: "Operational",
     technicalReview: {
       reviewerName: "Ama Osei-Bonsu",
       reviewerRole: "Technical Clearance Team",
       reviewerEmail: "a.osei@nita.gov.gh",
       reviewedAt: "2026-10-01T14:30:00Z",
-      recommendationNotes: "Biometric security protocols tested and validated. HSM operational. Recommended for Director General final statutory verdict."
+      recommendationNotes: "Biometric security protocols tested and validated. HSM operational. Received from Technical Clearance System with full clearance certificate."
     },
     dpcCertificateNumber: "GH-DPC-2026-118",
     zeroAssumptionAudit: {
@@ -480,13 +484,13 @@ export const sampleProjects: AIProject[] = [
         documentCategory: "Data Protection Commission Filing & Fairness Audit"
       }
     ],
-    reviewStatus: "Recommended",
+    reviewStatus: "Active Monitoring",
     technicalReview: {
       reviewerName: "Kofi Annan Jr.",
       reviewerRole: "Technical Clearance Team",
       reviewerEmail: "k.annan@nita.gov.gh",
       reviewedAt: "2026-10-02T11:20:00Z",
-      recommendationNotes: "Cocoa farm boundary telemetry audited. 90% fairness score. Recommended for Director General final statutory verdict."
+      recommendationNotes: "Cocoa farm boundary telemetry audited. 90% fairness score. Received from Technical Clearance System; enrolled in active compliance monitoring."
     },
     dpcCertificateNumber: "PENDING-FILING",
     zeroAssumptionAudit: {
@@ -568,16 +572,13 @@ export const sampleProjects: AIProject[] = [
     documents: [
       { id: "doc-4-1", fileName: "E-Justice_Audit_Report.pdf", fileType: "pdf", uploadedAt: "2023-11-05", version: 1, signedBy: ["Judicial Secretary", "Lead Auditor"] }
     ],
-    reviewStatus: "Rejected",
-    dgFinalVerdict: {
-      verdict: "Reject",
-      finalStatusLabel: "Rejected",
-      reasons: "Statutory Rejection issued under NITA Act 771 & Public Financial Management Act (Act 921): (1) Unreconciled financial audit discrepancy of GHS 850,000 in judicial cloud licensing flagged by MoF Internal Audit Directorate; (2) Unacceptable speech-to-text transcription error rate (>18% word error rate) on regional Ghanaian languages (Akan/Twi, Ewe, Ga) risking wrongful court transcript records; and (3) Lack of certified judicial privacy encryption sign-off under Act 843.",
-      signedByName: "Hon. Director General",
-      signedByRole: "Director General",
-      signedByEmail: "dg@nita.gov.gh",
-      signedAt: "2026-10-15T16:40:00Z",
-      signatureSeal: "DG-SEAL-NITA-2026-004R8B"
+    reviewStatus: "Needs Attention",
+    technicalReview: {
+      reviewerName: "National Technical Review Team",
+      reviewerRole: "Technical Director",
+      reviewerEmail: "clearance@nita.gov.gh",
+      reviewedAt: "2026-10-15T16:40:00Z",
+      recommendationNotes: "Monitoring Discrepancy under NITA Act 771 & Act 921: (1) Financial audit discrepancy of GHS 850,000 flagged; (2) Speech-to-text error rate (>18%) on Ghanaian languages requires model retraining; and (3) Privacy encryption update required under Act 843."
     },
     dpcCertificateNumber: "GH-DPC-2026-015",
     zeroAssumptionAudit: {
@@ -655,16 +656,13 @@ export const sampleProjects: AIProject[] = [
     documents: [
       { id: "doc-5-1", fileName: "NHIA_DPIA_Audit_Signoff.pdf", fileType: "pdf", uploadedAt: "2023-09-22", version: 1, signedBy: ["NHIA DPO", "External Auditor"] }
     ],
-    reviewStatus: "Returned",
-    dgFinalVerdict: {
-      verdict: "Return for Further Review",
-      finalStatusLabel: "Requires More Understanding",
-      reasons: "Requires more understanding and technical clarification before final national deployment sign-off: (1) NHIA must provide a detailed breakdown of how false-positive AI claim rejections are manually appealed by rural district clinics; (2) Offline biometric verification fallback during cellular outages must be demonstrated; and (3) Self-reported GHS 4.5M disbursement requires matching MoF Treasury Warrant vouchers.",
-      signedByName: "Hon. Director General",
-      signedByRole: "Director General",
-      signedByEmail: "dg@nita.gov.gh",
-      signedAt: "2026-10-12T11:15:00Z",
-      signatureSeal: "DG-SEAL-NITA-2026-005C4E"
+    reviewStatus: "Under Review",
+    technicalReview: {
+      reviewerName: "National Technical Review Team",
+      reviewerRole: "Technical Director",
+      reviewerEmail: "clearance@nita.gov.gh",
+      reviewedAt: "2026-10-12T11:15:00Z",
+      recommendationNotes: "Monitoring Assessment: Requires technical clarification on false-positive appeal workflows and offline biometric verification fallback during rural outages."
     },
     dpcCertificateNumber: "GH-DPC-2025-077",
     zeroAssumptionAudit: {
@@ -743,16 +741,13 @@ export const sampleProjects: AIProject[] = [
     documents: [
       { id: "doc-6-1", fileName: "LEAP_Social_Inclusivity_Charter.pdf", fileType: "pdf", uploadedAt: "2021-03-12", version: 1, signedBy: ["Minister of Gender", "Director of Social Welfare"] }
     ],
-    reviewStatus: "Approved",
-    dgFinalVerdict: {
-      verdict: "Approve",
-      finalStatusLabel: "Approved",
-      reasons: "Statutory compliance satisfied under NITA Act 771 and Data Protection Act 843. Biometric social transfer registry approved for operational deployment and MoF treasury warrant release.",
-      signedByName: "Hon. Director General",
-      signedByRole: "Director General",
-      signedByEmail: "dg@nita.gov.gh",
-      signedAt: "2026-09-30T14:20:10Z",
-      signatureSeal: "DG-SEAL-NITA-2026-006A9F"
+    reviewStatus: "Cleared & Registered",
+    technicalReview: {
+      reviewerName: "National Technical Review Team",
+      reviewerRole: "Technical Director",
+      reviewerEmail: "clearance@nita.gov.gh",
+      reviewedAt: "2026-09-30T14:20:10Z",
+      recommendationNotes: "Full clearance verified under NITA Act 771 and Data Protection Act 843. Biometric social transfer registry cleared and enrolled in active monitoring."
     },
     dpcCertificateNumber: "GH-DPC-2026-440",
     zeroAssumptionAudit: {
@@ -1177,11 +1172,11 @@ export function formatNumberToWords(num: number): string {
 }
 
 export function isProjectApprovedByDG(p: AIProject): boolean {
+  if (p.reviewStatus) {
+    return p.reviewStatus === 'Cleared & Registered' || p.reviewStatus === 'Operational' || p.reviewStatus === 'Active Monitoring' || p.reviewStatus === 'Approved';
+  }
   if (p.dgFinalVerdict) {
     return p.dgFinalVerdict.finalStatusLabel === 'Approved' || p.dgFinalVerdict.verdict === 'Approve';
-  }
-  if (p.reviewStatus) {
-    return p.reviewStatus === 'Approved';
   }
   return p.status === 'Active' || p.status === 'Completed';
 }
@@ -1355,24 +1350,24 @@ export function ensureMdaProject(
     milestones: [
       { id: `m-${slug}-1`, title: `${mdaName} AI Project Charter & DPIA Upload`, dueDate: today, progressPercent: matchingMdaDocs.length > 0 ? 100 : 50, status: matchingMdaDocs.length > 0 ? 'Completed' : 'Pending' },
       { id: `m-${slug}-2`, title: 'Automated Governance & Ethics + AI Readiness Grading', dueDate: today, progressPercent: matchingMdaDocs.length > 0 ? 100 : 25, status: matchingMdaDocs.length > 0 ? 'Completed' : 'Pending' },
-      { id: `m-${slug}-3`, title: 'Director General Final Statutory Sign-Off', dueDate: '2026-12-31', progressPercent: 0, status: 'Pending' }
+      { id: `m-${slug}-3`, title: 'Technical Clearance Ingestion & Active Registry Registration', dueDate: '2026-12-31', progressPercent: matchingMdaDocs.length > 0 ? 100 : 0, status: matchingMdaDocs.length > 0 ? 'Completed' : 'Pending' }
     ],
     risks: [],
     documents: matchingMdaDocs,
-    reviewStatus: matchingMdaDocs.length > 0 ? 'Recommended' : 'Under Technical Review',
+    reviewStatus: matchingMdaDocs.length > 0 ? 'Cleared & Registered' : 'Active Monitoring',
     technicalClearanceReview: {
       reviewerName: 'National Technical Clearance Taskforce',
       reviewerRole: 'Technical Clearance Team',
       reviewerEmail: 'clearance@nita.gov.gh',
       reviewedAt: new Date().toISOString(),
-      recommendationNotes: `All uploaded compliance documents and OCR dossiers for ${mdaName} screened and recommended to the National Technical Clearance System.`
+      recommendationNotes: `Cleared project dossier and compliance documents for ${mdaName} received from the National Technical Clearance System and enrolled in active monitoring.`
     },
     technicalReview: {
       reviewerName: 'GNAPRMS Automated Grading Engine',
       reviewerRole: 'Technical Clearance Team',
       reviewerEmail: 'clearance@nita.gov.gh',
       reviewedAt: new Date().toISOString(),
-      recommendationNotes: `Onboarding submission for ${mdaName} (${mdaCode}). Automatically graded against Ghana AI Governance & Ethics rubric and AI Readiness capability framework. Recommended to Technical Clearance System.`
+      recommendationNotes: `Ingestion dossier for ${mdaName} (${mdaCode}) received from Technical Clearance System. Automatically graded against Ghana AI Governance & Ethics rubric and AI Readiness capability framework.`
     }
   };
 

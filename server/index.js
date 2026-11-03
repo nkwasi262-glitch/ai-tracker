@@ -710,7 +710,7 @@ const handleIncomingClearanceDocument = async (req, res) => {
 
         await sql`
           UPDATE projects SET
-            review_status = 'Recommended',
+            review_status = 'Cleared & Registered',
             compliance = ${JSON.stringify(evaluation.compliance)}::jsonb,
             readiness_score = ${evaluation.readinessScore},
             auto_assessment = ${JSON.stringify({

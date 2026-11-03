@@ -14,17 +14,13 @@ import {
   CheckCircle2,
   HelpCircle,
   ShieldCheck,
-  Stamp,
-  XCircle,
   RotateCcw,
-  Clock,
   ArrowRight,
   FileText,
   FileCheck2,
   Eye
 } from 'lucide-react';
 import { AIProject, formatNumberToWords, computeZeroAssumptionSummary } from '../data/sampleProjects';
-import { getDGVerdicts } from '../services/verdictService';
 import { UserRole } from './RoleSwitcher';
 
 const CustomTooltip = ({ active, payload }: any) => {
@@ -82,122 +78,32 @@ interface DashboardProps {
 export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onNavigate, onNavigateToReview }) => {
   const [selectedSector, setSelectedSector] = useState<string>('All');
   const [showProjectsTooltip, setShowProjectsTooltip] = useState(false);
-  const [verdictFilter, setVerdictFilter] = useState<'All' | 'Approved' | 'Requires More Understanding' | 'Rejected' | 'Awaiting DG'>('All');
+  const [monitoringFilter, setMonitoringFilter] = useState<'All' | 'Cleared & Registered' | 'Operational' | 'Active Monitoring' | 'Needs Attention'>('All');
 
-  const allVerdicts = getDGVerdicts();
+  // All AI projects received from the Technical Clearance System enrolled in active monitoring
+  const activeProjectsList = projects.filter(p => p.status === 'Active');
+  const delayedProjectsList = projects.filter(p => p.status === 'Delayed' || p.reviewStatus === 'Needs Attention');
+  const operationalProjectsList = projects.filter(p => p.stage === 'Operational' || p.reviewStatus === 'Operational');
+  const completedProjectsList = projects.filter(p => p.status === 'Completed' || p.stage === 'Deployment' || p.stage === 'Operational');
 
-  // Resolve the authoritative Director General Final Verdict & Reasons for a project
-  const resolveProjectDGVerdict = (p: AIProject) => {
-    const latestFromService = allVerdicts.find(v => v.projectId === p.id);
-    if (p.dgFinalVerdict) {
-      return {
-        hasFinalVerdict: true,
-        statusLabel: p.dgFinalVerdict.finalStatusLabel,
-        verdictType: p.dgFinalVerdict.verdict,
-        reasons: p.dgFinalVerdict.reasons,
-        signedByName: p.dgFinalVerdict.signedByName,
-        signedByRole: p.dgFinalVerdict.signedByRole,
-        signedAt: p.dgFinalVerdict.signedAt,
-        signatureSeal: p.dgFinalVerdict.signatureSeal || 'NITA-DG-SEAL-VERIFIED',
-      };
-    }
-    if (latestFromService) {
-      const statusLabel: 'Approved' | 'Rejected' | 'Requires More Understanding' =
-        latestFromService.verdict === 'Approve'
-          ? 'Approved'
-          : latestFromService.verdict === 'Reject'
-          ? 'Rejected'
-          : 'Requires More Understanding';
-      return {
-        hasFinalVerdict: true,
-        statusLabel,
-        verdictType: latestFromService.verdict,
-        reasons: latestFromService.mandatoryComments,
-        signedByName: latestFromService.reviewedByName,
-        signedByRole: latestFromService.reviewedByRole,
-        signedAt: latestFromService.timestamp,
-        signatureSeal: latestFromService.signatureSeal || 'NITA-DG-SEAL-VERIFIED',
-      };
-    }
-    if (p.reviewStatus === 'Approved' || p.reviewStatus === 'Rejected' || p.reviewStatus === 'Returned') {
-      const statusLabel: 'Approved' | 'Rejected' | 'Requires More Understanding' =
-        p.reviewStatus === 'Approved'
-          ? 'Approved'
-          : p.reviewStatus === 'Rejected'
-          ? 'Rejected'
-          : 'Requires More Understanding';
-      return {
-        hasFinalVerdict: true,
-        statusLabel,
-        verdictType: statusLabel === 'Approved' ? 'Approve' : statusLabel === 'Rejected' ? 'Reject' : 'Return for Further Review',
-        reasons: p.technicalReview?.recommendationNotes || (
-          statusLabel === 'Rejected'
-            ? 'Rejected by Director General due to statutory non-compliance.'
-            : statusLabel === 'Requires More Understanding'
-            ? 'Returned by Director General: Requires more understanding and technical clarification before approval.'
-            : 'Approved by Director General for National AI Registry deployment.'
-        ),
-        signedByName: 'Hon. Director General (NITA)',
-        signedByRole: 'Director General',
-        signedAt: p.technicalReview?.reviewedAt || p.startDate || new Date().toISOString(),
-        signatureSeal: 'NITA-DG-SEAL-VERIFIED',
-      };
-    }
-    return {
-      hasFinalVerdict: false,
-      statusLabel: 'Awaiting DG' as const,
-      verdictType: null,
-      reasons:
-        p.technicalDirectorReview?.recommendationNotes ||
-        p.technicalClearanceReview?.recommendationNotes ||
-        p.technicalReview?.recommendationNotes ||
-        'Currently undergoing statutory vetting (Technical Clearance Team → Technical Director → Director General) prior to Director General final sign-off.',
-      signedByName: null,
-      signedByRole: null,
-      signedAt: null,
-      signatureSeal: null,
-    };
-  };
+  const clearedRegisteredCount = projects.filter(p => p.reviewStatus === 'Cleared & Registered' || p.reviewStatus === 'Approved').length;
+  const operationalCount = operationalProjectsList.length;
+  const activeMonitoringCount = projects.filter(p => p.reviewStatus === 'Active Monitoring' || p.status === 'Active').length;
+  const needsAttentionCount = delayedProjectsList.length;
 
-  // Determine whether a project is part of the Official DG-Approved Portfolio
-  const isProjectApproved = (p: AIProject) => {
-    const v = resolveProjectDGVerdict(p);
-    if (v.hasFinalVerdict) {
-      return v.statusLabel === 'Approved';
-    }
-    if (p.reviewStatus && p.reviewStatus !== 'Approved') {
-      return false;
-    }
-    return p.status === 'Active' || p.status === 'Completed';
-  };
-
-  const approvedPortfolioProjects = projects.filter(isProjectApproved);
-  const pendingApprovalProjects = projects.filter(p => !isProjectApproved(p) && resolveProjectDGVerdict(p).statusLabel !== 'Rejected');
-  const pendingApprovalBudget = pendingApprovalProjects.reduce((acc, p) => acc + p.budget.totalAllocated, 0);
-
-  const activeProjectsList = approvedPortfolioProjects.filter(p => p.status === 'Active');
-  const delayedProjectsList = projects.filter(p => p.status === 'Delayed' || resolveProjectDGVerdict(p).statusLabel === 'Requires More Understanding');
-  const completedProjectsList = approvedPortfolioProjects.filter(p => p.status === 'Completed');
-
-  // DG Verdict Counts across filtered sector projects
-  const dgApprovedProjects = projects.filter(p => resolveProjectDGVerdict(p).statusLabel === 'Approved');
-  const dgRequiresUnderstandingProjects = projects.filter(p => resolveProjectDGVerdict(p).statusLabel === 'Requires More Understanding');
-  const dgRejectedProjects = projects.filter(p => resolveProjectDGVerdict(p).statusLabel === 'Rejected');
-
-  // Calculates KPI values based on DG-Approved Portfolio (so signing & approving a project immediately increases Total AI Projects & Approved Budget)
-  const totalProjectsCount = approvedPortfolioProjects.length;
+  const totalProjectsCount = projects.length;
   const activeProjectsCount = activeProjectsList.length;
   const delayedProjectsCount = delayedProjectsList.length;
   
-  const totalBudget = approvedPortfolioProjects.reduce((acc, p) => acc + p.budget.totalAllocated, 0);
-  const totalUtilized = approvedPortfolioProjects.reduce((acc, p) => acc + p.budget.utilized, 0);
+  const totalBudget = projects.reduce((acc, p) => acc + p.budget.totalAllocated, 0);
+  const totalUtilized = projects.reduce((acc, p) => acc + p.budget.utilized, 0);
   const budgetUtilizationRate = totalBudget > 0 ? (totalUtilized / totalBudget) * 100 : 0;
 
   const avgReadiness = totalProjectsCount > 0 
-    ? approvedPortfolioProjects.reduce((acc, p) => acc + p.readinessScore, 0) / totalProjectsCount 
+    ? projects.reduce((acc, p) => acc + p.readinessScore, 0) / totalProjectsCount 
     : 0;
   const avgCompliance = totalProjectsCount > 0 
-    ? approvedPortfolioProjects.reduce((acc, p) => {
+    ? projects.reduce((acc, p) => {
         const s = p.compliance;
         const weightedScore = (s.fairness * 0.20) + (s.transparency * 0.25) + (s.privacy * 0.20) + (s.security * 0.35);
         return acc + weightedScore;
@@ -212,10 +118,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
     ? projects 
     : projects.filter(p => p.sector === selectedSector);
 
-  const approvedFilteredProjects = filteredProjects.filter(isProjectApproved);
-
-  // 1. Data formulation for Budgets Chart (DG-Approved Portfolio)
-  const budgetChartData = approvedFilteredProjects.map(p => ({
+  // 1. Data formulation for Budgets Chart (Cleared AI Projects Portfolio)
+  const budgetChartData = filteredProjects.map(p => ({
     name: p.mdaCode,
     Approved: p.budget.totalAllocated / 1000000, // GHS Millions for graph scaling
     Utilized: p.budget.utilized / 1000000,
@@ -227,7 +131,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
 
   // 2. Data formulation for Sectors (Radar)
   const sectorCounts: { [key: string]: number } = {};
-  approvedPortfolioProjects.forEach(p => {
+  projects.forEach(p => {
     sectorCounts[p.sector] = (sectorCounts[p.sector] || 0) + 1;
   });
   const sectorChartData = Object.keys(sectorCounts).map(sector => ({
@@ -246,69 +150,58 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
     { month: 'Jun', Compliance: 86, Projects: 24 },
   ];
 
-  // Dynamic system notifications based on Director General final verdicts & roles
+  // Dynamic system notifications based on active monitoring & technical clearance status
   const getNotifications = () => {
     const notices: Array<{ type: 'danger' | 'warning' | 'success' | 'info'; message: string; reason?: string; time: string }> = [];
 
-    // Surface all projects that have received a Director General Final Verdict (especially Rejections & Requires More Understanding)
     projects.forEach(p => {
-      const v = resolveProjectDGVerdict(p);
-      if (v.hasFinalVerdict) {
-        if (v.statusLabel === 'Rejected') {
-          notices.push({
-            type: 'danger',
-            message: `[DG FINAL VERDICT — REJECTED] ${p.name} (${p.mdaCode}) — Status: ${p.status}`,
-            reason: `Rejection Reason: ${v.reasons}`,
-            time: v.signedAt ? `Signed by ${v.signedByName} • ${new Date(v.signedAt).toLocaleDateString()}` : 'Signed by Director General',
-          });
-        } else if (v.statusLabel === 'Requires More Understanding') {
-          notices.push({
-            type: 'warning',
-            message: `[DG FINAL VERDICT — REQUIRES MORE UNDERSTANDING] ${p.name} (${p.mdaCode}) — Status: ${p.status}`,
-            reason: `Why More Understanding Is Required: ${v.reasons}`,
-            time: v.signedAt ? `Signed by ${v.signedByName} • ${new Date(v.signedAt).toLocaleDateString()}` : 'Signed by Director General',
-          });
-        } else if (v.statusLabel === 'Approved') {
-          notices.push({
-            type: 'success',
-            message: `[DG FINAL SIGN-OFF — APPROVED] ${p.name} (${p.mdaCode}) — Status: ${p.status}`,
-            reason: `Executive Directive: ${v.reasons}`,
-            time: v.signedAt ? `Signed by ${v.signedByName} • ${new Date(v.signedAt).toLocaleDateString()}` : 'Signed by Director General',
-          });
-        }
+      if (p.reviewStatus === 'Needs Attention' || p.status === 'Delayed') {
+        notices.push({
+          type: 'warning',
+          message: `[ATTENTION REQUIRED] ${p.name} (${p.mdaCode}) — Status: ${p.status}`,
+          reason: p.technicalReview?.recommendationNotes || 'Follow-up requested on compliance and deployment parameters.',
+          time: p.technicalReview?.reviewedAt ? new Date(p.technicalReview.reviewedAt).toLocaleDateString() : 'Active Monitoring'
+        });
+      } else if (p.stage === 'Operational' || p.reviewStatus === 'Cleared & Registered') {
+        notices.push({
+          type: 'success',
+          message: `[CLEARED & REGISTERED] ${p.name} (${p.mdaCode}) — Stage: ${p.stage}`,
+          reason: p.technicalReview?.recommendationNotes || 'Received from Technical Clearance System with verified clearance certificate.',
+          time: p.technicalReview?.reviewedAt ? new Date(p.technicalReview.reviewedAt).toLocaleDateString() : 'Registry Active'
+        });
       }
     });
 
     if (currentRole !== 'Public User') {
       notices.push({
-        type: 'warning',
-        message: 'GRA Tax Fraud engine milestone verification delayed by 2 weeks.',
-        time: '3 hours ago'
+        type: 'info',
+        message: 'Continuous M&E intake path active: All technical clearance dossiers synchronized.',
+        time: 'Just now'
       });
     } else {
       notices.push({
         type: 'info',
-        message: 'Responsible AI Authority published new statistics on agricultural tech adoption.',
-        time: 'Yesterday'
+        message: 'Public AI Registry: All displayed projects are cleared by Technical Clearance System and actively monitored.',
+        time: 'Active'
       });
     }
     return notices;
   };
 
-  // Filtered projects for the Director General Final Verdict Status Board
-  const verdictFilteredProjects = filteredProjects.filter(p => {
-    if (verdictFilter === 'All') return true;
-    return resolveProjectDGVerdict(p).statusLabel === verdictFilter;
+  // Filtered projects for the Cleared Projects Monitoring Board
+  const monitoringFilteredProjects = filteredProjects.filter(p => {
+    if (monitoringFilter === 'All') return true;
+    if (monitoringFilter === 'Cleared & Registered') return p.reviewStatus === 'Cleared & Registered' || p.reviewStatus === 'Approved';
+    if (monitoringFilter === 'Operational') return p.stage === 'Operational' || p.reviewStatus === 'Operational';
+    if (monitoringFilter === 'Active Monitoring') return p.reviewStatus === 'Active Monitoring' || p.status === 'Active';
+    if (monitoringFilter === 'Needs Attention') return p.reviewStatus === 'Needs Attention' || p.status === 'Delayed';
+    return true;
   });
 
-  // Projects linked to the National Technical Clearance System
+  // Projects received from the National Technical Clearance System
   const technicalClearanceProjects = filteredProjects.filter(p => {
     const hasDocs = Boolean(p.documents && p.documents.length > 0);
-    const isRecommended = p.reviewStatus === 'Recommended' || 
-                          p.reviewStatus === 'Recommended to Technical Director' || 
-                          p.reviewStatus === 'Under Technical Review' ||
-                          p.reviewStatus === 'Approved';
-    return hasDocs || isRecommended;
+    return hasDocs || Boolean(p.technicalClearanceReview) || Boolean(p.reviewStatus);
   });
 
   const totalRecommendedDocsCount = technicalClearanceProjects.reduce(
@@ -456,16 +349,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
           onClick={() => setShowProjectsTooltip(!showProjectsTooltip)}
         >
           <div>
-            <div className="kpi-title">Total AI Projects (Approved)</div>
+            <div className="kpi-title">Total AI Projects (Cleared & Registered)</div>
             <div className="kpi-value">{totalProjectsCount}</div>
             <div className="kpi-sub">
               <span style={{ color: 'var(--ghana-emerald)' }}>Active: {activeProjectsCount}</span> | Delayed: {delayedProjectsCount}
             </div>
             <div style={{ fontSize: '0.68rem', marginTop: '6px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-              <span style={{ color: '#10b981', fontWeight: 700 }}>✓ DG Signed: {dgApprovedProjects.length}</span>
-              <span style={{ color: '#38bdf8', fontWeight: 700 }}>• Pending DG Approval: {pendingApprovalProjects.length}</span>
-              <span style={{ color: '#fbbf24', fontWeight: 700 }}>• Needs Understanding: {dgRequiresUnderstandingProjects.length}</span>
-              <span style={{ color: '#ef4444', fontWeight: 700 }}>• Rejected: {dgRejectedProjects.length}</span>
+              <span style={{ color: '#10b981', fontWeight: 700 }}>✓ Cleared & Registered: {clearedRegisteredCount}</span>
+              <span style={{ color: '#38bdf8', fontWeight: 700 }}>• Operational: {operationalCount}</span>
+              <span style={{ color: '#818cf8', fontWeight: 700 }}>• Active Monitoring: {activeMonitoringCount}</span>
+              <span style={{ color: '#fbbf24', fontWeight: 700 }}>• Needs Attention: {needsAttentionCount}</span>
             </div>
           </div>
           <FolderOpen className="kpi-icon-wrapper" />
@@ -583,11 +476,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
           <div className="kpi-sub" style={{ fontSize: '0.72rem', marginTop: '2px' }}>
             Utilization Rate: <span style={{ color: 'var(--ghana-gold)' }}>{budgetUtilizationRate.toFixed(1)}%</span>
           </div>
-          {pendingApprovalBudget > 0 && (
-            <div style={{ fontSize: '0.68rem', marginTop: '5px', color: '#38bdf8', fontWeight: 700 }}>
-              +GHS {pendingApprovalBudget.toLocaleString('en-US')} awaiting DG sign-off ({pendingApprovalProjects.length} projects)
-            </div>
-          )}
+          <div style={{ fontSize: '0.68rem', marginTop: '5px', color: '#10b981', fontWeight: 700 }}>
+            ✓ 100% Cleared Projects Actively Monitored ({totalProjectsCount} projects)
+          </div>
           <DollarSign className="kpi-icon-wrapper" />
         </div>
 
@@ -656,10 +547,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
               </span>
             </div>
             <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', margin: 0 }}>
-              National Technical Clearance System • Recommended AI Projects & Documents
+              National Technical Clearance System • Cleared AI Projects & Inbound Dossiers
             </h3>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px', margin: 0 }}>
-              The system intake path is always ready to receive documents from the technical clearance system. Submissions are automatically scanned and graded using the standards of Governance & Ethics and AI Readiness, set to Recommended, and displayed for review.
+              The system intake path is always ready to receive documents from the technical clearance system. Submissions are automatically scanned and graded using the standards of Governance & Ethics and AI Readiness, registered into GNAPRMS, and displayed for active monitoring.
             </p>
           </div>
 
@@ -826,7 +717,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
                       border: '1px solid rgba(16, 185, 129, 0.45)'
                     }}>
                       <CheckCircle2 size={13} />
-                      <span>RECOMMENDED TO TECHNICAL CLEARANCE SYSTEM</span>
+                      <span>RECEIVED FROM TECHNICAL CLEARANCE SYSTEM</span>
                     </span>
                   </div>
                 </div>
@@ -840,7 +731,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
                   fontSize: '0.74rem',
                   color: '#d1fae5'
                 }}>
-                  <strong>Technical Clearance Recommendation:</strong> {proj.technicalClearanceReview?.recommendationNotes || proj.technicalReview?.recommendationNotes || 'Compliance dossiers screened and officially recommended for statutory technical clearance and Director General sign-off.'}
+                  <strong>Technical Clearance Status:</strong> {proj.technicalClearanceReview?.recommendationNotes || proj.technicalReview?.recommendationNotes || 'Compliance dossiers received from Technical Clearance System with verified clearance status. Enrolled in active monitoring.'}
                 </div>
 
                 {/* Documents List */}
@@ -961,7 +852,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
         </div>
       </div>
 
-      {/* Director General Final Sign-Off & Project Verdict Status Board */}
+      {/* Cleared AI Projects Registry & Monitoring Board */}
       <div
         className="glass-card"
         style={{
@@ -986,32 +877,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
               justifyContent: 'center',
               color: '#10b981'
             }}>
-              <Stamp size={22} />
+              <ShieldCheck size={22} />
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#fff', margin: 0 }}>
-                  Director General Final Sign-Off & Project Verdict Status Board
+                  Cleared AI Projects Registry & Monitoring Board
                 </h3>
                 <span style={{
                   fontSize: '0.68rem',
                   fontWeight: 800,
                   padding: '2px 10px',
                   borderRadius: '9999px',
-                  background: 'rgba(251, 191, 36, 0.16)',
-                  color: '#fbbf24',
-                  border: '1px solid rgba(251, 191, 36, 0.4)'
+                  background: 'rgba(16, 185, 129, 0.18)',
+                  color: '#6ee7b7',
+                  border: '1px solid rgba(16, 185, 129, 0.45)'
                 }}>
-                  STATUTORY EXECUTIVE REGISTRY
+                  TECHNICAL CLEARANCE INGESTION • ACTIVE REGISTRY
                 </span>
               </div>
-              <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '3px' }}>
-                Live project statuses after final sign-off or verdict from the NITA Director General — including full statutory reasons when a project is <strong>Rejected</strong> or <strong>Requires More Understanding</strong>.
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '3px', margin: 0 }}>
+                Continuous monitoring of all national AI projects received and cleared by the Technical Clearance System — tracking live operational status, ethics compliance, readiness, and delivery milestones.
               </p>
             </div>
           </div>
 
-          {onNavigate && (currentRole === 'Super Administrator' || currentRole === 'National AI Authority' || currentRole === 'Government Administrator') && (
+          {onNavigate && (
             <button
               onClick={() => onNavigate('documents')}
               className="btn btn-primary"
@@ -1032,23 +923,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
         {/* Summary Filter Tabs */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '18px', paddingBottom: '14px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           <button
-            onClick={() => setVerdictFilter('All')}
+            onClick={() => setMonitoringFilter('All')}
             style={{
               padding: '7px 14px',
               borderRadius: '8px',
               fontSize: '0.76rem',
               fontWeight: 700,
               cursor: 'pointer',
-              background: verdictFilter === 'All' ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.03)',
-              color: verdictFilter === 'All' ? '#fff' : 'var(--text-secondary)',
-              border: verdictFilter === 'All' ? '1px solid rgba(255,255,255,0.35)' : '1px solid rgba(255,255,255,0.08)',
+              background: monitoringFilter === 'All' ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.03)',
+              color: monitoringFilter === 'All' ? '#fff' : 'var(--text-secondary)',
+              border: monitoringFilter === 'All' ? '1px solid rgba(255,255,255,0.35)' : '1px solid rgba(255,255,255,0.08)',
             }}
           >
             All Projects ({filteredProjects.length})
           </button>
 
           <button
-            onClick={() => setVerdictFilter('Approved')}
+            onClick={() => setMonitoringFilter('Cleared & Registered')}
             style={{
               padding: '7px 14px',
               borderRadius: '8px',
@@ -1058,16 +949,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              background: verdictFilter === 'Approved' ? 'rgba(16, 185, 129, 0.22)' : 'rgba(16, 185, 129, 0.06)',
+              background: monitoringFilter === 'Cleared & Registered' ? 'rgba(16, 185, 129, 0.22)' : 'rgba(16, 185, 129, 0.06)',
               color: '#10b981',
-              border: verdictFilter === 'Approved' ? '1px solid rgba(16, 185, 129, 0.6)' : '1px solid rgba(16, 185, 129, 0.22)',
+              border: monitoringFilter === 'Cleared & Registered' ? '1px solid rgba(16, 185, 129, 0.6)' : '1px solid rgba(16, 185, 129, 0.22)',
             }}
           >
-            <CheckCircle2 size={14} /> DG Approved ({filteredProjects.filter(p => resolveProjectDGVerdict(p).statusLabel === 'Approved').length})
+            <CheckCircle2 size={14} /> Cleared & Registered ({filteredProjects.filter(p => p.reviewStatus === 'Cleared & Registered' || p.reviewStatus === 'Approved').length})
           </button>
 
           <button
-            onClick={() => setVerdictFilter('Requires More Understanding')}
+            onClick={() => setMonitoringFilter('Operational')}
             style={{
               padding: '7px 14px',
               borderRadius: '8px',
@@ -1077,76 +968,70 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              background: verdictFilter === 'Requires More Understanding' ? 'rgba(245, 158, 11, 0.24)' : 'rgba(245, 158, 11, 0.07)',
-              color: '#fbbf24',
-              border: verdictFilter === 'Requires More Understanding' ? '1px solid rgba(245, 158, 11, 0.65)' : '1px solid rgba(245, 158, 11, 0.25)',
-            }}
-          >
-            <RotateCcw size={14} /> Requires More Understanding ({filteredProjects.filter(p => resolveProjectDGVerdict(p).statusLabel === 'Requires More Understanding').length})
-          </button>
-
-          <button
-            onClick={() => setVerdictFilter('Rejected')}
-            style={{
-              padding: '7px 14px',
-              borderRadius: '8px',
-              fontSize: '0.76rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: verdictFilter === 'Rejected' ? 'rgba(239, 68, 68, 0.24)' : 'rgba(239, 68, 68, 0.07)',
-              color: '#f87171',
-              border: verdictFilter === 'Rejected' ? '1px solid rgba(239, 68, 68, 0.65)' : '1px solid rgba(239, 68, 68, 0.25)',
-            }}
-          >
-            <XCircle size={14} /> Rejected by DG ({filteredProjects.filter(p => resolveProjectDGVerdict(p).statusLabel === 'Rejected').length})
-          </button>
-
-          <button
-            onClick={() => setVerdictFilter('Awaiting DG')}
-            style={{
-              padding: '7px 14px',
-              borderRadius: '8px',
-              fontSize: '0.76rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: verdictFilter === 'Awaiting DG' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(56, 189, 248, 0.05)',
+              background: monitoringFilter === 'Operational' ? 'rgba(56, 189, 248, 0.22)' : 'rgba(56, 189, 248, 0.06)',
               color: '#38bdf8',
-              border: verdictFilter === 'Awaiting DG' ? '1px solid rgba(56, 189, 248, 0.55)' : '1px solid rgba(56, 189, 248, 0.2)',
+              border: monitoringFilter === 'Operational' ? '1px solid rgba(56, 189, 248, 0.6)' : '1px solid rgba(56, 189, 248, 0.22)',
             }}
           >
-            <Clock size={14} /> Awaiting DG Sign-Off ({filteredProjects.filter(p => resolveProjectDGVerdict(p).statusLabel === 'Awaiting DG').length})
+            <Layers size={14} /> Operational ({filteredProjects.filter(p => p.stage === 'Operational' || p.reviewStatus === 'Operational').length})
+          </button>
+
+          <button
+            onClick={() => setMonitoringFilter('Active Monitoring')}
+            style={{
+              padding: '7px 14px',
+              borderRadius: '8px',
+              fontSize: '0.76rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: monitoringFilter === 'Active Monitoring' ? 'rgba(99, 102, 241, 0.24)' : 'rgba(99, 102, 241, 0.07)',
+              color: '#a5b4fc',
+              border: monitoringFilter === 'Active Monitoring' ? '1px solid rgba(99, 102, 241, 0.65)' : '1px solid rgba(99, 102, 241, 0.25)',
+            }}
+          >
+            <Activity size={14} /> Active Monitoring ({filteredProjects.filter(p => p.reviewStatus === 'Active Monitoring' || p.status === 'Active').length})
+          </button>
+
+          <button
+            onClick={() => setMonitoringFilter('Needs Attention')}
+            style={{
+              padding: '7px 14px',
+              borderRadius: '8px',
+              fontSize: '0.76rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: monitoringFilter === 'Needs Attention' ? 'rgba(245, 158, 11, 0.24)' : 'rgba(245, 158, 11, 0.07)',
+              color: '#fbbf24',
+              border: monitoringFilter === 'Needs Attention' ? '1px solid rgba(245, 158, 11, 0.65)' : '1px solid rgba(245, 158, 11, 0.25)',
+            }}
+          >
+            <RotateCcw size={14} /> Needs Attention ({filteredProjects.filter(p => p.reviewStatus === 'Needs Attention' || p.status === 'Delayed').length})
           </button>
         </div>
 
         {/* Project Cards Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '14px' }}>
-          {verdictFilteredProjects.map(project => {
-            const v = resolveProjectDGVerdict(project);
-            const isRejected = v.statusLabel === 'Rejected';
-            const isRequiresUnderstanding = v.statusLabel === 'Requires More Understanding';
-            const isApproved = v.statusLabel === 'Approved';
+          {monitoringFilteredProjects.map(project => {
+            const isAttention = project.reviewStatus === 'Needs Attention' || project.status === 'Delayed';
+            const isOperational = project.stage === 'Operational' || project.reviewStatus === 'Operational';
 
-            const borderColor = isRejected
-              ? 'rgba(239, 68, 68, 0.45)'
-              : isRequiresUnderstanding
+            const borderColor = isAttention
               ? 'rgba(245, 158, 11, 0.45)'
-              : isApproved
-              ? 'rgba(16, 185, 129, 0.4)'
-              : 'rgba(255, 255, 255, 0.1)';
+              : isOperational
+              ? 'rgba(56, 189, 248, 0.4)'
+              : 'rgba(16, 185, 129, 0.4)';
 
-            const cardBg = isRejected
-              ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.07) 0%, rgba(15, 23, 42, 0.92) 100%)'
-              : isRequiresUnderstanding
+            const cardBg = isAttention
               ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.07) 0%, rgba(15, 23, 42, 0.92) 100%)'
-              : isApproved
-              ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.06) 0%, rgba(15, 23, 42, 0.92) 100%)'
-              : 'rgba(255, 255, 255, 0.02)';
+              : isOperational
+              ? 'linear-gradient(135deg, rgba(56, 189, 248, 0.06) 0%, rgba(15, 23, 42, 0.92) 100%)'
+              : 'linear-gradient(135deg, rgba(16, 185, 129, 0.06) 0%, rgba(15, 23, 42, 0.92) 100%)';
 
             return (
               <div
@@ -1161,7 +1046,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
                   gap: '12px',
                 }}
               >
-                {/* Top Row: Code + Operational Status + DG Final Verdict Badge */}
+                {/* Top Row: Code + Operational Status + Clearance Badge */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', flexWrap: 'wrap' }}>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -1184,97 +1069,50 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
                           ? '#f87171'
                           : '#fbbf24',
                       }}>
-                        Project Status: {project.status.toUpperCase()}
+                        Status: {project.status.toUpperCase()}
+                      </span>
+                      <span style={{
+                        fontSize: '0.66rem',
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        background: 'rgba(56, 189, 248, 0.14)',
+                        color: '#38bdf8',
+                      }}>
+                        Stage: {project.stage}
                       </span>
                     </div>
-                    <h4 style={{ fontSize: '0.92rem', fontWeight: 800, color: '#fff', marginTop: '6px', marginBottom: '2px' }}>
+                    <h4 style={{ fontSize: '0.94rem', fontWeight: 800, color: '#fff', marginTop: '6px', marginBottom: '2px' }}>
                       {project.name}
                     </h4>
                     <div style={{ fontSize: '0.73rem', color: 'var(--text-secondary)' }}>
                       {project.mda} ({project.mdaCode}) • Sector: <strong style={{ color: '#e2e8f0' }}>{project.sector}</strong>
                     </div>
-                    <div style={{ fontSize: '0.73rem', marginTop: '4px', color: isProjectApproved(project) ? '#10b981' : '#fbbf24', fontWeight: 700 }}>
-                      Budget Allocation: GHS {project.budget.totalAllocated.toLocaleString('en-US')} ({isProjectApproved(project) ? '✓ Included in Approved Budget' : isRejected ? '✕ Excluded (Rejected)' : '⏳ Pending DG Approval'})
+                    <div style={{ fontSize: '0.73rem', marginTop: '4px', color: '#10b981', fontWeight: 700 }}>
+                      Budget Allocation: GHS {project.budget.totalAllocated.toLocaleString('en-US')} (Disbursed: GHS {project.budget.disbursed.toLocaleString('en-US')})
                     </div>
                   </div>
 
-                  {/* DG Verdict Pill */}
+                  {/* Monitoring Status Badge */}
                   <div>
-                    {isApproved && (
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '5px',
-                        padding: '5px 10px',
-                        borderRadius: '9999px',
-                        fontSize: '0.7rem',
-                        fontWeight: 800,
-                        background: 'rgba(16, 185, 129, 0.2)',
-                        color: '#10b981',
-                        border: '1px solid rgba(16, 185, 129, 0.5)'
-                      }}>
-                        <CheckCircle2 size={13} /> DG APPROVED
-                      </span>
-                    )}
-                    {isRequiresUnderstanding && (
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '5px',
-                        padding: '5px 10px',
-                        borderRadius: '9999px',
-                        fontSize: '0.7rem',
-                        fontWeight: 800,
-                        background: 'rgba(245, 158, 11, 0.22)',
-                        color: '#fbbf24',
-                        border: '1px solid rgba(245, 158, 11, 0.55)'
-                      }}>
-                        <RotateCcw size={13} /> REQUIRES MORE UNDERSTANDING
-                      </span>
-                    )}
-                    {isRejected && (
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '5px',
-                        padding: '5px 10px',
-                        borderRadius: '9999px',
-                        fontSize: '0.7rem',
-                        fontWeight: 800,
-                        background: 'rgba(239, 68, 68, 0.22)',
-                        color: '#f87171',
-                        border: '1px solid rgba(239, 68, 68, 0.55)'
-                      }}>
-                        <XCircle size={13} /> DG REJECTED
-                      </span>
-                    )}
-                    {!v.hasFinalVerdict && (
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '5px',
-                        padding: '5px 10px',
-                        borderRadius: '9999px',
-                        fontSize: '0.7rem',
-                        fontWeight: 800,
-                        background: 'rgba(56, 189, 248, 0.14)',
-                        color: '#38bdf8',
-                        border: '1px solid rgba(56, 189, 248, 0.35)'
-                      }}>
-                        <Clock size={13} />{' '}
-                        {project.reviewStatus === 'Recommended'
-                          ? 'RECOMMENDED TO DG (AWAITING DG SIGN-OFF)'
-                          : project.reviewStatus === 'Recommended to Technical Director'
-                          ? 'RECOMMENDED TO TECH DIRECTOR'
-                          : project.reviewStatus
-                          ? project.reviewStatus.toUpperCase()
-                          : 'AWAITING DG SIGN-OFF'}
-                      </span>
-                    )}
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      padding: '5px 10px',
+                      borderRadius: '9999px',
+                      fontSize: '0.7rem',
+                      fontWeight: 800,
+                      background: isAttention ? 'rgba(245, 158, 11, 0.2)' : 'rgba(16, 185, 129, 0.2)',
+                      color: isAttention ? '#fbbf24' : '#10b981',
+                      border: isAttention ? '1px solid rgba(245, 158, 11, 0.5)' : '1px solid rgba(16, 185, 129, 0.5)'
+                    }}>
+                      <CheckCircle2 size={13} /> {project.reviewStatus ? project.reviewStatus.toUpperCase() : 'CLEARED & REGISTERED'}
+                    </span>
                   </div>
                 </div>
 
-                {/* 3-Step Statutory Clearance Chain Strip */}
+                {/* Technical Clearance Ingestion Strip */}
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(3, 1fr)',
@@ -1283,122 +1121,78 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
                   borderRadius: '8px',
                   background: 'rgba(15, 23, 42, 0.65)',
                   border: '1px solid rgba(255, 255, 255, 0.07)',
-                  fontSize: '0.66rem'
+                  fontSize: '0.68rem'
                 }}>
-                  <div style={{
-                    color: (project.technicalClearanceReview || project.reviewStatus === 'Recommended to Technical Director' || project.reviewStatus === 'Recommended' || v.hasFinalVerdict)
-                      ? '#6ee7b7'
-                      : '#94a3b8',
-                    fontWeight: 700
-                  }}>
-                    1. Tech Clearance → TD:{' '}
-                    {(project.technicalClearanceReview || project.reviewStatus === 'Recommended to Technical Director' || project.reviewStatus === 'Recommended' || v.hasFinalVerdict)
-                      ? '✓ Recommended'
-                      : 'Pending'}
+                  <div style={{ color: '#6ee7b7', fontWeight: 700 }}>
+                    Clearance: ✓ Received & Cleared
                   </div>
-                  <div style={{
-                    color: (project.technicalDirectorReview || project.reviewStatus === 'Recommended' || v.hasFinalVerdict)
-                      ? '#fde68a'
-                      : '#94a3b8',
-                    fontWeight: 700
-                  }}>
-                    2. Tech Director → DG:{' '}
-                    {(project.technicalDirectorReview || project.reviewStatus === 'Recommended' || v.hasFinalVerdict)
-                      ? '✓ Recommended'
-                      : 'Pending'}
+                  <div style={{ color: '#a7f3d0', fontWeight: 700 }}>
+                    Governance: {project.compliance.overallGrade}
                   </div>
-                  <div style={{
-                    color: v.hasFinalVerdict
-                      ? isApproved
-                        ? '#10b981'
-                        : isRejected
-                        ? '#f87171'
-                        : '#fbbf24'
-                      : '#38bdf8',
-                    fontWeight: 800
-                  }}>
-                    3. DG Final Verdict:{' '}
-                    {v.hasFinalVerdict ? `✓ ${v.statusLabel}` : '⏳ Awaiting DG'}
+                  <div style={{ color: '#7dd3fc', fontWeight: 700 }}>
+                    Readiness: {project.readinessScore}%
                   </div>
                 </div>
 
-                {/* Reasons / Executive Directive Box */}
+                {/* Technical Monitoring Observation Box */}
                 <div style={{
-                  padding: '12px 14px',
+                  padding: '10px 12px',
                   borderRadius: '8px',
-                  background: isRejected
-                    ? 'rgba(239, 68, 68, 0.12)'
-                    : isRequiresUnderstanding
-                    ? 'rgba(245, 158, 11, 0.12)'
-                    : isApproved
-                    ? 'rgba(16, 185, 129, 0.08)'
-                    : 'rgba(255, 255, 255, 0.03)',
-                  borderLeft: `3px solid ${
-                    isRejected
-                      ? '#ef4444'
-                      : isRequiresUnderstanding
-                      ? '#f59e0b'
-                      : isApproved
-                      ? '#10b981'
-                      : '#38bdf8'
-                  }`,
+                  background: isAttention ? 'rgba(245, 158, 11, 0.1)' : 'rgba(16, 185, 129, 0.06)',
+                  borderLeft: `3px solid ${isAttention ? '#f59e0b' : '#10b981'}`,
                 }}>
                   <div style={{
-                    fontSize: '0.7rem',
+                    fontSize: '0.68rem',
                     fontWeight: 800,
                     textTransform: 'uppercase',
                     letterSpacing: '0.04em',
-                    marginBottom: '5px',
-                    color: isRejected
-                      ? '#fca5a5'
-                      : isRequiresUnderstanding
-                      ? '#fde68a'
-                      : isApproved
-                      ? '#6ee7b7'
-                      : '#7dd3fc'
+                    marginBottom: '4px',
+                    color: isAttention ? '#fde68a' : '#6ee7b7'
                   }}>
-                    {isRejected && '🚨 Director General Rejection Reasons & Statutory Grounds:'}
-                    {isRequiresUnderstanding && '⚠️ Why Project Requires More Understanding / Clarification (DG Directive):'}
-                    {isApproved && '✓ Director General Final Sign-Off Remarks & Approval Mandate:'}
-                    {!v.hasFinalVerdict && 'ℹ️ Current Review & Vetting Status:'}
+                    {isAttention ? '⚠️ Monitoring Observation / Attention Required:' : '✓ Active Technical Monitoring Assessment:'}
                   </div>
-                  <div style={{ fontSize: '0.79rem', color: '#f1f5f9', lineHeight: '1.5' }}>
-                    {v.reasons}
+                  <div style={{ fontSize: '0.78rem', color: '#f1f5f9', lineHeight: '1.45' }}>
+                    {project.technicalReview?.recommendationNotes || project.technicalClearanceReview?.recommendationNotes || 'Received from Technical Clearance System with verified clearance specifications. Actively monitored under National AI Registry.'}
                   </div>
                 </div>
 
-                {/* Signer & Seal Footer */}
-                {v.hasFinalVerdict && (
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    gap: '8px',
-                    paddingTop: '6px',
-                    borderTop: '1px solid rgba(255,255,255,0.06)',
-                    fontSize: '0.69rem',
-                    color: 'var(--text-muted)'
-                  }}>
-                    <div>
-                      Signed by: <strong style={{ color: '#e2e8f0' }}>{v.signedByName}</strong>
-                      {v.signedAt ? ` • ${new Date(v.signedAt).toLocaleString()}` : ''}
-                    </div>
-                    {v.signatureSeal && (
-                      <span style={{
-                        fontFamily: 'monospace',
-                        fontSize: '0.65rem',
-                        padding: '2px 7px',
-                        borderRadius: '4px',
-                        background: 'rgba(255,255,255,0.05)',
-                        color: '#cbd5e1',
-                        border: '1px solid rgba(255,255,255,0.1)'
-                      }}>
-                        SEAL: {v.signatureSeal}
-                      </span>
-                    )}
+                {/* Footer Action */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '8px',
+                  paddingTop: '6px',
+                  borderTop: '1px solid rgba(255,255,255,0.06)',
+                  fontSize: '0.69rem',
+                  color: 'var(--text-muted)'
+                }}>
+                  <div>
+                    Last Monitored: <strong style={{ color: '#e2e8f0' }}>{project.technicalReview?.reviewedAt ? new Date(project.technicalReview.reviewedAt).toLocaleDateString() : 'Active'}</strong>
                   </div>
-                )}
+                  {onNavigateToReview && (
+                    <button
+                      type="button"
+                      onClick={() => onNavigateToReview(project.id)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        background: 'rgba(56, 189, 248, 0.14)',
+                        border: '1px solid rgba(56, 189, 248, 0.35)',
+                        color: '#7dd3fc',
+                        fontSize: '0.7rem',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <FileText size={12} /> Inspect Inbound Dossiers ({project.documents?.length || 0})
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}

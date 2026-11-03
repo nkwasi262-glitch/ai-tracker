@@ -88,7 +88,7 @@ test('Server index.js exposes always-ready intake endpoints (/api/technical-clea
   assert(serverContent.includes("app.get('/api/technical-clearance/status'"), 'Server must implement status endpoint');
   assert(serverContent.includes("app.post('/api/technical-clearance/documents'"), 'Server must implement intake endpoint');
   assert(serverContent.includes("app.post('/api/technical-clearance/simulate-incoming'"), 'Server must implement simulate intake endpoint');
-  assert(serverContent.includes("review_status = 'Recommended'"), 'Intake must set project status to Recommended');
+  assert(serverContent.includes("review_status = 'Cleared & Registered'"), 'Intake must set project status to Cleared & Registered');
   assert(serverContent.includes("'Pending Review'"), 'Intake must keep document as Pending Review');
 });
 
@@ -96,7 +96,7 @@ test('technicalClearanceService.ts implements always-ready intake and standards 
   const serviceContent = fs.readFileSync(path.resolve(__dirname, '../services/technicalClearanceService.ts'), 'utf8');
   assert(serviceContent.includes('receiveTechnicalClearanceDocument'), 'Must export receiveTechnicalClearanceDocument');
   assert(serviceContent.includes('simulateIncomingClearanceDossier'), 'Must export simulateIncomingClearanceDossier');
-  assert(serviceContent.includes("reviewStatus: 'Recommended'"), 'Must set project status to Recommended');
+  assert(serviceContent.includes("reviewStatus: 'Cleared & Registered'"), 'Must set project status to Cleared & Registered');
   assert(serviceContent.includes("reviewStatus: 'Pending Review'"), 'Must keep document reviewable with Pending Review');
   assert(serviceContent.includes('generateAssessmentFromDocuments'), 'Must automatically grade against Governance & Ethics and AI Readiness standards');
 });

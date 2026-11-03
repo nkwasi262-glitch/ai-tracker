@@ -182,21 +182,12 @@ export const DocumentReviewGradeModal: React.FC<DocumentReviewGradeModalProps> =
       overallGrade: calculatedGrade
     } : undefined;
 
-    // Determine 3-tier statutory workflow update:
-    // Step 1: Technical Clearance Team -> Recommended to Technical Director
-    // Step 2: Technical Director -> Recommended to Director General ('Recommended')
-    // Step 3: Director General / Super Admin -> Final Verdict ('Approved' | 'Returned' | 'Rejected')
+    // Determine monitoring status update:
     let updatedWorkflowStatus: ReviewWorkflowStatus | undefined = undefined;
-    if ((session.role as string) === 'Technical Clearance Team') {
-      if (verdict === 'Approved' || verdict === 'Conditionally Cleared') updatedWorkflowStatus = 'Recommended to Technical Director';
-      else if (verdict === 'Changes Requested' || verdict === 'Under Investigation') updatedWorkflowStatus = 'Needs Correction';
-    } else if (session.role === 'Technical Director') {
-      if (verdict === 'Approved' || verdict === 'Conditionally Cleared') updatedWorkflowStatus = 'Recommended';
-      else if (verdict === 'Changes Requested' || verdict === 'Under Investigation') updatedWorkflowStatus = 'Needs Correction';
-    } else if ((session.role as string) === 'Director General' || session.role === 'Super Admin') {
-      if (verdict === 'Approved' || verdict === 'Conditionally Cleared') updatedWorkflowStatus = 'Approved';
-      else if (verdict === 'Changes Requested') updatedWorkflowStatus = 'Returned';
-      else if (verdict === 'Under Investigation') updatedWorkflowStatus = 'Rejected';
+    if (verdict === 'Approved' || verdict === 'Conditionally Cleared') {
+      updatedWorkflowStatus = 'Cleared & Registered';
+    } else if (verdict === 'Changes Requested' || verdict === 'Under Investigation') {
+      updatedWorkflowStatus = 'Needs Attention';
     }
 
     onSaveReview(
@@ -1196,13 +1187,7 @@ export const DocumentReviewGradeModal: React.FC<DocumentReviewGradeModalProps> =
                     }}
                   >
                     <Send size={14} />
-                    <span>
-                      {(session.role as string) === 'Technical Clearance Team'
-                        ? 'Save Review, Apply Grades & Recommend to Technical Director'
-                        : session.role === 'Technical Director'
-                        ? 'Save Review, Apply Grades & Recommend to Director General'
-                        : 'Save Review, Apply Grades & Sign Final Verdict'}
-                    </span>
+                    <span>Save Monitoring Review & Apply Standards</span>
                   </button>
                 </div>
 

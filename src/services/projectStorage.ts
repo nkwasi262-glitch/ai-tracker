@@ -1,7 +1,7 @@
 import { AIProject, sampleProjects } from '../data/sampleProjects';
 import { apiClient } from './apiClient';
 
-const PROJECTS_STORAGE_KEY = 'gnaprms_projects_v2';
+const PROJECTS_STORAGE_KEY = 'gnaprms_projects_v3';
 
 /**
  * Loads registered projects from localStorage, falling back to sampleProjects if empty.
@@ -32,8 +32,7 @@ export function loadStoredProjects(): AIProject[] {
         return {
           ...proj,
           documents: missingDocs.length > 0 ? [...(proj.documents || []), ...missingDocs] : (proj.documents || []),
-          reviewStatus: proj.reviewStatus || sample.reviewStatus,
-          dgFinalVerdict: proj.dgFinalVerdict || sample.dgFinalVerdict
+          reviewStatus: proj.reviewStatus || sample.reviewStatus
         };
       });
       // Trigger background sync with Neon DB

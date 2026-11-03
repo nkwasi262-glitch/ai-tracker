@@ -23,7 +23,6 @@ import { AppModuleId, canAccessModule, MODULE_REGISTRY } from './services/rbacPo
 import { generateAssessmentFromDocuments } from './services/assessmentEngine';
 import { loadStoredProjects, saveStoredProjects, resetProjectsStorage } from './services/projectStorage';
 import { recordAuditEvent } from './services/auditService';
-import { recordDGVerdict } from './services/verdictService';
 import { apiClient } from './services/apiClient';
 
 function App() {
@@ -287,7 +286,7 @@ function App() {
     });
   };
 
-  // Updates project review lifecycle status (Step 1: Tech Clearance Team -> Tech Director, Step 2: Tech Director -> DG, Step 3: DG Final Verdict -> Dashboard)
+  // Updates project registry and monitoring status for projects cleared by the Technical Clearance System
   const handleUpdateProjectReviewStatus = (
     projectId: string, 
     newReviewStatus: ReviewWorkflowStatus, 
@@ -297,86 +296,15 @@ function App() {
     setProjects(prev => {
       const updated = prev.map(p => {
         if (p.id === projectId) {
-          const isFinalSignOff =
-            newReviewStatus === 'Approved' ||
-            newReviewStatus === 'Rejected' ||
-            newReviewStatus === 'Returned' ||
-            newReviewStatus === 'Pending';
-
           const nextOperationalStatus: AIProject['status'] =
-            newReviewStatus === 'Approved'
+            newReviewStatus === 'Cleared & Registered' || newReviewStatus === 'Operational' || newReviewStatus === 'Approved'
               ? 'Active'
-              : newReviewStatus === 'Rejected'
-              ? 'Suspended'
-              : (newReviewStatus === 'Returned' || newReviewStatus === 'Needs Correction' || newReviewStatus === 'Pending')
+              : (newReviewStatus === 'Needs Attention' || newReviewStatus === 'Rejected' || newReviewStatus === 'Needs Correction')
               ? 'Delayed'
               : p.status;
 
-          const dgVerdictDecision: 'Approve' | 'Reject' | 'Return for Further Review' =
-            newReviewStatus === 'Approved'
-              ? 'Approve'
-              : newReviewStatus === 'Rejected'
-              ? 'Reject'
-              : 'Return for Further Review';
-
-          const finalStatusLabel: 'Approved' | 'Rejected' | 'Requires More Understanding' =
-            newReviewStatus === 'Approved'
-              ? 'Approved'
-              : newReviewStatus === 'Rejected'
-              ? 'Rejected'
-              : 'Requires More Understanding';
-
-          const defaultReason =
-            newReviewStatus === 'Approved'
-              ? 'Final statutory approval signed by Director General under NITA Act 771 and Act 843.'
-              : newReviewStatus === 'Rejected'
-              ? 'Statutory rejection issued by Director General due to unresolved compliance, privacy, or financial warrant discrepancies.'
-              : 'Requires more understanding and technical clarification before final national deployment sign-off.';
-
-          const resolvedReason = (notes && notes.trim()) || p.dgFinalVerdict?.reasons || defaultReason;
-
-          const nextDgFinalVerdict = isFinalSignOff
-            ? {
-                verdict: dgVerdictDecision,
-                finalStatusLabel,
-                reasons: resolvedReason,
-                signedByName: session?.fullName || 'Hon. Director General (NITA)',
-                signedByRole: session?.role === 'Super Admin' ? 'Super Admin / Director General' : 'Director General',
-                signedByEmail: session?.email || 'dg@nita.gov.gh',
-                signedAt: new Date().toISOString(),
-                signatureSeal: `DG-SEAL-NITA-${new Date().getFullYear()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
-              }
-            : (newReviewStatus === 'Recommended to Technical Director' || newReviewStatus === 'Recommended' || newReviewStatus === 'Under Technical Review' || newReviewStatus === 'Needs Correction')
-            ? undefined
-            : p.dgFinalVerdict;
-
-          if (isFinalSignOff) {
-            recordDGVerdict({
-              projectId: p.id,
-              projectCode: p.projectCode,
-              projectName: p.name,
-              mda: p.mda,
-              verdict: dgVerdictDecision,
-              mandatoryComments: resolvedReason,
-              reviewedByName: session?.fullName || 'Hon. Director General (NITA)',
-              reviewedByRole: session?.role === 'Super Admin' ? 'Super Admin' : 'Director General',
-              reviewedByEmail: session?.email || 'dg@nita.gov.gh',
-              technicalRecommendationSummary:
-                p.technicalDirectorReview?.recommendationNotes ||
-                p.technicalClearanceReview?.recommendationNotes ||
-                p.technicalReview?.recommendationNotes ||
-                'Recommended through Technical Clearance Team and Technical Director.',
-              complianceGradeAtReview: p.compliance.overallGrade,
-              clearanceOfficer:
-                p.technicalDirectorReview?.reviewerName ||
-                p.technicalClearanceReview?.reviewerName ||
-                p.technicalReview?.reviewerName ||
-                'Technical Director'
-            });
-          }
-
           let nextBudget = { ...p.budget };
-          if (newReviewStatus === 'Approved') {
+          if (newReviewStatus === 'Cleared & Registered' || newReviewStatus === 'Operational' || newReviewStatus === 'Approved') {
             const targetAllocated =
               approvedBudgetAmount && approvedBudgetAmount > 0
                 ? approvedBudgetAmount
@@ -397,57 +325,19 @@ function App() {
           }
 
           const nowIso = new Date().toISOString();
-          const nextTechnicalClearanceReview =
-            newReviewStatus === 'Recommended to Technical Director'
-              ? {
-                  reviewerName: session?.fullName || 'Technical Clearance Team Officer',
-                  reviewerRole: 'Technical Clearance Team',
-                  reviewerEmail: session?.email || 'clearance@nita.gov.gh',
-                  reviewedAt: nowIso,
-                  recommendationNotes:
-                    (notes && notes.trim()) ||
-                    'Technical Clearance Team screened uploaded documents and recommended project to the Technical Director.'
-                }
-              : p.technicalClearanceReview;
-
-          const nextTechnicalDirectorReview =
-            newReviewStatus === 'Recommended'
-              ? {
-                  reviewerName: session?.fullName || 'Technical Director (NITA)',
-                  reviewerRole: 'Technical Director',
-                  reviewerEmail: session?.email || 'tech.director@nita.gov.gh',
-                  reviewedAt: nowIso,
-                  recommendationNotes:
-                    (notes && notes.trim()) ||
-                    'Technical Director endorsed Technical Clearance Team findings and recommended project to the Director General for final verdict.'
-                }
-              : p.technicalDirectorReview;
-
-          const nextTechnicalReview =
-            notes || newReviewStatus === 'Recommended to Technical Director' || newReviewStatus === 'Recommended'
-              ? {
-                  reviewerName: session?.fullName || 'Technical Reviewer',
-                  reviewerRole: session?.role || 'Technical Director',
-                  reviewerEmail: session?.email || 'clearance@nita.gov.gh',
-                  reviewedAt: nowIso,
-                  recommendationNotes:
-                    (notes && notes.trim()) ||
-                    (newReviewStatus === 'Recommended to Technical Director'
-                      ? 'Recommended by Technical Clearance Team to Technical Director.'
-                      : newReviewStatus === 'Recommended'
-                      ? 'Recommended by Technical Director to Director General for final verdict.'
-                      : p.technicalReview?.recommendationNotes || '')
-                }
-              : p.technicalReview;
+          const nextTechnicalReview = {
+            reviewerName: session?.fullName || 'Technical Reviewer',
+            reviewerRole: session?.role || 'Technical Director',
+            reviewerEmail: session?.email || 'clearance@nita.gov.gh',
+            reviewedAt: nowIso,
+            recommendationNotes: notes || p.technicalReview?.recommendationNotes || 'Technical clearance and monitoring status updated.'
+          };
 
           return {
             ...p,
             reviewStatus: newReviewStatus,
             status: nextOperationalStatus,
-            dgFinalVerdict: nextDgFinalVerdict,
             budget: nextBudget,
-            technicalClearanceReview: nextTechnicalClearanceReview,
-            technicalDirectorReview: nextTechnicalDirectorReview,
             technicalReview: nextTechnicalReview
           };
         }
@@ -487,132 +377,28 @@ function App() {
           });
 
           const nowIso = new Date().toISOString();
-          let effectiveReviewStatus: ReviewWorkflowStatus = newProjectStatus || p.reviewStatus || 'Under Technical Review';
-          let updatedTechClearance = p.technicalClearanceReview;
-          let updatedTechDirector = p.technicalDirectorReview;
-          let updatedTechReview = p.technicalReview;
-          let updatedDgVerdict = p.dgFinalVerdict;
-          let updatedOpStatus = p.status;
-          let updatedBudget = { ...p.budget };
+          const effectiveReviewStatus: ReviewWorkflowStatus = newProjectStatus || (
+            reviewComment.verdict === 'Approved' || reviewComment.verdict === 'Conditionally Cleared'
+              ? 'Cleared & Registered'
+              : reviewComment.verdict === 'Changes Requested'
+              ? 'Needs Attention'
+              : p.reviewStatus || 'Cleared & Registered'
+          );
 
-          const isTechClearanceRole = session?.role === 'Technical Clearance Team';
-          const isTechDirectorRole = session?.role === 'Technical Director';
-          const isDGRole =
-            session?.role === 'Director General' ||
-            (session?.role === 'Super Admin' &&
-              (newProjectStatus === 'Approved' ||
-                newProjectStatus === 'Rejected' ||
-                newProjectStatus === 'Returned' ||
-                !newProjectStatus));
+          const updatedOpStatus: AIProject['status'] =
+            effectiveReviewStatus === 'Cleared & Registered' || effectiveReviewStatus === 'Operational' || effectiveReviewStatus === 'Approved'
+              ? 'Active'
+              : effectiveReviewStatus === 'Needs Attention'
+              ? 'Delayed'
+              : p.status;
 
-          if (isTechClearanceRole || newProjectStatus === 'Recommended to Technical Director') {
-            if (reviewComment.verdict === 'Changes Requested') {
-              effectiveReviewStatus = 'Needs Correction';
-              updatedOpStatus = 'Delayed';
-            } else {
-              effectiveReviewStatus = 'Recommended to Technical Director';
-            }
-            updatedTechClearance = {
-              reviewerName: session?.fullName || 'Technical Clearance Team Officer',
-              reviewerRole: 'Technical Clearance Team',
-              reviewerEmail: session?.email || 'clearance@nita.gov.gh',
-              reviewedAt: nowIso,
-              recommendationNotes: reviewComment.comment
-            };
-            updatedTechReview = updatedTechClearance;
-            updatedDgVerdict = undefined;
-          } else if (isTechDirectorRole || newProjectStatus === 'Recommended') {
-            if (reviewComment.verdict === 'Changes Requested') {
-              effectiveReviewStatus = 'Needs Correction';
-              updatedOpStatus = 'Delayed';
-            } else {
-              effectiveReviewStatus = 'Recommended';
-            }
-            updatedTechDirector = {
-              reviewerName: session?.fullName || 'Technical Director (NITA)',
-              reviewerRole: 'Technical Director',
-              reviewerEmail: session?.email || 'tech.director@nita.gov.gh',
-              reviewedAt: nowIso,
-              recommendationNotes: reviewComment.comment
-            };
-            updatedTechReview = updatedTechDirector;
-            updatedDgVerdict = undefined;
-          } else if (isDGRole && reviewComment.verdict) {
-            const mappedDecision: 'Approve' | 'Reject' | 'Return for Further Review' =
-              newProjectStatus === 'Approved'
-                ? 'Approve'
-                : newProjectStatus === 'Rejected'
-                ? 'Reject'
-                : newProjectStatus === 'Returned'
-                ? 'Return for Further Review'
-                : reviewComment.verdict === 'Approved' || reviewComment.verdict === 'Conditionally Cleared'
-                ? 'Approve'
-                : reviewComment.verdict === 'Under Investigation'
-                ? 'Reject'
-                : 'Return for Further Review';
-
-            const mappedLabel: 'Approved' | 'Rejected' | 'Requires More Understanding' =
-              mappedDecision === 'Approve'
-                ? 'Approved'
-                : mappedDecision === 'Reject'
-                ? 'Rejected'
-                : 'Requires More Understanding';
-
-            effectiveReviewStatus =
-              mappedDecision === 'Approve'
-                ? 'Approved'
-                : mappedDecision === 'Reject'
-                ? 'Rejected'
-                : 'Returned';
-
-            updatedOpStatus =
-              mappedDecision === 'Approve'
-                ? 'Active'
-                : mappedDecision === 'Reject'
-                ? 'Suspended'
-                : 'Delayed';
-
-            if (mappedDecision === 'Approve') {
-              const targetAllocated = p.budget.totalAllocated > 0 ? p.budget.totalAllocated : 12000000;
-              updatedBudget = {
-                ...p.budget,
-                totalAllocated: targetAllocated,
-                disbursed: p.budget.disbursed > 0 ? p.budget.disbursed : Math.round(targetAllocated * 0.5),
-                utilized: p.budget.utilized > 0 ? p.budget.utilized : Math.round(targetAllocated * 0.35),
-                remaining: Math.max(0, targetAllocated - (p.budget.disbursed > 0 ? p.budget.disbursed : Math.round(targetAllocated * 0.5)))
-              };
-            }
-
-            updatedDgVerdict = {
-              verdict: mappedDecision,
-              finalStatusLabel: mappedLabel,
-              reasons: reviewComment.comment,
-              signedByName: session?.fullName || 'Hon. Director General',
-              signedByRole: session?.role || 'Director General',
-              signedByEmail: session?.email || 'dg@nita.gov.gh',
-              signedAt: nowIso,
-              signatureSeal: `DG-SEAL-NITA-${new Date().getFullYear()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
-            };
-
-            recordDGVerdict({
-              projectId: p.id,
-              projectCode: p.projectCode,
-              projectName: p.name,
-              mda: p.mda,
-              verdict: mappedDecision,
-              mandatoryComments: reviewComment.comment,
-              reviewedByName: session?.fullName || 'Hon. Director General',
-              reviewedByRole: session?.role === 'Super Admin' ? 'Super Admin' : 'Director General',
-              reviewedByEmail: session?.email || 'dg@nita.gov.gh',
-              technicalRecommendationSummary:
-                p.technicalDirectorReview?.recommendationNotes ||
-                p.technicalClearanceReview?.recommendationNotes ||
-                p.technicalReview?.recommendationNotes ||
-                'Reviewed via Full Document Grading Studio.',
-              complianceGradeAtReview: (newCompliance || p.compliance).overallGrade,
-              clearanceOfficer: session?.fullName || 'Director General'
-            });
-          }
+          const updatedTechReview = {
+            reviewerName: session?.fullName || 'Technical Reviewer',
+            reviewerRole: session?.role || 'Technical Director',
+            reviewerEmail: session?.email || 'clearance@nita.gov.gh',
+            reviewedAt: nowIso,
+            recommendationNotes: reviewComment.comment
+          };
 
           return {
             ...p,
@@ -621,11 +407,7 @@ function App() {
             readinessScore: newReadinessScore !== undefined ? newReadinessScore : p.readinessScore,
             reviewStatus: effectiveReviewStatus,
             status: updatedOpStatus,
-            budget: updatedBudget,
-            technicalClearanceReview: updatedTechClearance,
-            technicalDirectorReview: updatedTechDirector,
-            technicalReview: updatedTechReview,
-            dgFinalVerdict: updatedDgVerdict
+            technicalReview: updatedTechReview
           };
         }
         return p;

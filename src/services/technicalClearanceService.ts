@@ -90,16 +90,16 @@ export async function receiveTechnicalClearanceDocument(
 
   const updatedProject: AIProject = {
     ...tempProject,
-    // "all AI project(documents sent to the technical clearance system) should be recomemded to the system"
-    reviewStatus: 'Recommended',
+    // Received from Technical Clearance System as cleared & registered
+    reviewStatus: 'Cleared & Registered',
     compliance: assessment.compliance,
     readinessScore: assessment.readinessScore,
     autoAssessment: assessment.details,
     zeroAssumptionAudit: assessment.zeroAssumptionAudit,
     technicalClearanceReview: {
       recommendedAt: new Date().toISOString(),
-      recommendedBy: payload.submittedByName || 'National Technical Clearance Intake Path',
-      recommendationNotes: `Automatically ingested from Technical Clearance System. Governance & Ethics auto-graded at ${assessment.compliance.overallGrade}; AI Readiness auto-graded at ${assessment.readinessScore}%. Queued for statutory document review.`
+      recommendedBy: payload.submittedByName || 'National Technical Clearance Inbound Service',
+      recommendationNotes: `Cleared project dossier received from Technical Clearance System. Governance & Ethics auto-graded at ${assessment.compliance.overallGrade}; AI Readiness auto-graded at ${assessment.readinessScore}%. Enrolled in active monitoring.`
     }
   };
 
@@ -174,7 +174,7 @@ SECTION 2: AI READINESS STANDARDS
 - Human Capital: Steering Committee chaired by Chief Director, supported by 6 AI Engineers and 4 Data Stewards.
 - Policy Alignment: 100% aligned with Ghana National Artificial Intelligence Strategy 2026-2030.
 
-STATUS: Recommended to National AI Projects Monitoring System for statutory review and final Director General clearance.`
+STATUS: Cleared by Technical Clearance System. Ingested into National AI Projects Registry & Monitoring System for active compliance tracking.`
       }
     },
     {
@@ -204,7 +204,7 @@ SECTION 2: AI READINESS STANDARDS:
 - Multi-tier backup and disaster recovery protocols in place.
 - Dedicated technical review panel monitoring false rejection and acceptance rates.
 
-RECOMMENDATION: Transmitted to GNAPRMS as Recommended for statutory technical review.`
+STATUS: Cleared by Technical Clearance System. Transmitted to GNAPRMS for registry enrollment and continuous monitoring.`
       }
     }
   ];
