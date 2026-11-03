@@ -1,6 +1,12 @@
 /**
  * Standalone RBAC & Verification Test Runner for GNAPRMS
  */
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Permitted modules by role definition matching rbacPolicy.ts
 const ROLE_MODULE_PERMISSIONS = {
@@ -836,6 +842,19 @@ test('AI Readiness allows selection on YES and NO options and maintains state ac
   const subInst = ['i1_sub1', 'i1_sub2'];
   const yesInst = subInst.filter(id => projectAnswersMap[projectId][id] === 'yes').length;
   assert(yesInst === 1, '1 YES out of 2 sub-parameters');
+});
+
+// ====================================================================
+// SECTION 15: AI READINESS NITA VERIFICATION & APPROVAL SUB-PARAMETERS
+// ====================================================================
+
+test('AI Readiness includes (verified by NITA) parameter with (approved by technical director), (approved by technical clearance team), and (approved by director general) sub-parameters', () => {
+  const readinessContent = fs.readFileSync(path.resolve(__dirname, '../components/AIReadiness.tsx'), 'utf8');
+  assert(readinessContent.includes('Verified by NITA (verified by NITA)'), 'Must include Verified by NITA parameter');
+  assert(readinessContent.includes('(verified by NITA)'), 'Must include (verified by NITA) label');
+  assert(readinessContent.includes('Approved by technical director (approved by technical director)'), 'Must include Approved by technical director sub-parameter');
+  assert(readinessContent.includes('Approved by technical clearance team (approved by technical clearance team)'), 'Must include Approved by technical clearance team sub-parameter');
+  assert(readinessContent.includes('Approved by director general (approved by director general)'), 'Must include Approved by director general sub-parameter');
 });
 
 const passed = tests.filter(t => t.passed).length;

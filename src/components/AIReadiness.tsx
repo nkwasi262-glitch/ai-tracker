@@ -146,6 +146,29 @@ const institutionalParameters: ReadinessParameter[] = [
       { id: 'i10_sub1', text: 'Are there written limits specifying what errors require taking the AI offline?', description: 'These limits act as safety boundaries, defining when the system must be switched off if it behaves unsafely.' },
       { id: 'i10_sub2', text: 'Is there a backup manual workflow for citizens if the AI system crashes?', description: 'A manual workflow ensures that if the computer system goes down, citizens can still submit paper forms and receive services.' }
     ]
+  },
+  {
+    id: 'i11',
+    title: 'Verified by NITA (verified by NITA)',
+    description: 'Statutory verification by the National Information Technology Agency (NITA) under Act 771 ensuring institutional AI readiness, security, and algorithmic compliance.',
+    icon: <ShieldCheck className="w-4 h-4 text-emerald-400" />,
+    subParameters: [
+      { 
+        id: 'i11_sub1', 
+        text: 'Approved by technical director (approved by technical director)', 
+        description: 'Architectural integrity, technical viability, and deployment readiness approved by the Technical Director.' 
+      },
+      { 
+        id: 'i11_sub2', 
+        text: 'Approved by technical clearance team (approved by technical clearance team)', 
+        description: 'Comprehensive compliance and documentation verification conducted and approved by the Technical Clearance Team.' 
+      },
+      { 
+        id: 'i11_sub3', 
+        text: 'Approved by director general (approved by director general)', 
+        description: 'Executive statutory mandate clearance and national AI readiness endorsement approved by the Director General.' 
+      }
+    ]
   }
 ];
 
@@ -325,6 +348,7 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({
       'i4_sub1', 'i4_sub2', 'i5_sub1', 'i5_sub2', 'i6_sub1', 'i6_sub2',
       'i7_sub1', 'i7_sub2', 'i8_sub1', 'i8_sub2', 'i9_sub1', 'i9_sub2',
       'i10_sub1', 'i10_sub2',
+      'i11_sub1', 'i11_sub2', 'i11_sub3',
       'm1_sub1', 'm1_sub2', 'm2_sub1', 'm2_sub2', 'm3_sub1', 'm3_sub2',
       'm4_sub1', 'm4_sub2', 'm5_sub1', 'm5_sub2', 'm6_sub1', 'm6_sub2',
       'm7_sub1', 'm7_sub2', 'm8_sub1', 'm8_sub2', 'm9_sub1', 'm9_sub2',
@@ -354,6 +378,9 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({
       initial['i9_sub2'] = p.technicalStaff >= 85 ? 'yes' : 'no';
       initial['i10_sub1'] = p.policyLeadership >= 70 ? 'yes' : 'no';
       initial['i10_sub2'] = p.infrastructure >= 85 ? 'yes' : 'no';
+      initial['i11_sub1'] = proj.readinessScore >= 60 ? 'yes' : 'no';
+      initial['i11_sub2'] = proj.readinessScore >= 50 ? 'yes' : 'no';
+      initial['i11_sub3'] = proj.readinessScore >= 75 ? 'yes' : 'no';
 
       initial['m1_sub1'] = proj.readinessScore >= 50 ? 'yes' : 'no';
       initial['m1_sub2'] = proj.readinessScore >= 65 ? 'yes' : 'no';
@@ -430,23 +457,19 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({
       [selectedProjectId]: newAnswers
     }));
 
-    const prefixInst = 'i';
-    const subInst = [];
-    for (let p = 1; p <= 10; p++) {
-      subInst.push(`${prefixInst}${p}_sub1`);
-      subInst.push(`${prefixInst}${p}_sub2`);
-    }
+    const subInst: string[] = [];
+    institutionalParameters.forEach(p => {
+      p.subParameters.forEach(s => subInst.push(s.id));
+    });
     const yesInst = subInst.filter(id => newAnswers[id] === 'yes').length;
-    const inst = Math.round((yesInst / 20) * 100);
+    const inst = subInst.length > 0 ? Math.round((yesInst / subInst.length) * 100) : 0;
 
-    const prefixMkt = 'm';
-    const subMkt = [];
-    for (let p = 1; p <= 10; p++) {
-      subMkt.push(`${prefixMkt}${p}_sub1`);
-      subMkt.push(`${prefixMkt}${p}_sub2`);
-    }
+    const subMkt: string[] = [];
+    marketParameters.forEach(p => {
+      p.subParameters.forEach(s => subMkt.push(s.id));
+    });
     const yesMkt = subMkt.filter(id => newAnswers[id] === 'yes').length;
-    const mkt = Math.round((yesMkt / 20) * 100);
+    const mkt = subMkt.length > 0 ? Math.round((yesMkt / subMkt.length) * 100) : 0;
 
     const newScore = Math.round((inst + mkt) / 2);
     if (activeProject && onUpdateReadinessScore) {
@@ -455,14 +478,13 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({
   };
 
   const getBranchScore = (branch: 'institutional' | 'market') => {
-    const prefix = branch === 'institutional' ? 'i' : 'm';
-    const subIds = [];
-    for (let p = 1; p <= 10; p++) {
-      subIds.push(`${prefix}${p}_sub1`);
-      subIds.push(`${prefix}${p}_sub2`);
-    }
+    const params = branch === 'institutional' ? institutionalParameters : marketParameters;
+    const subIds: string[] = [];
+    params.forEach(p => {
+      p.subParameters.forEach(s => subIds.push(s.id));
+    });
     const yesCount = subIds.filter(id => answers[id] === 'yes').length;
-    return Math.round((yesCount / 20) * 100);
+    return subIds.length > 0 ? Math.round((yesCount / subIds.length) * 100) : 0;
   };
 
   const instScore = getBranchScore('institutional');
@@ -478,12 +500,13 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({
   };
 
   const getParentStatusIcon = (p: ReadinessParameter) => {
-    const sub1 = answers[`${p.id}_sub1`];
-    const sub2 = answers[`${p.id}_sub2`];
+    const subs = p.subParameters.map(s => answers[s.id]);
+    const allYes = subs.length > 0 && subs.every(v => v === 'yes');
+    const allNo = subs.length > 0 && subs.every(v => v === 'no');
     
-    if (sub1 === 'yes' && sub2 === 'yes') {
+    if (allYes) {
       return <CheckCircle2 className="w-4 h-4 text-emerald-400" style={{ marginRight: '6px' }} />;
-    } else if (sub1 === 'no' && sub2 === 'no') {
+    } else if (allNo) {
       return <XCircle className="w-4 h-4 text-rose-500" style={{ marginRight: '6px' }} />;
     } else {
       return <AlertCircle className="w-4 h-4 text-amber-400" style={{ marginRight: '6px' }} />;
@@ -557,6 +580,12 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({
             icon: p.icon,
             title: 'Formalize Risk Escalation Paths',
             text: 'Write offline trigger thresholds and prepare manual backup operations if systems crash.'
+          });
+        } else if (p.id === 'i11') {
+          list.push({
+            icon: p.icon,
+            title: 'Complete NITA Statutory Clearances (verified by NITA)',
+            text: 'Obtain formal verification and approvals from Technical Director, Technical Clearance Team, and Director General.'
           });
         }
       }
@@ -1056,8 +1085,11 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({
 
           {/* Section 1: Institutional AI Readiness */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--ghana-emerald)', paddingBottom: '6px', borderBottom: '1px solid rgba(255,255,255,0.04)', marginBottom: '4px' }}>
-              🏢 Institutional AI Readiness Checklist
+            <div style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--ghana-emerald)', paddingBottom: '6px', borderBottom: '1px solid rgba(255,255,255,0.04)', marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+              <span>🏢 Institutional AI Readiness Checklist</span>
+              <span className="badge badge-success" style={{ fontSize: '0.68rem', fontWeight: 700 }}>
+                Parameters (verified by NITA)
+              </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {institutionalParameters.map(p => (
