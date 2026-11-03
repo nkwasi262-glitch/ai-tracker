@@ -13,11 +13,11 @@ export interface FullDocumentSection {
 // Initial repository of OCR texts for preloaded documents
 export const MASTER_MOCK_OCR_TEXTS: Record<string, string> = {
   'doc-1-1': 'COCOBOD / MoCD Technical Specifications & Geospatial Addressing Model. Deploys custom Convolutional Neural Networks (CNN) and satellite positioning backbones. Offline storage enabled via TensorFlow Lite. Supported locations: all 16 administrative regions including Greater Accra and Western North. Hardware infrastructure meets low-bandwidth rural requirements.',
-  'doc-onboard-1-2': 'First-Timer / Onboarder Full Compliance Dossier for GhanaPostGPS (GN-AI-2026-001). Uploaded by Kwame Mensah (Onboarding Officer, k.mensah@mocd.gov.gh). Comprehensive Ghana AI Ethics Framework & Act 843 Data Protection Audit. Fairness indicators checked across Ashanti, Northern, and Western regions. Gender and demographic bias balanced. Socio-economic accessibility channels (USSD *920# and local Twi/Ga/Ewe voice alerts) active. Personal Identifiable Information (PII) encrypted using SHA-256 according to Act 843 with certified DPO oversight.',
+  'doc-onboard-1-2': 'Compliance Dossier for GhanaPostGPS (GN-AI-2026-001). Kwame Mensah (Compliance Officer, k.mensah@mocd.gov.gh). Comprehensive Ghana AI Ethics Framework & Act 843 Data Protection Audit. Fairness indicators checked across Ashanti, Northern, and Western regions. Gender and demographic bias balanced. Socio-economic accessibility channels (USSD *920# and local Twi/Ga/Ewe voice alerts) active. Personal Identifiable Information (PII) encrypted using SHA-256 according to Act 843 with certified DPO oversight.',
   'doc-2-1': 'National Identification Authority Biometric Security Protocol & Architecture. OWASP Top 10 vulnerabilities cleared. Enforces Hardware Security Modules (HSM) with ephemeral salted SHA-256 hashes for fingerprint matching. Sovereign hosting inside National Data Centre in Accra compliant with Act 843.',
-  'doc-onboard-2-2': 'First-Timer / Onboarder Submission: NIA AFIS Model Card & Institutional AI Readiness Charter (GN-AI-2026-002). Uploaded by Abena Ofori (a.ofori@nia.gov.gh). Neural network facial and fingerprint recognition thresholds calibrated at 99.8% parity across demographic groups. Steering committee established with dedicated AI Engineers, Data Custodians, and System Administrators. Full Act 843 DPC Class-1 biometric certification and TLS 1.3 / HSM security verified.',
+  'doc-onboard-2-2': 'NIA AFIS Model Card & Institutional AI Readiness Charter (GN-AI-2026-002). Abena Ofori (a.ofori@nia.gov.gh). Neural network facial and fingerprint recognition thresholds calibrated at 99.8% parity across demographic groups. Steering committee established with dedicated AI Engineers, Data Custodians, and System Administrators. Full Act 843 DPC Class-1 biometric certification and TLS 1.3 / HSM security verified.',
   'doc-3-1': 'Cocoa Management System (COCOBOD CMS) Farming Data Provenance & Inclusivity Charter. 1.2M farmer consent sheets catalogued. Steering committee instituted with MoFA and COCOBOD leadership. Multi-region satellite boundary verification arbitrated with local traditional authorities.',
-  'doc-onboard-3-2': 'First-Timer / Onboarder Submission: COCOBOD Data Protection Commission (DPC) Filing & Multi-Region Fairness Audit (GN-AI-2026-003). Uploaded by Yaw Boateng (y.boateng@cocobod.gov.gh). Evaluates satellite yield prediction models across Western North, Ashanti, Bono, and Eastern cocoa districts. USSD offline farmer verification active. PII anonymized at ingestion under Ghana Data Protection Act 843.',
+  'doc-onboard-3-2': 'COCOBOD Data Protection Commission (DPC) Filing & Multi-Region Fairness Audit (GN-AI-2026-003). Yaw Boateng (y.boateng@cocobod.gov.gh). Evaluates satellite yield prediction models across Western North, Ashanti, Bono, and Eastern cocoa districts. USSD offline farmer verification active. PII anonymized at ingestion under Ghana Data Protection Act 843.',
   'doc-4-1': 'National E-Justice Court Tracking Registry Legal Ethics & AI Audit. Whisper NLP models fine-tuned on Ghanaian court audio (English, Twi, Ga, Ewe). Model Card published detailing accuracy thresholds and error boundaries. Data Protection Commission (DPC) registration active with certified DPO.',
   'doc-5-1': 'NHIA Claims Biometric & AI Validation Engine Security Specs & Model Governance. Supervised XGBoost & OCR pipeline with SHAP explainability summaries generated for automated medical claims audits. Enforces TLS 1.3 encryption, RBAC role bindings, and zero external cross-border data replication.'
 };
@@ -322,7 +322,7 @@ async function extractTextFromPdfBuffer(buffer: ArrayBuffer): Promise<string> {
 /**
  * Reads an uploaded File completely (DataURL + ArrayBuffer + real text extraction for TXT/DOCX/PDF)
  * and persists the real file in memory, IndexedDB, and localStorage so downloading or reviewing it
- * ALWAYS returns the exact document uploaded by the First-Timer / Onboarder.
+ * ALWAYS returns the exact document uploaded by the officer / submitting MDA.
  */
 export async function readAndStoreRealUploadedFile(
   file: File,
@@ -521,7 +521,7 @@ export function registerUploadedDocumentOcr(docId: string, text: string): void {
 }
 
 /**
- * Registers full document text and optional file Data URL for newly uploaded documents (e.g. by First-Timers / Onboarders).
+ * Registers full document text and optional file Data URL for newly uploaded compliance documents.
  */
 export function registerUploadedFullDocument(docId: string, fullText: string, fileDataUrl?: string): void {
   if (REAL_FILES_MEMORY[docId]) {
@@ -704,7 +704,7 @@ function buildValidPdfBlobFromText(title: string, bodyText: string): Blob {
 }
 
 /**
- * Downloads the exact original document uploaded by the First-Timer / Onboarder (or user)
+ * Downloads the exact original document uploaded by the officer / submitting MDA
  * with its exact original fileName and binary content.
  */
 export async function downloadOriginalDocument(doc: DocumentAsset, project?: AIProject): Promise<void> {
@@ -797,7 +797,7 @@ export async function downloadOriginalDocument(doc: DocumentAsset, project?: AIP
 
 /**
  * Builds structured multi-page sections for the full uploaded document so reviewers have access
- * to the complete document uploaded by first-timers/onboarders during review and grading.
+ * to the complete document during review and grading.
  * When a user uploads a real document, the user's actual uploaded content is returned first (Page 1+).
  */
 export function getFullDocumentSections(doc: DocumentAsset, project?: AIProject): FullDocumentSection[] {
@@ -807,20 +807,15 @@ export function getFullDocumentSections(doc: DocumentAsset, project?: AIProject)
     : (getStoredFullDocs()[doc.id] || doc.fullDocumentText);
   const isRealUserUpload = hasRealUploadedFile(doc.id, doc) || !MASTER_MOCK_OCR_TEXTS[doc.id];
 
-  const isFT = doc.isFirstTimerUpload ||
-    doc.uploadedByRole === 'First-Timer / New User' ||
-    doc.id.includes('onboard') ||
-    doc.signedBy?.includes('First-Timer / New User');
-
-  const uploaderName = doc.uploadedByName || (isFT ? 'First-Timer / Onboarding Officer' : (doc.signedBy?.[0] || 'MDA Lead Officer'));
-  const uploaderEmail = doc.uploadedByEmail || (isFT ? 'onboarding.officer@gov.gh' : 'registry@nita.gov.gh');
-  const uploaderRole = doc.uploadedByRole || (isFT ? 'First-Timer / New User' : 'Institutional Officer');
+  const uploaderName = doc.uploadedByName || (doc.signedBy?.[0] || 'MDA Lead Officer');
+  const uploaderEmail = doc.uploadedByEmail || 'registry@nita.gov.gh';
+  const uploaderRole = doc.uploadedByRole || 'Institutional Officer';
   const projCode = project?.projectCode || 'GN-AI-2026-REG';
   const projName = project?.name || 'National AI Initiative';
   const mdaName = project?.mda || 'Republic of Ghana MDA';
   const regionName = project ? `${project.region} (${project.district})` : 'Greater Accra';
 
-  // If this is a real uploaded document by a First-Timer/Onboarder or officer, return the REAL uploaded content first!
+  // If this is a real uploaded document, return the REAL uploaded content first!
   if (isRealUserUpload) {
     const realSections: FullDocumentSection[] = [];
     const cleanText = (storedFull || '').trim();
@@ -837,7 +832,7 @@ export function getFullDocumentSections(doc: DocumentAsset, project?: AIProject)
           keyHighlights: [
             'Original Uploaded File Content',
             doc.fileName,
-            isFT ? 'First-Timer / Onboarder Upload' : 'User Uploaded Document'
+            'Technical Compliance Dossier'
           ]
         });
       } else {
@@ -854,7 +849,7 @@ export function getFullDocumentSections(doc: DocumentAsset, project?: AIProject)
               keyHighlights: [
                 `Page ${pageIdx} of Uploaded File`,
                 doc.fileName,
-                isFT ? 'First-Timer / Onboarder Upload' : 'User Uploaded Document'
+                'User Uploaded Document'
               ]
             });
             pageIdx++;
@@ -872,7 +867,7 @@ export function getFullDocumentSections(doc: DocumentAsset, project?: AIProject)
             keyHighlights: [
               `Page ${pageIdx} of Uploaded File`,
               doc.fileName,
-              isFT ? 'First-Timer / Onboarder Upload' : 'User Uploaded Document'
+              'User Uploaded Document'
             ]
           });
         }
@@ -898,7 +893,7 @@ export function getFullDocumentSections(doc: DocumentAsset, project?: AIProject)
         keyHighlights: [
           'Original Binary File Preserved',
           doc.fileName,
-          isFT ? 'First-Timer / Onboarder Upload' : 'User Uploaded Document'
+          'User Uploaded Document'
         ]
       });
     }
@@ -908,7 +903,7 @@ export function getFullDocumentSections(doc: DocumentAsset, project?: AIProject)
 
   const ocrSummary = getDocumentOcrText(doc.id, doc.fileName, project?.name);
 
-  // If a pre-seeded onboarder document has explicit fullDocumentText, place it on Page 1 so reviewers see it immediately
+  // If a document has explicit fullDocumentText, place it on Page 1 so reviewers see it immediately
   const sections: FullDocumentSection[] = [];
 
   if (storedFull && storedFull.trim().length > 0) {
@@ -917,7 +912,7 @@ export function getFullDocumentSections(doc: DocumentAsset, project?: AIProject)
       sectionTitle: `Section 1: Verbatim Uploaded Document (${doc.fileName})`,
       statutoryReference: `Primary Documentary Evidence Uploaded by ${uploaderName} (${uploaderRole})`,
       content: storedFull,
-      keyHighlights: ['Verbatim Uploaded File Content', isFT ? 'First-Timer / Onboarder Full Dossier' : 'Primary User Attachment', doc.fileName]
+      keyHighlights: ['Verbatim Uploaded File Content', 'Primary User Attachment', doc.fileName]
     });
   }
 
@@ -929,12 +924,12 @@ export function getFullDocumentSections(doc: DocumentAsset, project?: AIProject)
       sectionTitle: `Section ${pageOffset + 1}: Statutory Dossier Cover, Uploader Provenance & Project Charter`,
       statutoryReference: 'NITA Act 771 & Ghana National AI Strategy 2026',
       content: `REPUBLIC OF GHANA — NATIONAL INFORMATION TECHNOLOGY AGENCY (NITA)
-STATUTORY FULL COMPLIANCE DOSSIER & ONBOARDING SUBMISSION
+STATUTORY FULL COMPLIANCE DOSSIER
 ================================================================================
 Document Title:       ${doc.fileName}
 Document ID:          ${doc.id} (Version ${doc.version}.0 • ${doc.fileType.toUpperCase()})
 Submission Date:      ${doc.uploadedAt}
-Submission Track:     ${isFT ? 'FIRST-TIMER / ONBOARDER STATUTORY SUBMISSION' : 'INSTITUTIONAL COMPLIANCE FILING'}
+Submission Track:     INSTITUTIONAL COMPLIANCE FILING
 Submitted By:         ${uploaderName} (${uploaderRole})
 Official Email:       ${uploaderEmail}
 Target AI Project:    [${projCode}] ${projName}
@@ -948,9 +943,9 @@ ${project?.description || 'This project deploys sovereign artificial intelligenc
 1.2 PRIMARY OCR & DOSSIER ABSTRACT
 ${ocrSummary}
 
-1.3 STATUTORY DECLARATION BY ONBOARDER / SUBMITTING OFFICER
-The submitting officer (${uploaderName}) certifies that all architectural specifications, dataset provenance logs, and privacy controls contained in this full document represent primary verifiable evidence for review and grading by the Director General, Super Admin, Technical Director, and Technical Clearance Team.`,
-      keyHighlights: ['Project Charter Verified', isFT ? 'First-Timer / Onboarder Full Dossier' : 'Institutional Filing', 'NITA Act 771 Compliant']
+1.3 STATUTORY DECLARATION BY SUBMITTING OFFICER
+The submitting officer (${uploaderName}) certifies that all architectural specifications, dataset provenance logs, and privacy controls contained in this full document represent primary verifiable evidence for review and grading by authorized evaluators.`,
+      keyHighlights: ['Project Charter Verified', 'Institutional Filing', 'NITA Act 771 Compliant']
     },
     {
       pageNumber: pageOffset + 2,
@@ -1261,10 +1256,7 @@ export function generateAssessmentFromDocuments(
       dataGovernance: pillarData,
       technicalStaff: pillarStaff,
       policyLeadership: pillarPolicy
-    },
-    submittedByFirstTimer: (session?.role as string) === 'First-Timer / New User' || !!session?.isFirstTimer,
-    firstTimerOfficerName: ((session?.role as string) === 'First-Timer / New User' || !!session?.isFirstTimer) ? session?.fullName : undefined,
-    firstTimerOfficerEmail: ((session?.role as string) === 'First-Timer / New User' || !!session?.isFirstTimer) ? session?.email : undefined
+    }
   };
 
   if (session) {

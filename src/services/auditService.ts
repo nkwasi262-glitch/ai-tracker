@@ -67,7 +67,7 @@ const SEED_AUDIT_LOGS: AuditLogEntry[] = [
     actorEmail: 'dg@nita.gov.gh',
     actorRole: 'Director General',
     actorInstitution: 'National Information Technology Agency (NITA)',
-    targetModule: 'dg_queue',
+    targetModule: 'documents',
     targetEntityId: 'proj-1',
     actionDetails: 'Final statutory verdict issued: APPROVED with conditions for regional data parity.',
     integrityHash: 'sha256-d4e5f6a1b2c30044',

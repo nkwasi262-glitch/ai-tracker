@@ -3,7 +3,7 @@ import {
   Award, Compass, Cpu, GraduationCap, Coins, 
   ShieldCheck, FileText, Layers, Users, ShoppingBag, 
   Workflow, AlertTriangle, Server, Activity, TrendingUp, Info,
-  CheckCircle2, AlertCircle, XCircle, Sparkles, FolderOpen, MessageSquare, BookOpen, Download
+  CheckCircle2, AlertCircle, XCircle, Sparkles, MessageSquare, BookOpen, Download
 } from 'lucide-react';
 import { UserRole } from './RoleSwitcher';
 import { 
@@ -11,8 +11,7 @@ import {
   DocumentAsset, 
   DocumentReviewComment, 
   ComplianceScore, 
-  ReviewWorkflowStatus,
-  getFirstTimerMdaProjectId
+  ReviewWorkflowStatus
 } from '../data/sampleProjects';
 import { UserSession } from '../data/authTypes';
 import { DocumentReviewGradeModal } from './DocumentReviewGradeModal';
@@ -313,20 +312,9 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({
   const [expandedFullDocId, setExpandedFullDocId] = useState<string | null>(null);
 
   const canReview = session?.role === 'Super Admin' || (session?.role as string) === 'Director General' || (session?.role as string) === 'Technical Clearance Team' || session?.role === 'Technical Director' || currentRole === 'Super Admin' || (currentRole as string) === 'Director General' || (currentRole as string) === 'Technical Clearance Team' || currentRole === 'Technical Director';
-  const isFirstTimer = (session?.role as string) === 'First-Timer / New User' || (currentRole as string) === 'First-Timer / New User' || !!session?.isFirstTimer || session?.memberType === 'new_member';
-  const firstTimerMdaProjId = isFirstTimer && session?.institution
-    ? getFirstTimerMdaProjectId(session.institution)
-    : '';
 
-  // Default to First-Timer's logged-in MDA project, or project with uploaded documents, or first project
-  const initialProjectId = firstTimerMdaProjId || projects.find(p => (p.documents?.length || 0) > 0)?.id || projects[0]?.id || '';
+  const initialProjectId = projects.find(p => (p.documents?.length || 0) > 0)?.id || projects[0]?.id || '';
   const [selectedProjectId, setSelectedProjectId] = useState<string>(initialProjectId);
-
-  React.useEffect(() => {
-    if (isFirstTimer && firstTimerMdaProjId && selectedProjectId !== firstTimerMdaProjId) {
-      setSelectedProjectId(firstTimerMdaProjId);
-    }
-  }, [isFirstTimer, firstTimerMdaProjId, selectedProjectId]);
 
   const activeProject = projects.find(p => p.id === selectedProjectId);
 
@@ -740,24 +728,6 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({
                   <span>{activeProject.autoAssessment ? '⚡ Automated Document AI Assessment' : 'Pending Document Upload'}</span>
                 </span>
 
-                {(activeProject.hasFirstTimerUpload || activeProject.autoAssessment?.submittedByFirstTimer) && (
-                  <span style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '3px 10px',
-                    borderRadius: '6px',
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    background: 'rgba(251, 191, 36, 0.18)',
-                    color: '#fbbf24',
-                    border: '1px solid rgba(251, 191, 36, 0.35)'
-                  }}>
-                    <FolderOpen size={12} />
-                    <span>Clearance Submission ({activeProject.autoAssessment?.firstTimerOfficerName || session?.fullName || 'Clearance Officer'})</span>
-                  </span>
-                )}
-
                 <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                   Evaluated from {activeProject.documents?.length || 0} uploaded document(s)
                 </span>
@@ -883,11 +853,6 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {activeProject.documents.map((doc) => {
-                  const isFT = doc.isFirstTimerUpload || 
-                    doc.uploadedByRole === 'First-Timer / New User' ||
-                    doc.id.includes('onboard') ||
-                    doc.signedBy?.includes('First-Timer / New User');
-
                   return (
                     <div
                       key={doc.id}
@@ -904,19 +869,6 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#fff' }}>{doc.fileName}</span>
-                          {isFT && (
-                            <span style={{
-                              padding: '1px 6px',
-                              borderRadius: '4px',
-                              background: 'rgba(251, 191, 36, 0.15)',
-                              border: '1px solid rgba(251, 191, 36, 0.35)',
-                              color: '#fde68a',
-                              fontSize: '0.64rem',
-                              fontWeight: 700
-                            }}>
-                              ⚡ Onboarder Submission
-                            </span>
-                          )}
                           <span style={{
                             padding: '1px 6px',
                             borderRadius: '9999px',

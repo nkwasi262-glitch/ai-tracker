@@ -142,7 +142,7 @@ export function recordDGVerdict(params: {
     actorEmail: params.reviewedByEmail,
     actorRole: params.reviewedByRole as any,
     actorInstitution: 'National Information Technology Agency (NITA)',
-    targetModule: 'dg_queue',
+    targetModule: 'documents',
     targetEntityId: params.projectId,
     actionDetails: `Final Director General Sign-Off & Verdict "${finalStatusLabel.toUpperCase()}" (${params.verdict}) issued for ${params.projectCode} (${params.projectName}). Reasons / Directives: ${params.mandatoryComments.substring(0, 140)}`
   });

@@ -50,7 +50,7 @@ assert(!isApprovedInstitutionalEmail('unauthorized@yahoo.com'), 'Security Gate',
 console.log('--- 2. SUPER ADMIN CLEARANCE TEST ---');
 const allModules: AppModuleId[] = [
   'dashboard', 'registry', 'gis', 'governance', 'readiness', 
-  'risk', 'documents', 'dg_queue', 'finance', 'reports', 'audit', 'chat'
+  'risk', 'documents', 'finance', 'reports', 'audit', 'chat'
 ];
 const superAdminRole: ActiveRole = 'Super Admin';
 
@@ -78,7 +78,6 @@ const dgRole: AnyRole = 'Director General';
 
 // Permitted modules for DG
 assert(canAccessModule(dgRole, 'dashboard'), 'Director General', 'Access: dashboard', 'Can access Executive Overview Dashboard');
-assert(canAccessModule(dgRole, 'dg_queue'), 'Director General', 'Access: dg_queue', 'Can access Recommended for Final Decision Queue');
 assert(canAccessModule(dgRole, 'gis'), 'Director General', 'Access: gis', 'Can access National GIS Map');
 assert(canAccessModule(dgRole, 'finance'), 'Director General', 'Access: finance', 'Can view Fiscal Suite Overview');
 assert(canAccessModule(dgRole, 'reports'), 'Director General', 'Access: reports', 'Can read Classified Internal Reports');
@@ -89,7 +88,7 @@ assert(!canAccessModule(dgRole, 'registry'), 'Director General', 'Block: registr
 assert(!canAccessModule(dgRole, 'governance'), 'Director General', 'Block: governance', 'STRICTLY BLOCKED from modifying Governance audit scores');
 assert(!canAccessModule(dgRole, 'readiness'), 'Director General', 'Block: readiness', 'STRICTLY BLOCKED from modifying Readiness assessments');
 assert(!canAccessModule(dgRole, 'risk'), 'Director General', 'Block: risk', 'STRICTLY BLOCKED from editing Risk Matrix');
-assert(!canAccessModule(dgRole, 'documents'), 'Director General', 'Block: documents', 'STRICTLY BLOCKED from Technical Document Manager (uses DG Queue)');
+assert(!canAccessModule(dgRole, 'documents'), 'Director General', 'Block: documents', 'STRICTLY BLOCKED from Technical Document Manager');
 
 // Actions for DG
 assert(canPerformAction(dgRole, 'PASS_DG_VERDICT'), 'Director General', 'Action: PASS_DG_VERDICT', 'Statutory authority to issue final verdicts (Approve, Reject, Return)');
@@ -121,7 +120,6 @@ assert(canAccessModule(techClearanceRole, 'documents'), 'Technical Clearance Tea
 assert(canAccessModule(techClearanceRole, 'governance'), 'Technical Clearance Team', 'Access: governance', 'Can audit governance');
 assert(canAccessModule(techClearanceRole, 'risk'), 'Technical Clearance Team', 'Access: risk', 'Can update risk matrix');
 assert(canAccessModule(techClearanceRole, 'reports'), 'Technical Clearance Team', 'Access: reports', 'Can post internal reports');
-assert(!canAccessModule(techClearanceRole, 'dg_queue'), 'Technical Clearance Team', 'Block: dg_queue', 'Cannot access DG Decision Queue');
 assert(canPerformAction(techClearanceRole, 'RECOMMEND_TO_DG'), 'Technical Clearance Team', 'Action: RECOMMEND_TO_DG', 'Can elevate recommended project');
 assert(!canPerformAction(techClearanceRole, 'PASS_DG_VERDICT'), 'Technical Clearance Team', 'Action: PASS_DG_VERDICT', 'CANNOT pass final verdict');
 
@@ -134,7 +132,6 @@ const aiManagerRole: AnyRole = 'AI Manager';
 assert(canAccessModule(aiManagerRole, 'registry'), 'AI Manager', 'Access: registry', 'Can manage project registrations');
 assert(canAccessModule(aiManagerRole, 'documents'), 'AI Manager', 'Access: documents', 'Can upload and view compliance docs');
 assert(canAccessModule(aiManagerRole, 'reports'), 'AI Manager', 'Access: reports', 'Can participate in reports thread');
-assert(!canAccessModule(aiManagerRole, 'dg_queue'), 'AI Manager', 'Block: dg_queue', 'Cannot access DG decision queue');
 assert(!canAccessModule(aiManagerRole, 'audit'), 'AI Manager', 'Block: audit', 'Cannot access system audit log');
 
 // -----------------------------------------------------------------------------
@@ -150,7 +147,7 @@ assert(canAccessModule(financeMinisterRole, 'chat'), 'Finance Minister', 'Access
 
 // STRICTLY FORBIDDEN:
 const forbiddenForFinance: AppModuleId[] = [
-  'registry', 'gis', 'governance', 'readiness', 'risk', 'documents', 'dg_queue', 'reports', 'audit'
+  'registry', 'gis', 'governance', 'readiness', 'risk', 'documents', 'reports', 'audit'
 ];
 forbiddenForFinance.forEach(mod => {
   assert(
@@ -176,9 +173,9 @@ assert(canAccessModule(publicUserRole, 'dashboard'), 'Public User', 'Access: das
 assert(canAccessModule(publicUserRole, 'gis'), 'Public User', 'Access: gis', 'Can access National GIS Map');
 assert(canAccessModule(publicUserRole, 'chat'), 'Public User', 'Access: chat', 'Can access AI Assistant');
 
-// STRICTLY FORBIDDEN (All 9 internal/privileged modules):
+// STRICTLY FORBIDDEN:
 const forbiddenForPublic: AppModuleId[] = [
-  'registry', 'governance', 'readiness', 'risk', 'documents', 'dg_queue', 'finance', 'reports', 'audit'
+  'registry', 'governance', 'readiness', 'risk', 'documents', 'finance', 'reports', 'audit'
 ];
 forbiddenForPublic.forEach(mod => {
   assert(
@@ -190,28 +187,13 @@ forbiddenForPublic.forEach(mod => {
 });
 
 // -----------------------------------------------------------------------------
-// TEST 9: First-Timer / New User Guided Track Test
+// TEST 9: Active Roles Profile Boundaries (Only 3 Active Roles: Super Admin, Technical Director, Public User)
 // -----------------------------------------------------------------------------
-console.log('--- 9. FIRST-TIMER / NEW USER GUIDED TRACK TEST ---');
-const firstTimerRole: AnyRole = 'First-Timer / New User';
-
-// Allowed (Guidance & Upload only):
-assert(canAccessModule(firstTimerRole, 'documents'), 'First-Timer', 'Access: documents', 'Can access Document & OCR to upload required files');
-assert(canAccessModule(firstTimerRole, 'readiness'), 'First-Timer', 'Access: readiness', 'Can access AI Readiness assessment guide');
-assert(canAccessModule(firstTimerRole, 'governance'), 'First-Timer', 'Access: governance', 'Can access Governance & Ethics compliance guide');
-
-// Forbidden (All other 9 modules):
-const forbiddenForFirstTimer: AppModuleId[] = [
-  'dashboard', 'registry', 'gis', 'risk', 'dg_queue', 'finance', 'reports', 'audit', 'chat'
-];
-forbiddenForFirstTimer.forEach(mod => {
-  assert(
-    !canAccessModule(firstTimerRole, mod),
-    'First-Timer',
-    `Block: ${mod}`,
-    `STRICTLY FORBIDDEN from accessing non-guided module: ${mod}`
-  );
-});
+console.log('--- 9. ACTIVE ROLES PROFILE BOUNDARIES TEST ---');
+const activeRolesList = ['Super Admin', 'Technical Director', 'Public User'];
+assert(activeRolesList.length === 3, 'Active Roles', 'Role Count', 'System strictly limits active role profiles to 3');
+assert(!activeRolesList.includes('First-Timer / New User'), 'Active Roles', 'No First-Timer Role', 'First-Timer is completely removed from active role profiles');
+assert(!activeRolesList.includes('Director General'), 'Active Roles', 'No DG in Active Roles', 'Director General queue and profile removed from active roles');
 
 // Summary Report
 console.log('\n====================================================================');

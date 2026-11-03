@@ -32,7 +32,6 @@ export function loadStoredProjects(): AIProject[] {
         return {
           ...proj,
           documents: missingDocs.length > 0 ? [...(proj.documents || []), ...missingDocs] : (proj.documents || []),
-          hasFirstTimerUpload: proj.hasFirstTimerUpload || sample.hasFirstTimerUpload,
           reviewStatus: proj.reviewStatus || sample.reviewStatus,
           dgFinalVerdict: proj.dgFinalVerdict || sample.dgFinalVerdict
         };

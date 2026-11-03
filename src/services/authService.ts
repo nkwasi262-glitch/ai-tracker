@@ -18,23 +18,19 @@ export function getLastSelectedRole(): ActiveRole | null {
 
 export function setLastSelectedRole(role: ActiveRole | string): void {
   try {
-    if ((role as string) !== 'First-Timer / New User') {
-      localStorage.setItem(LAST_ROLE_KEY, role);
-    }
+    localStorage.setItem(LAST_ROLE_KEY, role);
   } catch (e) {
     console.error('Failed to set last selected role:', e);
   }
 }
 
-export function elevateFromFirstTimer(newRole: ActiveRole | string): UserSession | null {
+export function updateUserRole(newRole: ActiveRole | string): UserSession | null {
   const session = getStoredSession();
   if (!session) return null;
-  const isFT = (newRole as string) === 'First-Timer / New User';
   const updated: UserSession = {
     ...session,
     previousRole: session.role,
     role: newRole as any,
-    isFirstTimer: isFT,
     lastActiveAt: new Date().toISOString()
   };
   saveSession(updated);
@@ -46,10 +42,11 @@ export function elevateFromFirstTimer(newRole: ActiveRole | string): UserSession
     actorRole: updated.role,
     actorInstitution: updated.institution,
     targetModule: 'gate',
-    actionDetails: `User transitioned from First-Timer / New User onboarding to active role profile: ${newRole}`
+    actionDetails: `User active role profile updated to: ${newRole}`
   });
   return updated;
 }
+export const elevateFromFirstTimer = updateUserRole;
 
 export function getStoredSession(): UserSession | null {
   try {
@@ -101,7 +98,6 @@ export interface GateSubmissionInput {
   role: ActiveRole | string;
   email: string;
   submissionDate: string;
-  isFirstTimer?: boolean;
   memberType?: 'new_member' | 'in_member';
   onboardingStatus?: 'onboarding' | 'pending_approval' | 'approved';
 }
@@ -130,15 +126,14 @@ export function submitOnboardingForApproval(): UserSession | null {
     actorRole: updated.role,
     actorInstitution: updated.institution,
     targetModule: 'gate',
-    actionDetails: `New Member ${updated.fullName} completed onboarding document submission. Request pending, you will receive an email when approved, THANK YOU.`
+    actionDetails: `Officer ${updated.fullName} completed registration. Request pending, you will receive an email when approved, THANK YOU.`
   });
   return updated;
 }
 
 export function processGateSubmission(input: GateSubmissionInput): GateResult {
   const isDomainApproved = isApprovedInstitutionalEmail(input.email);
-  const isFirstTimerRole = input.isFirstTimer || (input.role as string) === 'First-Timer / New User' || input.memberType === 'new_member';
-  const assignedRole: any = isFirstTimerRole ? 'First-Timer / New User' : input.role;
+  const assignedRole: any = input.role;
 
   // Remember chosen active role for session persistence
   setLastSelectedRole(assignedRole);
@@ -152,12 +147,11 @@ export function processGateSubmission(input: GateSubmissionInput): GateResult {
     email: input.email.trim().toLowerCase(),
     submissionDate: input.submissionDate,
     isVerified: true,
-    isFirstTimer: isFirstTimerRole,
-    memberType: input.memberType || (isFirstTimerRole ? 'new_member' : 'in_member'),
-    onboardingStatus: input.onboardingStatus || (isFirstTimerRole ? 'onboarding' : 'approved'),
-    token: `token-auth-${Date.now()}`,
+    token: `token-statutory-${Date.now()}`,
     createdAt: new Date().toISOString(),
-    lastActiveAt: new Date().toISOString()
+    lastActiveAt: new Date().toISOString(),
+    memberType: input.memberType || 'in_member',
+    onboardingStatus: input.onboardingStatus || 'approved'
   };
 
   saveSession(session);
@@ -169,16 +163,14 @@ export function processGateSubmission(input: GateSubmissionInput): GateResult {
     actorRole: session.role,
     actorInstitution: session.institution,
     targetModule: 'gate',
-    actionDetails: `Mandatory Gatekeeper verified credentials under Ghana Data Protection Act (Act 843) for ${session.fullName} (${session.institution}) on ${input.submissionDate}. Membership track: [${session.memberType}], active role: [${session.role}].`
+    actionDetails: `Mandatory Gatekeeper verified credentials under Ghana Data Protection Act (Act 843) for ${session.fullName} (${session.institution}) on ${input.submissionDate}. Active role: [${session.role}].`
   });
 
   return {
     session,
     requiresOtp: false,
     isDomainApproved,
-    message: isFirstTimerRole 
-      ? 'Welcome! First-Timer Onboarding initialized with guided access to Document & OCR, AI Readiness, and Governance & Ethics.'
-      : `Active role profile [${assignedRole}] authenticated and verified under Ghana Data Protection Act (Act 843).`
+    message: `Active role profile [${assignedRole}] authenticated and verified under Ghana Data Protection Act (Act 843).`
   };
 }
 

@@ -195,7 +195,6 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
         role: assignedRole,
         email: cleanEmail,
         submissionDate: date,
-        isFirstTimer: false,
         memberType: 'in_member',
         onboardingStatus: 'approved'
       });
@@ -218,7 +217,6 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
         role: assignedRole,
         email: cleanEmail,
         submissionDate: date,
-        isFirstTimer: false,
         memberType: 'in_member',
         onboardingStatus: 'approved'
       });

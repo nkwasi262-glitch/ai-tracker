@@ -1013,7 +1013,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
 
           {onNavigate && (currentRole === 'Super Administrator' || currentRole === 'National AI Authority' || currentRole === 'Government Administrator') && (
             <button
-              onClick={() => onNavigate('dg_queue')}
+              onClick={() => onNavigate('documents')}
               className="btn btn-primary"
               style={{
                 display: 'flex',
@@ -1024,7 +1024,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
                 fontWeight: 700,
               }}
             >
-              <Stamp size={14} /> Open DG Sign-Off Queue <ArrowRight size={14} />
+              <FileCheck2 size={14} /> Open Document Review Studio <ArrowRight size={14} />
             </button>
           )}
         </div>

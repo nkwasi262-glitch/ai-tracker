@@ -12,7 +12,6 @@ import {
   Sparkles,
   Clock,
   XCircle,
-  Lock,
   Eye,
   Layers,
   ShieldAlert,
@@ -29,9 +28,7 @@ import {
   ReviewWorkflowStatus, 
   ComplianceScore, 
   AutoAssessmentDetails, 
-  ZeroAssumptionAudit,
-  getFirstTimerMdaProjectId,
-  ensureFirstTimerMdaProject
+  ZeroAssumptionAudit
 } from '../data/sampleProjects';
 import { UserRole } from './RoleSwitcher';
 import { UserSession } from '../data/authTypes';
@@ -92,24 +89,13 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
   onClearInitialTarget
 }) => {
   // Role permissions checks
-  const isFirstTimer = (session?.role as string) === 'First-Timer / New User' || (currentRole as string) === 'First-Timer / New User' || !!session?.isFirstTimer || session?.memberType === 'new_member';
-  const firstTimerMdaProjectId = isFirstTimer && session?.institution
-    ? getFirstTimerMdaProjectId(session.institution)
-    : '';
-
-  const ownMdaProject = (() => {
-    if (isFirstTimer && session?.institution) {
-      const mdaProj = projects.find(p => p.id === firstTimerMdaProjectId) ||
-        projects.find(p => (p.mda || '').toLowerCase() === session.institution.toLowerCase());
-      if (mdaProj) return mdaProj;
-      const ensured = ensureFirstTimerMdaProject(projects, session.institution, session.fullName, session.email);
-      return ensured.mdaProject;
-    }
-    return null;
-  })();
+  const isSuperAdmin = session?.role === 'Super Admin' || currentRole === 'Super Admin';
+  const isTechClearanceTeam = (session?.role as string) === 'Technical Clearance Team' || (currentRole as string) === 'Technical Clearance Team';
+  const isTechDirector = session?.role === 'Technical Director' || currentRole === 'Technical Director';
+  const isDirectorGeneral = (session?.role as string) === 'Director General' || (currentRole as string) === 'Director General';
 
   const [selectedProjectId, setSelectedProjectId] = useState<string>(
-    initialProjectId || firstTimerMdaProjectId || projects[0]?.id || ''
+    initialProjectId || projects[0]?.id || ''
   );
 
   const activeProject = (() => {
@@ -117,28 +103,18 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
       const found = projects.find(p => p.id === selectedProjectId);
       if (found) return found;
     }
-    return ownMdaProject || projects[0];
+    return projects[0];
   })();
 
-  const isOwnMdaProject = !isFirstTimer || (
-    !!activeProject && (
-      (ownMdaProject && activeProject.id === ownMdaProject.id) ||
-      (activeProject.mda || '').toLowerCase() === (session?.institution || '').toLowerCase()
-    )
-  );
-  const isSuperAdmin = session?.role === 'Super Admin' || currentRole === 'Super Admin';
-  const isTechClearanceTeam = (session?.role as string) === 'Technical Clearance Team' || (currentRole as string) === 'Technical Clearance Team';
-  const isTechDirector = session?.role === 'Technical Director' || currentRole === 'Technical Director';
-  const isDirectorGeneral = (session?.role as string) === 'Director General' || (currentRole as string) === 'Director General';
-  const canAccessTechnicalClearanceGate = !isFirstTimer && (
+  const canAccessTechnicalClearanceGate = (
     isTechDirector ||
     isTechClearanceTeam ||
     isSuperAdmin ||
     isDirectorGeneral
   );
 
-  // Statutory authority to review documents, grade modules, and pass comments on first-timer uploads
-  const canReviewAndGrade = !isFirstTimer && (
+  // Authority to review documents, grade modules, and pass directives
+  const canReviewAndGrade = (
     (session?.role as string) === 'Director General' ||
     session?.role === 'Super Admin' ||
     (session?.role as string) === 'Technical Clearance Team' ||
@@ -169,13 +145,10 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
     }
   }, [initialProjectId, initialDocId]);
 
-  // Filter for first-timer uploads only
-  const [onlyFirstTimerFilter, setOnlyFirstTimerFilter] = useState(false);
+  // View mode: 'project' (current project vault), 'clearance_studio' (dedicated Technical Clearance Review & Grading studio), 'all' (master document explorer)
+  const [viewMode, setViewMode] = useState<'project' | 'clearance_studio' | 'all'>('project');
 
-  // View mode: 'project' (current project vault), 'onboarders' (dedicated First-Timer / Onboarder Full Documents Review & Grading studio), 'all' (master document explorer)
-  const [viewMode, setViewMode] = useState<'project' | 'onboarders' | 'all'>('project');
-
-  // States for the dedicated First-Timer / Onboarder Full Document Review & Grading workspace inside Documents & OCR
+  // States for the dedicated Technical Clearance Document Review & Grading workspace inside Documents & OCR
   const [selectedOnboarderDocKey, setSelectedOnboarderDocKey] = useState<string>('');
   const [onboarderReaderMode, setOnboarderReaderMode] = useState<'full' | 'sections' | 'ocr'>('full');
   const [onboarderActiveSectionIdx, setOnboarderActiveSectionIdx] = useState<number>(0);
@@ -282,19 +255,12 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
     }))
   );
 
-  const isDocFirstTimer = (doc: DocumentAsset) =>
-    !!(
-      doc.isFirstTimerUpload ||
-      doc.uploadedByRole === 'First-Timer / New User' ||
-      doc.id.includes('onboard') ||
-      doc.signedBy?.includes('First-Timer / New User')
-    );
+  // Clearance and reviewable documents list
+  const clearanceDocumentsList = allUploadedDocuments;
+  const clearanceUploadsCount = clearanceDocumentsList.length;
 
-  const firstTimerDocumentsList = allUploadedDocuments.filter(item => isDocFirstTimer(item.doc));
-  const firstTimerUploadsCount = firstTimerDocumentsList.length;
-
-  // Filtered list for the dedicated First-Timer / Onboarder Review & Grading Center
-  const filteredOnboarderDocuments = (firstTimerDocumentsList.length > 0 ? firstTimerDocumentsList : allUploadedDocuments).filter(item => {
+  // Filtered list for the dedicated Review & Grading Studio
+  const filteredReviewDocuments = clearanceDocumentsList.filter(item => {
     if (!onboarderListFilter.trim()) return true;
     const q = onboarderListFilter.toLowerCase();
     return (
@@ -309,16 +275,14 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
     );
   });
 
-  // Resolve the currently selected First-Timer / Onboarder document in the studio
+  // Resolve the currently selected document in the studio
   const activeOnboarderItem =
-    filteredOnboarderDocuments.find(item => `${item.project.id}::${item.doc.id}` === selectedOnboarderDocKey) ||
-    firstTimerDocumentsList.find(item => `${item.project.id}::${item.doc.id}` === selectedOnboarderDocKey) ||
-    filteredOnboarderDocuments[0] ||
-    firstTimerDocumentsList[0] ||
+    filteredReviewDocuments.find(item => `${item.project.id}::${item.doc.id}` === selectedOnboarderDocKey) ||
+    filteredReviewDocuments[0] ||
     allUploadedDocuments[0] ||
     null;
 
-  // Select an onboarder document and sync grading controls with its project
+  // Select a document and sync grading controls with its project
   const handleSelectOnboarderDocument = (doc: DocumentAsset, project: AIProject) => {
     setSelectedOnboarderDocKey(`${project.id}::${doc.id}`);
     setOnboarderActiveSectionIdx(0);
@@ -358,7 +322,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
     inlineAvgCompliance >= 70 ? 'Good' :
     inlineAvgCompliance >= 50 ? 'Moderate' : 'High Risk';
 
-  // Submit inline review & module grading directly from the First-Timer / Onboarder Full Document Studio
+  // Submit inline review & module grading directly from the Technical Clearance Review & Grading Studio
   const handleInlineSubmitReview = (doc: DocumentAsset, project: AIProject) => {
     if (!onReviewDocument) return;
     const defaultComment =
@@ -456,9 +420,6 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
   };
 
   const filteredAllDocuments = allUploadedDocuments.filter(item => {
-    if (onlyFirstTimerFilter) {
-      if (!isDocFirstTimer(item.doc)) return false;
-    }
     if (!allDocsFilter) return true;
     const q = allDocsFilter.toLowerCase();
     return (
@@ -531,9 +492,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
           fileType: resolvedType,
           fileSize: fileSizeStr,
           pageCount: estimatedPages,
-          documentCategory: isFirstTimer
-            ? 'First-Timer / Onboarder Full Submission Dossier'
-            : 'Institutional Compliance & Technical Dossier',
+          documentCategory: 'Institutional Compliance & Technical Dossier',
           uploadedAt: new Date().toISOString().split('T')[0],
           version: 1,
           signedBy: [currentRole],
@@ -541,7 +500,6 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
           uploadedByName: session?.fullName || 'Registry User',
           uploadedByEmail: session?.email || '',
           uploadedByMda: session?.institution || activeProject.mda,
-          isFirstTimerUpload: isFirstTimer,
           reviewStatus: 'Pending Review',
           fullDocumentText: capturedText || undefined,
           fileDataUrl: capturedDataUrl && capturedDataUrl.length < 350000 ? capturedDataUrl : undefined
@@ -818,7 +776,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
     setTimeout(() => setTechDirectorFeedback(null), 6000);
   };
 
-  const canEdit = ['Super Administrator', 'Institution Administrator', 'Project Manager', 'Super Admin'].includes(currentRole as string) || isFirstTimer;
+  const canEdit = ['Super Administrator', 'Institution Administrator', 'Project Manager', 'Super Admin', 'Technical Director'].includes(currentRole as string);
   const canSign = ['Super Administrator', 'National AI Authority', 'Government Administrator', 'Auditor', 'Super Admin'].includes(currentRole as string);
 
   return (
@@ -986,10 +944,10 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
           <button
             type="button"
             onClick={() => {
-              if (firstTimerDocumentsList.length > 0 && !selectedOnboarderDocKey) {
-                handleSelectOnboarderDocument(firstTimerDocumentsList[0].doc, firstTimerDocumentsList[0].project);
+              if (clearanceDocumentsList.length > 0 && !selectedOnboarderDocKey) {
+                handleSelectOnboarderDocument(clearanceDocumentsList[0].doc, clearanceDocumentsList[0].project);
               }
-              setViewMode('onboarders');
+              setViewMode('clearance_studio');
             }}
             style={{
               display: 'inline-flex',
@@ -1000,15 +958,15 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
               fontSize: '0.78rem',
               fontWeight: 800,
               cursor: 'pointer',
-              border: viewMode === 'onboarders' ? '1px solid #fbbf24' : '1px solid rgba(251, 191, 36, 0.45)',
-              background: viewMode === 'onboarders' ? 'rgba(251, 191, 36, 0.22)' : 'rgba(251, 191, 36, 0.08)',
+              border: viewMode === 'clearance_studio' ? '1px solid #fbbf24' : '1px solid rgba(251, 191, 36, 0.45)',
+              background: viewMode === 'clearance_studio' ? 'rgba(251, 191, 36, 0.22)' : 'rgba(251, 191, 36, 0.08)',
               color: '#fde68a',
-              boxShadow: viewMode === 'onboarders' ? '0 0 14px rgba(251, 191, 36, 0.25)' : 'none',
+              boxShadow: viewMode === 'clearance_studio' ? '0 0 14px rgba(251, 191, 36, 0.25)' : 'none',
               transition: 'all 0.15s ease'
             }}
           >
             <BookOpen size={14} className="text-amber-400" />
-            <span>⚡ Technical Clearance Inbound Dossiers (Review & Grading: {firstTimerUploadsCount})</span>
+            <span>⚡ Technical Clearance Inbound Dossiers (Review & Grading: {clearanceUploadsCount})</span>
           </button>
 
           <button
@@ -1035,8 +993,8 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
         </div>
       </div>
 
-      {/* VIEW MODE 0: TECHNICAL CLEARANCE INBOUND DOSSIERS REVIEW & GRADING STUDIO */}
-      {viewMode === 'onboarders' ? (
+      {/* VIEW MODE 0: TECHNICAL CLEARANCE REVIEW & GRADING STUDIO */}
+      {viewMode === 'clearance_studio' ? (
         <div className="glass-card" style={{
           display: 'flex',
           flexDirection: 'column',
@@ -1071,7 +1029,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
               <div style={{ position: 'relative', width: '250px' }}>
                 <input
                   type="text"
-                  placeholder="Filter onboarder documents or MDA..."
+                  placeholder="Filter documents, project, or MDA..."
                   value={onboarderListFilter}
                   onChange={(e) => setOnboarderListFilter(e.target.value)}
                   className="form-input"
@@ -1125,7 +1083,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
 
           {/* 3-Column / Split Studio: Left (Onboarder Document Queue), Center (Full Multi-Page Document Reader), Right (Review & Grading Controls) */}
           <div style={{ display: 'grid', gridTemplateColumns: '310px 1.35fr 1fr', gap: '16px', alignItems: 'start' }}>
-            {/* Column 1: First-Timer / Onboarder Uploaded Documents Queue */}
+            {/* Column 1: Technical Clearance & Project Documents Queue */}
             <div style={{
               background: 'rgba(0, 0, 0, 0.3)',
               border: '1px solid var(--border-color)',
@@ -1139,14 +1097,14 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', color: '#fde68a', letterSpacing: '0.04em' }}>
-                  Onboarder Submissions ({filteredOnboarderDocuments.length})
+                  Clearance Dossiers ({filteredReviewDocuments.length})
                 </span>
                 <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>
                   Click to Read & Grade
                 </span>
               </div>
 
-              {filteredOnboarderDocuments.map(({ doc, project }) => {
+              {filteredReviewDocuments.map(({ doc, project }) => {
                 const isSelected = activeOnboarderItem?.doc.id === doc.id && activeOnboarderItem?.project.id === project.id;
                 const sections = getFullDocumentSections(doc, project);
                 return (
@@ -1186,7 +1144,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                       {project.projectCode} • {project.mdaCode}
                     </div>
                     <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)' }}>
-                      Uploader: <strong style={{ color: '#e2e8f0' }}>{doc.uploadedByName || 'First-Timer Onboarder'}</strong> ({doc.uploadedByRole || 'First-Timer / New User'})
+                      Uploader: <strong style={{ color: '#e2e8f0' }}>{doc.uploadedByName || 'Officer'}</strong> ({doc.uploadedByRole || 'Institutional Officer'})
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '2px' }}>
                       <span>{doc.pageCount || sections.length} Pages • {doc.fileSize || '1.8 MB'}</span>
@@ -1220,141 +1178,43 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                       <span style={{
                         padding: '2px 8px',
                         borderRadius: '4px',
-                        background: 'rgba(251, 191, 36, 0.18)',
-                        border: '1px solid rgba(251, 191, 36, 0.45)',
-                        color: '#fde68a',
+                        background: 'rgba(16, 185, 129, 0.18)',
+                        border: '1px solid rgba(16, 185, 129, 0.45)',
+                        color: '#a7f3d0',
                         fontSize: '0.65rem',
                         fontWeight: 700
                       }}>
-                        ⚡ FULL ONBOARDER SUBMISSION
+                        ⚡ FULL COMPLIANCE DOSSIER
                       </span>
                     </div>
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '3px' }}>
-                      Project: <strong style={{ color: 'var(--ghana-emerald)' }}>{activeOnboarderItem.project.projectCode}</strong> ({activeOnboarderItem.project.name}) • Uploaded by <strong style={{ color: '#fde68a' }}>{activeOnboarderItem.doc.uploadedByName || 'Onboarder'}</strong> {activeOnboarderItem.doc.uploadedByEmail ? `<${activeOnboarderItem.doc.uploadedByEmail}>` : ''}
+                      Project: <strong style={{ color: 'var(--ghana-emerald)' }}>{activeOnboarderItem.project.projectCode}</strong> ({activeOnboarderItem.project.name}) • Uploaded by <strong style={{ color: '#fde68a' }}>{activeOnboarderItem.doc.uploadedByName || 'Officer'}</strong> {activeOnboarderItem.doc.uploadedByEmail ? `<${activeOnboarderItem.doc.uploadedByEmail}>` : ''}
                     </div>
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    {isFirstTimer && (activeOnboarderItem.project.mda || '').toLowerCase() !== (session?.institution || '').toLowerCase() ? (
-                      <span style={{
-                        padding: '4px 9px',
+                    <button
+                      type="button"
+                      onClick={() => setInspectingItem(activeOnboarderItem)}
+                      style={{
+                        padding: '5px 10px',
                         borderRadius: '6px',
-                        background: 'rgba(239, 68, 68, 0.16)',
-                        border: '1px solid rgba(239, 68, 68, 0.35)',
-                        color: '#fca5a5',
-                        fontSize: '0.68rem',
-                        fontWeight: 700,
+                        background: 'rgba(255,255,255,0.08)',
+                        border: '1px solid rgba(255,255,255,0.18)',
+                        color: '#fff',
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '4px'
-                      }}>
-                        <Lock size={12} /> Access Restricted (Other MDA)
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setInspectingItem(activeOnboarderItem)}
-                        style={{
-                          padding: '5px 10px',
-                          borderRadius: '6px',
-                          background: 'rgba(255,255,255,0.08)',
-                          border: '1px solid rgba(255,255,255,0.18)',
-                          color: '#fff',
-                          fontSize: '0.7rem',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px'
-                        }}
-                      >
-                        <Eye size={12} /> Full-Screen Reader
-                      </button>
-                    )}
+                      }}
+                    >
+                      <Eye size={12} /> Full-Screen Reader
+                    </button>
                   </div>
                 </div>
 
-                {/* If first timer viewing another MDA's document, show protected statutory notice */}
-                {isFirstTimer && (activeOnboarderItem.project.mda || '').toLowerCase() !== (session?.institution || '').toLowerCase() ? (
-                  <div style={{
-                    flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.8) 0%, rgba(10, 15, 30, 0.95) 100%)',
-                    borderRadius: '8px',
-                    border: '1px solid rgba(239, 68, 68, 0.35)',
-                    padding: '24px 20px',
-                    textAlign: 'center',
-                    gap: '12px'
-                  }}>
-                    <div style={{
-                      width: '48px',
-                      height: '48px',
-                      borderRadius: '50%',
-                      background: 'rgba(239, 68, 68, 0.15)',
-                      border: '1px solid rgba(239, 68, 68, 0.4)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#f87171'
-                    }}>
-                      <Lock size={24} />
-                    </div>
-
-                    <div>
-                      <div style={{ fontSize: '0.96rem', fontWeight: 800, color: '#fff', marginBottom: '4px' }}>
-                        Act 843 Statutory Document Protection
-                      </div>
-                      <div style={{ fontSize: '0.74rem', color: '#fca5a5', fontWeight: 600 }}>
-                        Originating MDA: {activeOnboarderItem.project.mda}
-                      </div>
-                    </div>
-
-                    <div style={{
-                      background: 'rgba(0, 0, 0, 0.4)',
-                      border: '1px solid rgba(255, 255, 255, 0.08)',
-                      borderRadius: '8px',
-                      padding: '12px 16px',
-                      maxWidth: '460px',
-                      width: '100%',
-                      fontSize: '0.72rem',
-                      display: 'grid',
-                      gridTemplateColumns: '1fr 1fr',
-                      gap: '8px',
-                      textAlign: 'left'
-                    }}>
-                      <div>
-                        <span style={{ color: 'var(--text-muted)' }}>Document: </span>
-                        <strong style={{ color: '#fff' }}>{activeOnboarderItem.doc.fileName}</strong>
-                      </div>
-                      <div>
-                        <span style={{ color: 'var(--text-muted)' }}>Document Kind: </span>
-                        <strong style={{ color: '#fbbf24' }}>{activeOnboarderItem.doc.documentCategory || 'Statutory Project Document'}</strong>
-                      </div>
-                      <div>
-                        <span style={{ color: 'var(--text-muted)' }}>Format & Size: </span>
-                        <strong style={{ color: '#93c5fd' }}>{activeOnboarderItem.doc.fileType.toUpperCase()} • {activeOnboarderItem.doc.fileSize || 'Standard Archive'}</strong>
-                      </div>
-                      <div>
-                        <span style={{ color: 'var(--text-muted)' }}>Submission Status: </span>
-                        <strong style={{ color: '#10b981' }}>{activeOnboarderItem.doc.reviewStatus || 'Submitted & Registered'}</strong>
-                      </div>
-                    </div>
-
-                    <p style={{
-                      fontSize: '0.73rem',
-                      color: 'var(--text-secondary)',
-                      lineHeight: 1.5,
-                      maxWidth: '480px',
-                      margin: 0
-                    }}>
-                      As an Onboarder/First-Timer representing <strong>{session?.institution || 'your MDA'}</strong>, you can view the registry status and document classifications across other MDAs, but cannot read, view OCR content, or download confidential files belonging to <strong>{activeOnboarderItem.project.mda}</strong> under Ghana Data Protection Act 2012 (Act 843).
-                    </p>
-                  </div>
-                ) : (
-                  <>
                 {/* Reader Mode Tabs & Search Bar */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
@@ -1508,8 +1368,6 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                     </div>
                   );
                 })()}
-                </>
-                )}
               </div>
             ) : null}
 
@@ -1767,9 +1625,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                   </>
                 ) : (
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                    {isFirstTimer && (activeOnboarderItem.project.mda || '').toLowerCase() !== (session?.institution || '').toLowerCase()
-                      ? `Access to view, inspect, or download document payloads from ${activeOnboarderItem.project.mda} is restricted under Act 843. Statutory clearance and grading are reserved for the National Technical Clearance Committee.`
-                      : 'You can read and download your complete uploaded document here. Statutory module grading is reserved for Super Admin, Director General, Technical Director, and Technical Clearance Team.'}
+                    You can read and inspect complete uploaded documents here. Statutory module grading is reserved for Super Admin, Director General, Technical Director, and Technical Clearance Team.
                   </div>
                 )}
 
@@ -1812,45 +1668,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(255, 255, 255, 0.04)', padding: '3px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                <button
-                  type="button"
-                  onClick={() => setOnlyFirstTimerFilter(false)}
-                  style={{
-                    padding: '5px 10px',
-                    borderRadius: '6px',
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    border: 'none',
-                    cursor: 'pointer',
-                    background: !onlyFirstTimerFilter ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
-                    color: !onlyFirstTimerFilter ? '#fff' : 'var(--text-muted)'
-                  }}
-                >
-                  All Files ({allUploadedDocuments.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setOnlyFirstTimerFilter(true)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '5px 10px',
-                    borderRadius: '6px',
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    border: 'none',
-                    cursor: 'pointer',
-                    background: onlyFirstTimerFilter ? 'rgba(251, 191, 36, 0.2)' : 'transparent',
-                    color: onlyFirstTimerFilter ? '#fde68a' : 'var(--text-muted)'
-                  }}
-                >
-                  <span>⚡ First-Timer Uploads ({firstTimerUploadsCount})</span>
-                </button>
-              </div>
-
-              <div style={{ position: 'relative', width: '240px' }}>
+              <div style={{ position: 'relative', width: '280px' }}>
                 <input
                   type="text"
                   placeholder="Filter by filename, project, MDA..."
@@ -1885,8 +1703,6 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                   </tr>
                 ) : (
                   filteredAllDocuments.map(({ doc, project }) => {
-                    const isFT = isDocFirstTimer(doc);
-
                     return (
                       <tr 
                         key={`${project.id}-${doc.id}`}
@@ -1902,26 +1718,6 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                               <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                                 Version {doc.version} • {doc.fileType.toUpperCase()} • {doc.pageCount || 6} Pages • {doc.fileSize || '1.8 MB'} • {doc.uploadedAt}
                               </div>
-                              {isFT && (
-                                <div style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  padding: '2px 6px',
-                                  borderRadius: '4px',
-                                  background: 'rgba(251, 191, 36, 0.15)',
-                                  border: '1px solid rgba(251, 191, 36, 0.35)',
-                                  color: '#fde68a',
-                                  fontSize: '0.66rem',
-                                  fontWeight: 700,
-                                  marginTop: '4px'
-                                }}>
-                                  <span>⚡ First-Timer Full Dossier: {doc.uploadedByName || 'Onboarder'}</span>
-                                  {doc.uploadedByEmail && (
-                                    <span style={{ color: 'var(--text-muted)' }}>({doc.uploadedByEmail})</span>
-                                  )}
-                                </div>
-                              )}
                             </div>
                           </div>
                         </td>
@@ -1987,121 +1783,75 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                         </td>
                         <td style={{ padding: '12px 16px', textAlign: 'right' }}>
                           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                            {isFirstTimer && (project.mda || '').toLowerCase() !== (session?.institution || '').toLowerCase() ? (
-                              <>
-                                <span style={{
+                            {canReviewAndGrade && (
+                              <button
+                                type="button"
+                                onClick={() => setReviewingItem({ doc, project })}
+                                style={{
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   gap: '4px',
-                                  padding: '5px 10px',
+                                  padding: '6px 12px',
                                   borderRadius: '6px',
-                                  background: 'rgba(239, 68, 68, 0.12)',
-                                  border: '1px solid rgba(239, 68, 68, 0.3)',
-                                  color: '#fca5a5',
-                                  fontSize: '0.72rem',
-                                  fontWeight: 600
-                                }}>
-                                  <Lock size={12} />
-                                  <span>Act 843 Locked</span>
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedProjectId(project.id);
-                                    setSelectedDoc(doc);
-                                    setViewMode('project');
-                                  }}
-                                  style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                    padding: '5px 10px',
-                                    borderRadius: '6px',
-                                    background: 'rgba(255, 255, 255, 0.05)',
-                                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                                    color: '#e2e8f0',
-                                    fontSize: '0.72rem',
-                                    fontWeight: 600,
-                                    cursor: 'pointer'
-                                  }}
-                                >
-                                  <span>Details</span>
-                                  <ArrowRight size={12} />
-                                </button>
-                              </>
-                            ) : (
-                              <>
-                                {canReviewAndGrade && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setReviewingItem({ doc, project })}
-                                    style={{
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: '4px',
-                                      padding: '6px 12px',
-                                      borderRadius: '6px',
-                                      background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.3))',
-                                      border: '1px solid rgba(16, 185, 129, 0.5)',
-                                      color: '#a7f3d0',
-                                      fontSize: '0.74rem',
-                                      fontWeight: 700,
-                                      cursor: 'pointer',
-                                      boxShadow: '0 2px 8px rgba(16, 185, 129, 0.2)'
-                                    }}
-                                  >
-                                    <Award size={13} />
-                                    <span>Review & Grade (Full Doc)</span>
-                                  </button>
-                                )}
-
-                                <button
-                                  type="button"
-                                  onClick={() => setInspectingItem({ doc, project })}
-                                  style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                    padding: '6px 12px',
-                                    borderRadius: '6px',
-                                    background: 'rgba(59, 130, 246, 0.15)',
-                                    border: '1px solid rgba(59, 130, 246, 0.3)',
-                                    color: '#93c5fd',
-                                    fontSize: '0.74rem',
-                                    fontWeight: 700,
-                                    cursor: 'pointer'
-                                  }}
-                                >
-                                  <BookOpen size={13} />
-                                  <span>Read Full Doc</span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedProjectId(project.id);
-                                    setSelectedDoc(doc);
-                                    setViewMode('project');
-                                  }}
-                                  style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                    padding: '6px 12px',
-                                    borderRadius: '6px',
-                                    background: 'rgba(255, 255, 255, 0.05)',
-                                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                                    color: '#e2e8f0',
-                                    fontSize: '0.74rem',
-                                    fontWeight: 600,
-                                    cursor: 'pointer'
-                                  }}
-                                >
-                                  <span>Vault</span>
-                                  <ArrowRight size={13} />
-                                </button>
-                              </>
+                                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.3))',
+                                  border: '1px solid rgba(16, 185, 129, 0.5)',
+                                  color: '#a7f3d0',
+                                  fontSize: '0.74rem',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  boxShadow: '0 2px 8px rgba(16, 185, 129, 0.2)'
+                                }}
+                              >
+                                <Award size={13} />
+                                <span>Review & Grade (Full Doc)</span>
+                              </button>
                             )}
+
+                            <button
+                              type="button"
+                              onClick={() => setInspectingItem({ doc, project })}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '6px 12px',
+                                borderRadius: '6px',
+                                background: 'rgba(59, 130, 246, 0.15)',
+                                border: '1px solid rgba(59, 130, 246, 0.3)',
+                                color: '#93c5fd',
+                                fontSize: '0.74rem',
+                                fontWeight: 700,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <BookOpen size={13} />
+                              <span>Read Full Doc</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedProjectId(project.id);
+                                setSelectedDoc(doc);
+                                setViewMode('project');
+                              }}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '6px 12px',
+                                borderRadius: '6px',
+                                background: 'rgba(255, 255, 255, 0.05)',
+                                border: '1px solid rgba(255, 255, 255, 0.12)',
+                                color: '#e2e8f0',
+                                fontSize: '0.74rem',
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <span>Vault</span>
+                              <ArrowRight size={13} />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -2131,7 +1881,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                   <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-                    {isFirstTimer ? 'MDA / Project:' : 'Project:'}
+                    Project:
                   </span>
                   <select
                     value={selectedProjectId}
@@ -2143,46 +1893,17 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                     style={{
                       width: '320px',
                       padding: '6px 12px',
-                      fontSize: '0.8rem',
-                      border: isFirstTimer && !isOwnMdaProject ? '1px solid rgba(251, 191, 36, 0.6)' : undefined
+                      fontSize: '0.8rem'
                     }}
                   >
-                    {isFirstTimer && ownMdaProject && (
-                      <option value={ownMdaProject.id} style={{ fontWeight: 'bold' }}>
-                        🏛️ {ownMdaProject.mda} ({ownMdaProject.projectCode}) — Your Logged-In MDA
+                    {projects.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.mda} • {p.projectCode} - {p.name}
                       </option>
-                    )}
-                    {projects
-                      .filter(p => !isFirstTimer || p.id !== ownMdaProject?.id)
-                      .map(p => (
-                        <option key={p.id} value={p.id}>
-                          {p.mda} • {p.projectCode} - {p.name}
-                        </option>
-                      ))}
+                    ))}
                   </select>
                 </div>
               </div>
-
-              {/* Notice for First-Timers viewing other MDAs */}
-              {isFirstTimer && !isOwnMdaProject && activeProject && (
-                <div style={{
-                  padding: '10px 14px',
-                  borderRadius: '8px',
-                  background: 'rgba(234, 179, 8, 0.12)',
-                  border: '1px solid rgba(234, 179, 8, 0.35)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  marginBottom: '14px',
-                  fontSize: '0.76rem',
-                  color: '#fde68a'
-                }}>
-                  <Lock size={16} className="text-amber-400 flex-shrink-0" />
-                  <div>
-                    <strong>Viewing Submissions for {activeProject.mda} ({activeProject.projectCode})</strong>. As a first-timer/onboarder, you can see the name of the MDA and the kinds of documents sent, but document reading and downloading are restricted to the submitting MDA under Act 843.
-                  </div>
-                </div>
-              )}
 
               {activeProject && (
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -2236,7 +1957,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
 
                   {/* List of documents for active project */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
-                    {/* Dedicated First-Timer / Onboarder Full Document Access Banner inside Project Vault */}
+                    {/* Dedicated Technical Clearance & Review Studio Banner inside Project Vault */}
                     <div style={{
                       padding: '10px 14px',
                       borderRadius: '8px',
@@ -2253,7 +1974,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                         <BookOpen size={16} className="text-amber-400" />
                         <div>
                           <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#fde68a' }}>
-                            First-Timer & Onboarder Full Document Access (Review & Grading)
+                            Technical Clearance & Document Review Studio
                           </div>
                           <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
                             Full multi-page uploaded documents are preserved verbatim for side-by-side inspection while grading Governance & Ethics and AI Readiness.
@@ -2263,11 +1984,11 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                       <button
                         type="button"
                         onClick={() => {
-                          const projectFTDoc = activeProject.documents.find(d => isDocFirstTimer(d)) || activeProject.documents[0];
-                          if (projectFTDoc) {
-                            handleSelectOnboarderDocument(projectFTDoc, activeProject);
+                          const projectDoc = activeProject.documents[0];
+                          if (projectDoc) {
+                            handleSelectOnboarderDocument(projectDoc, activeProject);
                           }
-                          setViewMode('onboarders');
+                          setViewMode('clearance_studio');
                         }}
                         style={{
                           padding: '6px 12px',
@@ -2284,7 +2005,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                         }}
                       >
                         <BookOpen size={13} />
-                        <span>Open Onboarder Full Documents Studio ({firstTimerUploadsCount})</span>
+                        <span>Open Document Review Studio ({clearanceUploadsCount})</span>
                       </button>
                     </div>
 
@@ -2298,8 +2019,6 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                       </div>
                     ) : (
                       activeProject.documents.map(d => {
-                        const isFT = isDocFirstTimer(d);
-
                         return (
                           <div 
                             key={d.id}
@@ -2323,19 +2042,6 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                                 <div>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                                     <span style={{ fontSize: '0.86rem', fontWeight: 600 }}>{d.fileName}</span>
-                                    {isFT && (
-                                      <span style={{
-                                        padding: '1px 6px',
-                                        borderRadius: '4px',
-                                        background: 'rgba(251, 191, 36, 0.15)',
-                                        border: '1px solid rgba(251, 191, 36, 0.35)',
-                                        color: '#fde68a',
-                                        fontSize: '0.64rem',
-                                        fontWeight: 700
-                                      }}>
-                                        ⚡ Onboarder Full Document
-                                      </span>
-                                    )}
                                     <span style={{
                                       padding: '1px 6px',
                                       borderRadius: '9999px',
@@ -2361,25 +2067,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                               </div>
 
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                {isFirstTimer && !isOwnMdaProject ? (
-                                  <span style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '5px',
-                                    padding: '5px 10px',
-                                    borderRadius: '6px',
-                                    background: 'rgba(239, 68, 68, 0.14)',
-                                    border: '1px solid rgba(239, 68, 68, 0.38)',
-                                    color: '#fca5a5',
-                                    fontSize: '0.72rem',
-                                    fontWeight: 700
-                                  }}>
-                                    <Lock size={12} />
-                                    <span>Access Restricted (Other MDA)</span>
-                                  </span>
-                                ) : (
-                                  <>
-                                    {canReviewAndGrade && (
+                                {canReviewAndGrade && (
                                       <button
                                         type="button"
                                         onClick={(e) => {
@@ -2462,8 +2150,6 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                                     >
                                       <Download size={12} />
                                     </button>
-                                  </>
-                                )}
                               </div>
                             </div>
 
@@ -3262,27 +2948,6 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
               </div>
             )}
 
-            {!canAccessTechnicalClearanceGate && isFirstTimer ? (
-              /* Notice explaining that Technical Clearance Gate is strictly restricted for First-Timers */
-              <div className="glass-card" style={{
-                border: '1px solid rgba(251, 191, 36, 0.3)',
-                background: 'rgba(251, 191, 36, 0.05)',
-                padding: '16px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fde68a' }}>
-                  <Lock size={16} />
-                  <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>Technical Clearance Gate: Access Restricted</span>
-                </div>
-                <p style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
-                  First-Timer Onboarding Mode does not have access to Technical Clearance Gate controls or role activation. 
-                  The Technical Clearance Team, Technical Director, and Director General / Super Admin will review your uploaded documents and decide project registration.
-                </p>
-              </div>
-            ) : null}
-
             {/* OCR Full-Text Search Card */}
             <div className="glass-card">
               <h3 style={{ fontSize: '0.98rem', fontWeight: 700, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -3336,62 +3001,6 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
               <h3 style={{ fontSize: '0.98rem', fontWeight: 700, marginBottom: '16px' }}>Digital Auditing & Full Document Drawer</h3>
               
               {selectedDoc ? (
-                isFirstTimer && !isOwnMdaProject ? (
-                  <div style={{
-                    padding: '20px 16px',
-                    borderRadius: '12px',
-                    background: 'rgba(239, 68, 68, 0.08)',
-                    border: '1px solid rgba(239, 68, 68, 0.35)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '12px',
-                    textAlign: 'left'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#f87171' }}>
-                      <Lock size={22} />
-                      <div>
-                        <div style={{ fontSize: '0.9rem', fontWeight: 800 }}>Document Content Protected</div>
-                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Ghana Data Protection Act (Act 843) Sovereign Isolation</div>
-                      </div>
-                    </div>
-
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
-                      You are viewing submission metadata for <strong>{activeProject.mda}</strong>:
-                      <div style={{ marginTop: '8px', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                        <div><strong>Document:</strong> {selectedDoc.fileName}</div>
-                        <div><strong>Kind / Classification:</strong> {selectedDoc.documentCategory || 'Institutional Compliance Dossier'}</div>
-                        <div><strong>Format:</strong> {selectedDoc.fileType.toUpperCase()} ({selectedDoc.pageCount || 6} Pages • {selectedDoc.fileSize || '1.8 MB'})</div>
-                        <div><strong>Statutory Status:</strong> {selectedDoc.reviewStatus || 'Pending Review'}</div>
-                        <div><strong>Submitting MDA:</strong> {activeProject.mda} ({activeProject.mdaCode})</div>
-                      </div>
-                      <p style={{ marginTop: '10px', fontSize: '0.72rem', color: '#fca5a5', lineHeight: 1.5 }}>
-                        🔒 Under Act 843, onboarders can view the names of MDAs and the kinds of documents sent, but are not authorized to view, read, or download the document contents of other institutions.
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      disabled
-                      style={{
-                        padding: '9px',
-                        borderRadius: '6px',
-                        background: 'rgba(239, 68, 68, 0.14)',
-                        border: '1px solid rgba(239, 68, 68, 0.35)',
-                        color: '#fca5a5',
-                        fontSize: '0.76rem',
-                        fontWeight: 700,
-                        cursor: 'not-allowed',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px'
-                      }}
-                    >
-                      <Lock size={13} />
-                      <span>Document Access Restricted (Other MDA)</span>
-                    </button>
-                  </div>
-                ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
                   <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
                     {selectedDoc.fileName}
@@ -3504,7 +3113,6 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                   </div>
 
                 </div>
-                )
               ) : (
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', textAlign: 'center', padding: '10px' }}>
                   <HelpCircle className="w-10 h-10 text-slate-500 mb-8" />
@@ -3564,65 +3172,34 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                     <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: '#fff' }}>
                       {inspectingItem.doc.fileName}
                     </h3>
-                    {isDocFirstTimer(inspectingItem.doc) && (
-                      <span style={{
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        background: 'rgba(251, 191, 36, 0.18)',
-                        border: '1px solid rgba(251, 191, 36, 0.45)',
-                        color: '#fde68a',
-                        fontSize: '0.66rem',
-                        fontWeight: 700
-                      }}>
-                        ⚡ First-Timer / Onboarder Full Uploaded Document
-                      </span>
-                    )}
                   </div>
                   <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                    Project: <strong style={{ color: 'var(--ghana-emerald)' }}>{inspectingItem.project.projectCode}</strong> — {inspectingItem.project.name} • Uploaded by <strong style={{ color: '#fde68a' }}>{inspectingItem.doc.uploadedByName || 'Onboarder'}</strong> ({inspectingItem.doc.uploadedByRole || 'First-Timer / New User'})
+                    Project: <strong style={{ color: 'var(--ghana-emerald)' }}>{inspectingItem.project.projectCode}</strong> — {inspectingItem.project.name} • Uploaded by <strong style={{ color: '#fde68a' }}>{inspectingItem.doc.uploadedByName || 'Officer'}</strong> ({inspectingItem.doc.uploadedByRole || 'Institutional Officer'})
                   </div>
                 </div>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {isFirstTimer && (inspectingItem.project.mda || '').toLowerCase() !== (session?.institution || '').toLowerCase() ? (
-                  <span style={{
+                <button
+                  type="button"
+                  onClick={() => handleDownloadFullDocument(inspectingItem.doc, inspectingItem.project)}
+                  style={{
+                    background: 'rgba(59, 130, 246, 0.16)',
+                    border: '1px solid rgba(59, 130, 246, 0.4)',
+                    color: '#93c5fd',
+                    borderRadius: '8px',
+                    padding: '6px 12px',
+                    cursor: 'pointer',
+                    fontSize: '0.74rem',
+                    fontWeight: 700,
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '6px',
-                    padding: '6px 12px',
-                    borderRadius: '8px',
-                    background: 'rgba(239, 68, 68, 0.16)',
-                    border: '1px solid rgba(239, 68, 68, 0.35)',
-                    color: '#fca5a5',
-                    fontSize: '0.74rem',
-                    fontWeight: 700
-                  }}>
-                    <Lock size={14} />
-                    <span>Download Restricted (Act 843)</span>
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => handleDownloadFullDocument(inspectingItem.doc, inspectingItem.project)}
-                    style={{
-                      background: 'rgba(59, 130, 246, 0.16)',
-                      border: '1px solid rgba(59, 130, 246, 0.4)',
-                      color: '#93c5fd',
-                      borderRadius: '8px',
-                      padding: '6px 12px',
-                      cursor: 'pointer',
-                      fontSize: '0.74rem',
-                      fontWeight: 700,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}
-                  >
-                    <Download size={14} />
-                    <span>Download Full Document</span>
-                  </button>
-                )}
+                    gap: '6px'
+                  }}
+                >
+                  <Download size={14} />
+                  <span>Download Full Document</span>
+                </button>
 
                 <button
                   type="button"
@@ -3677,96 +3254,6 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
               </div>
             </div>
 
-            {/* If inspecting another MDA as a first timer, show locked statutory screen */}
-            {isFirstTimer && (inspectingItem.project.mda || '').toLowerCase() !== (session?.institution || '').toLowerCase() ? (
-              <div style={{
-                flex: 1,
-                minHeight: '340px',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.85) 0%, rgba(10, 15, 30, 0.95) 100%)',
-                borderRadius: '10px',
-                border: '1px solid rgba(239, 68, 68, 0.35)',
-                padding: '32px 24px',
-                textAlign: 'center',
-                gap: '16px'
-              }}>
-                <div style={{
-                  width: '64px',
-                  height: '64px',
-                  borderRadius: '50%',
-                  background: 'rgba(239, 68, 68, 0.15)',
-                  border: '1px solid rgba(239, 68, 68, 0.4)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#f87171'
-                }}>
-                  <Lock size={32} />
-                </div>
-
-                <div>
-                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff', marginBottom: '6px' }}>
-                    Ghana Data Protection Act 2012 (Act 843) Confidentiality Protection
-                  </div>
-                  <div style={{ fontSize: '0.82rem', color: '#fca5a5', fontWeight: 600 }}>
-                    Statutory Document Payload Restricted to {inspectingItem.project.mda}
-                  </div>
-                </div>
-
-                <div style={{
-                  background: 'rgba(0, 0, 0, 0.45)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  borderRadius: '10px',
-                  padding: '16px 20px',
-                  maxWidth: '600px',
-                  width: '100%',
-                  fontSize: '0.78rem',
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(2, 1fr)',
-                  gap: '12px',
-                  textAlign: 'left'
-                }}>
-                  <div>
-                    <span style={{ color: 'var(--text-muted)' }}>Originating Agency: </span>
-                    <strong style={{ color: '#fff' }}>{inspectingItem.project.mda}</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--text-muted)' }}>Registered Project: </span>
-                    <strong style={{ color: 'var(--ghana-emerald)' }}>{inspectingItem.project.projectCode}</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--text-muted)' }}>Document Filename: </span>
-                    <strong style={{ color: '#fff' }}>{inspectingItem.doc.fileName}</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--text-muted)' }}>Document Category: </span>
-                    <strong style={{ color: '#fbbf24' }}>{inspectingItem.doc.documentCategory || 'Statutory Project Document'}</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--text-muted)' }}>Format & Size: </span>
-                    <strong style={{ color: '#93c5fd' }}>{inspectingItem.doc.fileType.toUpperCase()} • {inspectingItem.doc.fileSize || 'Standard Archive'}</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--text-muted)' }}>Statutory Review: </span>
-                    <strong style={{ color: '#10b981' }}>{inspectingItem.doc.reviewStatus || 'Submitted & Registered'}</strong>
-                  </div>
-                </div>
-
-                <p style={{
-                  fontSize: '0.78rem',
-                  color: 'var(--text-secondary)',
-                  lineHeight: 1.6,
-                  maxWidth: '560px',
-                  margin: 0
-                }}>
-                  First-timers and onboarders from <strong>{session?.institution || 'other MDAs'}</strong> are granted transparency into the national repository to observe which government institutions have filed required compliance documents and their respective categories. However, raw document reading, OCR extraction text, and binary downloads are restricted exclusively to the originating MDA and the National Technical Clearance Team.
-                </p>
-              </div>
-            ) : (
-              <>
             {/* Reader Mode Tabs & Search */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
@@ -3917,8 +3404,6 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                 );
               })()}
             </div>
-            </>
-            )}
 
             {/* Modal Footer with Review & Grade Action */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: '12px', flexWrap: 'wrap', gap: '10px' }}>

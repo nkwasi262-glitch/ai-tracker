@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Award, AlertTriangle, Info, CheckCircle2, AlertCircle, XCircle, Sparkles, FolderOpen, FileText, MessageSquare, BookOpen, Download } from 'lucide-react';
+import { ShieldCheck, Award, AlertTriangle, Info, CheckCircle2, AlertCircle, XCircle, Sparkles, FileText, MessageSquare, BookOpen, Download } from 'lucide-react';
 import { 
   AIProject, 
   ComplianceScore,
   DocumentAsset,
   DocumentReviewComment,
-  ReviewWorkflowStatus,
-  getFirstTimerMdaProjectId
+  ReviewWorkflowStatus
 } from '../data/sampleProjects';
 import { UserRole } from './RoleSwitcher';
 import { UserSession } from '../data/authTypes';
@@ -955,18 +954,8 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
   session,
   onReviewDocument
 }) => {
-  const isFirstTimer = (session?.role as string) === 'First-Timer / New User' || (currentRole as string) === 'First-Timer / New User' || !!session?.isFirstTimer || session?.memberType === 'new_member';
-  const firstTimerMdaProjId = isFirstTimer && session?.institution
-    ? getFirstTimerMdaProjectId(session.institution)
-    : '';
-  const defaultProjId = firstTimerMdaProjId || projects.find(p => (p.documents?.length || 0) > 0)?.id || projects[0]?.id || 'general';
+  const defaultProjId = projects.find(p => (p.documents?.length || 0) > 0)?.id || projects[0]?.id || 'general';
   const [selectedProjectId, setSelectedProjectId] = useState<string>(defaultProjId);
-
-  useEffect(() => {
-    if (isFirstTimer && firstTimerMdaProjId && selectedProjectId !== firstTimerMdaProjId) {
-      setSelectedProjectId(firstTimerMdaProjId);
-    }
-  }, [isFirstTimer, firstTimerMdaProjId, selectedProjectId]);
 
   const activeProject = projects.find(p => p.id === selectedProjectId);
   const [reviewingDoc, setReviewingDoc] = useState<DocumentAsset | null>(null);
@@ -1419,24 +1408,6 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
                   <span>{activeProject.autoAssessment ? '⚡ Automated Document Regulatory Assessment' : 'Standard Assessment'}</span>
                 </span>
 
-                {(activeProject.hasFirstTimerUpload || activeProject.autoAssessment?.submittedByFirstTimer) && (
-                  <span style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '3px 10px',
-                    borderRadius: '6px',
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    background: 'rgba(251, 191, 36, 0.18)',
-                    color: '#fbbf24',
-                    border: '1px solid rgba(251, 191, 36, 0.35)'
-                  }}>
-                    <FolderOpen size={12} />
-                    <span>Clearance Officer Submission ({activeProject.autoAssessment?.firstTimerOfficerName || session?.fullName || 'Clearance Officer'})</span>
-                  </span>
-                )}
-
                 <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                   Evaluated from {activeProject.documents?.length || 0} compliance document(s)
                 </span>
@@ -1553,11 +1524,6 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {activeProject.documents.map((doc) => {
-                  const isFT = doc.isFirstTimerUpload || 
-                    doc.uploadedByRole === 'First-Timer / New User' ||
-                    doc.id.includes('onboard') ||
-                    doc.signedBy?.includes('First-Timer / New User');
-
                   return (
                     <div
                       key={doc.id}
@@ -1574,19 +1540,6 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#fff' }}>{doc.fileName}</span>
-                          {isFT && (
-                            <span style={{
-                              padding: '1px 6px',
-                              borderRadius: '4px',
-                              background: 'rgba(251, 191, 36, 0.15)',
-                              border: '1px solid rgba(251, 191, 36, 0.35)',
-                              color: '#fde68a',
-                              fontSize: '0.64rem',
-                              fontWeight: 700
-                            }}>
-                              ⚡ Onboarder Submission
-                            </span>
-                          )}
                           <span style={{
                             padding: '1px 6px',
                             borderRadius: '9999px',

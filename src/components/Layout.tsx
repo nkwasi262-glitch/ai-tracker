@@ -11,7 +11,6 @@ import {
   Calendar, 
   Globe,
   DollarSign,
-  FileCheck2,
   MessageSquare,
   ShieldAlert,
   LogOut,
@@ -29,8 +28,6 @@ interface LayoutProps {
   onSelectRole?: (role: ActiveRole) => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
-  portalMode?: 'public' | 'admin';
-  onTogglePortalMode?: (mode: 'public' | 'admin') => void;
   children: React.ReactNode;
 }
 
@@ -41,11 +38,9 @@ export const Layout: React.FC<LayoutProps> = ({
   onSelectRole,
   activeTab, 
   setActiveTab, 
-  portalMode = 'admin',
-  onTogglePortalMode,
   children 
 }) => {
-  // Navigation tabs definition
+  // Navigation tabs definition (Without DG Decision Queue)
   const menuItems: { id: AppModuleId; label: string; icon: React.ReactNode }[] = [
     { id: 'dashboard', label: 'M&E Dashboard', icon: <LayoutDashboard size={18} /> },
     { id: 'registry', label: 'Project Registry', icon: <FilePlus2 size={18} /> },
@@ -54,14 +49,13 @@ export const Layout: React.FC<LayoutProps> = ({
     { id: 'readiness', label: 'AI Readiness', icon: <Award size={18} /> },
     { id: 'risk', label: 'Risk Matrix', icon: <AlertOctagon size={18} /> },
     { id: 'documents', label: 'Documents & OCR', icon: <Files size={18} /> },
-    { id: 'dg_queue', label: 'DG Decision Queue', icon: <FileCheck2 size={18} /> },
     { id: 'finance', label: 'Financial Suite', icon: <DollarSign size={18} /> },
     { id: 'reports', label: 'Internal Reports', icon: <MessageSquare size={18} /> },
     { id: 'audit', label: 'Audit Trail', icon: <ShieldAlert size={18} /> },
     { id: 'chat', label: 'AI Chat Assistant', icon: <MessageSquareCode size={18} /> }
   ];
 
-  // For pending_approval users, ALL 12 modules remain visible in navigation. Non-monitoring modules show a lock badge and route to pending approval notice.
+  // For pending_approval users, modules remain visible in navigation. Non-monitoring modules show a lock badge and route to pending approval notice.
   const isPendingApproval = session.onboardingStatus === 'pending_approval';
 
   const displayedMenuItems = isPendingApproval 
@@ -83,104 +77,47 @@ export const Layout: React.FC<LayoutProps> = ({
         </div>
 
         <nav className="sidebar-menu">
-          {portalMode === 'public' ? (
-            <>
-              <div style={{ padding: '0 12px 8px 12px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--ghana-emerald)' }}>
-                Public Registration Portal
-              </div>
+          <div style={{ padding: '0 12px 8px 12px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
+            {isPendingApproval ? 'All System Modules' : 'National Monitoring Modules'}
+          </div>
+          {displayedMenuItems.map((item) => {
+            const isLockedForPending = isPendingApproval && !['dashboard', 'gis', 'chat'].includes(item.id);
+            return (
               <div
-                className="menu-item active"
-                style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`menu-item ${activeTab === item.id ? 'active' : ''}`}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  opacity: isLockedForPending ? 0.78 : 1
+                }}
               >
-                <FilePlus2 size={18} />
-                <span>Project Registration</span>
-              </div>
-              <div
-                className="menu-item"
-                style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
-              >
-                <Files size={18} />
-                <span>Upload Documents</span>
-              </div>
-              <div
-                className="menu-item"
-                style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
-              >
-                <FileCheck2 size={18} />
-                <span>Registration Status</span>
-              </div>
-
-              {onTogglePortalMode && (
-                <div style={{ marginTop: '16px', padding: '0 8px' }}>
-                  <button
-                    onClick={() => onTogglePortalMode('admin')}
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      borderRadius: '8px',
-                      background: 'rgba(59, 130, 246, 0.15)',
-                      border: '1px solid rgba(59, 130, 246, 0.4)',
-                      color: '#93c5fd',
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '6px'
-                    }}
-                  >
-                    <ShieldCheck size={14} />
-                    <span>Go to Admin Monitoring</span>
-                  </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  {item.icon}
+                  <span>{item.label}</span>
                 </div>
-              )}
-            </>
-          ) : (
-            <>
-              <div style={{ padding: '0 12px 8px 12px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
-                {isPendingApproval ? 'All System Modules' : 'Admin Monitoring Modules'}
+                {isLockedForPending && (
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '0.62rem',
+                    padding: '2px 7px',
+                    borderRadius: '4px',
+                    background: 'rgba(239, 68, 68, 0.16)',
+                    border: '1px solid rgba(239, 68, 68, 0.42)',
+                    color: '#fca5a5',
+                    fontWeight: 800
+                  }}>
+                    <Lock size={10} />
+                    <span>Lock</span>
+                  </span>
+                )}
               </div>
-              {displayedMenuItems.map((item) => {
-                const isLockedForPending = isPendingApproval && !['dashboard', 'gis', 'chat'].includes(item.id);
-                return (
-                  <div
-                    key={item.id}
-                    onClick={() => setActiveTab(item.id)}
-                    className={`menu-item ${activeTab === item.id ? 'active' : ''}`}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      opacity: isLockedForPending ? 0.78 : 1
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      {item.icon}
-                      <span>{item.label}</span>
-                    </div>
-                    {isLockedForPending && (
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        fontSize: '0.62rem',
-                        padding: '2px 7px',
-                        borderRadius: '4px',
-                        background: 'rgba(239, 68, 68, 0.16)',
-                        border: '1px solid rgba(239, 68, 68, 0.42)',
-                        color: '#fca5a5',
-                        fontWeight: 800
-                      }}>
-                        <Lock size={10} />
-                        <span>Lock</span>
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </>
-          )}
+            );
+          })}
         </nav>
 
         <div style={{
@@ -247,62 +184,6 @@ export const Layout: React.FC<LayoutProps> = ({
             </div>
           </div>
 
-          {/* Portal Switcher: Public Registration vs Admin Monitoring */}
-          {onTogglePortalMode && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              background: 'rgba(255, 255, 255, 0.05)',
-              borderRadius: '9999px',
-              padding: '3px',
-              border: '1px solid rgba(255, 255, 255, 0.1)'
-            }}>
-              <button
-                type="button"
-                onClick={() => onTogglePortalMode('public')}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '6px 14px',
-                  borderRadius: '9999px',
-                  background: portalMode === 'public' ? 'var(--ghana-emerald)' : 'transparent',
-                  color: portalMode === 'public' ? '#fff' : 'var(--text-secondary)',
-                  border: 'none',
-                  fontSize: '0.76rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <FilePlus2 size={13} />
-                <span>Public Registration & Upload</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onTogglePortalMode('admin')}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '6px 14px',
-                  borderRadius: '9999px',
-                  background: portalMode === 'admin' ? 'linear-gradient(135deg, #3b82f6, #1d4ed8)' : 'transparent',
-                  color: portalMode === 'admin' ? '#fff' : 'var(--text-secondary)',
-                  border: 'none',
-                  fontSize: '0.76rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <ShieldCheck size={13} />
-                <span>Admin Monitoring Console</span>
-              </button>
-            </div>
-          )}
-
           <div className="top-bar-right">
             <HeaderProfile 
               session={session} 
@@ -315,21 +196,20 @@ export const Layout: React.FC<LayoutProps> = ({
 
         {/* Dynamic Component Canvas */}
         <main className="content-viewport animated-fade-in">
-          {/* Active Role Profile Banner — Placed on the Admin Monitoring Page */}
-          {portalMode === 'admin' && (
-            <div style={{
-              margin: '0 0 20px 0',
-              padding: '14px 20px',
-              borderRadius: '14px',
-              background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.95) 0%, rgba(13, 20, 36, 0.95) 100%)',
-              border: '1px solid rgba(16, 185, 129, 0.35)',
-              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: '14px'
-            }}>
+          {/* Active Role Profile Banner */}
+          <div style={{
+            margin: '0 0 20px 0',
+            padding: '14px 20px',
+            borderRadius: '14px',
+            background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.95) 0%, rgba(13, 20, 36, 0.95) 100%)',
+            border: '1px solid rgba(16, 185, 129, 0.35)',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '14px'
+          }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                 <div style={{
                   width: '42px',
@@ -404,7 +284,6 @@ export const Layout: React.FC<LayoutProps> = ({
                 </button>
               )}
             </div>
-          )}
 
           {/* Pending Approval Officer Banner */}
           {isPendingApproval && (

@@ -73,7 +73,6 @@ export async function receiveTechnicalClearanceDocument(
     fileDataUrl: payload.document.fileDataUrl,
     // CRITICAL: Still allow documents to be reviewed!
     reviewStatus: 'Pending Review',
-    isFirstTimerUpload: false,
     reviewerComments: []
   };
 

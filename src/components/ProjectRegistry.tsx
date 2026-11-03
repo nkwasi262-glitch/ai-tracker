@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Search, Calendar, Landmark, MapPin, DollarSign, AlertCircle, Activity, ShieldCheck, ShieldAlert, Stamp, Sparkles, FolderOpen } from 'lucide-react';
+import { Plus, Search, Calendar, Landmark, MapPin, DollarSign, AlertCircle, Activity, ShieldCheck, ShieldAlert, Stamp, Sparkles } from 'lucide-react';
 import { AIProject, formatNumberToWords } from '../data/sampleProjects';
 import { UserRole } from './RoleSwitcher';
 const standardMDAs = [
@@ -122,7 +122,6 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
     'Technical Clearance Team'
   ].includes(currentRole as string) || (
     (currentRole as string) !== 'Public User' &&
-    (currentRole as string) !== 'First-Timer / New User' &&
     (currentRole as string) !== 'Finance Minister' &&
     (currentRole as string) !== 'Director General'
   );
@@ -449,23 +448,7 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                         {p.reviewStatus}
                       </span>
                     )}
-                    {(p.hasFirstTimerUpload || p.autoAssessment?.submittedByFirstTimer) && (
-                      <span style={{
-                        fontSize: '0.62rem',
-                        fontWeight: 700,
-                        padding: '1px 6px',
-                        borderRadius: '4px',
-                        background: 'rgba(251, 191, 36, 0.18)',
-                        color: '#fbbf24',
-                        border: '1px solid rgba(251, 191, 36, 0.35)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '3px'
-                      }}>
-                        <Sparkles size={10} /> First-Timer Submission
-                      </span>
-                    )}
-                    {p.autoAssessment && !(p.hasFirstTimerUpload || p.autoAssessment?.submittedByFirstTimer) && (
+                    {p.autoAssessment && (
                       <span style={{
                         fontSize: '0.62rem',
                         fontWeight: 700,
@@ -678,7 +661,7 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                   </div>
                 )}
 
-                {/* Document AI & First-Timer Provenance */}
+                {/* Document AI Evaluation & Provenance */}
                 {selectedProject.autoAssessment && (
                   <div style={{
                     fontSize: '0.74rem',
@@ -700,13 +683,6 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                         {selectedProject.documents?.length || 0} files analyzed
                       </span>
                     </div>
-
-                    {(selectedProject.hasFirstTimerUpload || selectedProject.autoAssessment.submittedByFirstTimer) && (
-                      <div style={{ color: '#fbbf24', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <FolderOpen size={11} />
-                        <span>Submitted by First-Timer Officer: <strong>{selectedProject.autoAssessment.firstTimerOfficerName || 'New User'}</strong> ({selectedProject.autoAssessment.firstTimerOfficerEmail || 'gov.gh'})</span>
-                      </div>
-                    )}
 
                     <div style={{ fontSize: '0.72rem', color: '#e2e8f0' }}>
                       {selectedProject.autoAssessment.readinessSummary}

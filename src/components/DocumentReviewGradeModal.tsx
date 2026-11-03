@@ -5,7 +5,6 @@ import {
   MessageSquare, 
   AlertTriangle, 
   FileText, 
-  Sparkles, 
   X, 
   Send, 
   Eye,
@@ -63,7 +62,7 @@ export const DocumentReviewGradeModal: React.FC<DocumentReviewGradeModalProps> =
 }) => {
   if (!isOpen || !initialDocument || !initialProject) return null;
 
-  // Allow switching between documents of the project (or across first-timer uploads) right inside the Review & Grade modal
+  // Allow switching between documents of the project right inside the Review & Grade modal
   const [activeProject, setActiveProject] = useState<AIProject>(initialProject);
   const [activeDoc, setActiveDoc] = useState<DocumentAsset>(initialDocument);
 
@@ -123,28 +122,12 @@ export const DocumentReviewGradeModal: React.FC<DocumentReviewGradeModalProps> =
   const isPdfDoc = activeDoc.fileType.toLowerCase() === 'pdf' || activeDoc.fileName.toLowerCase().endsWith('.pdf');
   const isImageDoc = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(activeDoc.fileType.toLowerCase());
 
-  const isFirstTimerDoc = (d: DocumentAsset) =>
-    Boolean(
-      d.isFirstTimerUpload ||
-      d.uploadedByRole === 'First-Timer / New User' ||
-      d.signedBy?.includes('First-Timer / New User') ||
-      d.id.includes('onboard')
-    );
+  // Project documents
+  const projectDocs = activeProject.documents || [];
 
-  const currentIsFirstTimer = isFirstTimerDoc(activeDoc);
-
-  // Project documents sorted so First-Timer / Onboarder documents appear first
-  const projectDocs = [...(activeProject.documents || [])].sort((a, b) => {
-    const aFT = isFirstTimerDoc(a) ? 1 : 0;
-    const bFT = isFirstTimerDoc(b) ? 1 : 0;
-    return bFT - aFT;
-  });
-
-  // All first-timer documents across all projects (if provided)
-  const allFirstTimerDocs = (allProjects || [activeProject]).flatMap(p =>
-    (p.documents || [])
-      .filter(d => isFirstTimerDoc(d))
-      .map(d => ({ doc: d, project: p }))
+  // All documents across all projects for quick-switch
+  const allAvailableDocs = (allProjects || [activeProject]).flatMap(p =>
+    (p.documents || []).map(d => ({ doc: d, project: p }))
   );
 
   // Download full document helper — always downloads the exact original uploaded file
@@ -380,11 +363,11 @@ export const DocumentReviewGradeModal: React.FC<DocumentReviewGradeModalProps> =
           </div>
         </div>
 
-        {/* FIRST-TIMER / ONBOARDER UPLOADED DOCUMENTS QUICK-SWITCH BAR */}
+        {/* PROJECT UPLOADED DOCUMENTS QUICK-SWITCH BAR */}
         <div style={{
           padding: '10px 24px',
-          background: 'rgba(251, 191, 36, 0.06)',
-          borderBottom: '1px solid rgba(251, 191, 36, 0.25)',
+          background: 'rgba(16, 185, 129, 0.06)',
+          borderBottom: '1px solid rgba(16, 185, 129, 0.25)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -398,16 +381,15 @@ export const DocumentReviewGradeModal: React.FC<DocumentReviewGradeModalProps> =
               gap: '5px',
               fontSize: '0.72rem',
               fontWeight: 800,
-              color: '#fde68a',
+              color: '#a7f3d0',
               textTransform: 'uppercase'
             }}>
-              <FolderOpen size={14} className="text-amber-400" />
-              <span>Project Uploaded Documents ({projectDocs.length}):</span>
+              <FolderOpen size={14} className="text-emerald-400" />
+              <span>Project Documents ({projectDocs.length}):</span>
             </span>
 
             {projectDocs.map((d) => {
               const isSelected = d.id === activeDoc.id;
-              const isFT = isFirstTimerDoc(d);
               return (
                 <button
                   key={d.id}
@@ -425,45 +407,29 @@ export const DocumentReviewGradeModal: React.FC<DocumentReviewGradeModalProps> =
                     fontSize: '0.73rem',
                     fontWeight: isSelected ? 800 : 600,
                     cursor: 'pointer',
-                    background: isSelected
-                      ? (isFT ? 'rgba(251, 191, 36, 0.25)' : 'rgba(16, 185, 129, 0.22)')
-                      : 'rgba(255, 255, 255, 0.04)',
-                    border: isSelected
-                      ? (isFT ? '1px solid #fbbf24' : '1px solid var(--ghana-emerald)')
-                      : '1px solid rgba(255, 255, 255, 0.12)',
+                    background: isSelected ? 'rgba(16, 185, 129, 0.22)' : 'rgba(255, 255, 255, 0.04)',
+                    border: isSelected ? '1px solid var(--ghana-emerald)' : '1px solid rgba(255, 255, 255, 0.12)',
                     color: isSelected ? '#fff' : 'var(--text-secondary)',
                     transition: 'all 0.15s ease'
                   }}
                 >
-                  <FileText size={12} className={isFT ? 'text-amber-400' : 'text-emerald-400'} />
+                  <FileText size={12} className="text-emerald-400" />
                   <span>{d.fileName}</span>
-                  {isFT && (
-                    <span style={{
-                      fontSize: '0.62rem',
-                      padding: '1px 5px',
-                      borderRadius: '4px',
-                      background: 'rgba(251, 191, 36, 0.25)',
-                      color: '#fde68a',
-                      fontWeight: 800
-                    }}>
-                      ⚡ First-Timer
-                    </span>
-                  )}
                 </button>
               );
             })}
           </div>
 
-          {allFirstTimerDocs.length > 1 && (
+          {allAvailableDocs.length > 1 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                Jump to Any First-Timer Upload:
+                Jump to Document:
               </span>
               <select
                 value={`${activeProject.id}::${activeDoc.id}`}
                 onChange={(e) => {
                   const [pId, dId] = e.target.value.split('::');
-                  const found = allFirstTimerDocs.find(item => item.project.id === pId && item.doc.id === dId);
+                  const found = allAvailableDocs.find(item => item.project.id === pId && item.doc.id === dId);
                   if (found) {
                     setActiveProject(found.project);
                     setActiveDoc(found.doc);
@@ -474,17 +440,17 @@ export const DocumentReviewGradeModal: React.FC<DocumentReviewGradeModalProps> =
                   padding: '4px 8px',
                   borderRadius: '6px',
                   background: '#0f172a',
-                  border: '1px solid rgba(251, 191, 36, 0.4)',
-                  color: '#fde68a',
+                  border: '1px solid rgba(16, 185, 129, 0.4)',
+                  color: '#a7f3d0',
                   fontSize: '0.72rem',
                   fontWeight: 600,
                   outline: 'none',
                   cursor: 'pointer'
                 }}
               >
-                {allFirstTimerDocs.map(({ doc, project }) => (
+                {allAvailableDocs.map(({ doc, project }) => (
                   <option key={`${project.id}::${doc.id}`} value={`${project.id}::${doc.id}`}>
-                    [{project.projectCode}] {doc.fileName} ({doc.uploadedByName || 'Onboarder'})
+                    [{project.projectCode}] {doc.fileName} ({doc.uploadedByName || 'Officer'})
                   </option>
                 ))}
               </select>
@@ -506,15 +472,15 @@ export const DocumentReviewGradeModal: React.FC<DocumentReviewGradeModalProps> =
           <div style={{
             padding: '14px 18px',
             borderRadius: '14px',
-            background: currentIsFirstTimer ? 'rgba(234, 179, 8, 0.08)' : 'rgba(16, 185, 129, 0.06)',
-            border: currentIsFirstTimer ? '1px solid rgba(234, 179, 8, 0.4)' : '1px solid rgba(16, 185, 129, 0.25)',
+            background: 'rgba(16, 185, 129, 0.06)',
+            border: '1px solid rgba(16, 185, 129, 0.25)',
             display: 'flex',
             flexDirection: 'column',
             gap: '8px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <FileText size={20} className={currentIsFirstTimer ? 'text-amber-400' : 'text-emerald-400'} />
+                <FileText size={20} className="text-emerald-400" />
                 <div>
                   <div style={{ fontSize: '0.96rem', fontWeight: 700, color: '#fff' }}>
                     {activeDoc.fileName}
@@ -526,24 +492,6 @@ export const DocumentReviewGradeModal: React.FC<DocumentReviewGradeModalProps> =
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                {currentIsFirstTimer && (
-                  <span style={{
-                    fontSize: '0.7rem',
-                    padding: '3px 10px',
-                    borderRadius: '9999px',
-                    background: 'rgba(234, 179, 8, 0.18)',
-                    border: '1px solid rgba(234, 179, 8, 0.45)',
-                    color: '#fde68a',
-                    fontWeight: 800,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}>
-                    <Sparkles size={11} />
-                    <span>Uploaded by First-Timer / Onboarder</span>
-                  </span>
-                )}
-
                 <span style={{
                   fontSize: '0.7rem',
                   padding: '3px 10px',
@@ -589,11 +537,11 @@ export const DocumentReviewGradeModal: React.FC<DocumentReviewGradeModalProps> =
               paddingTop: '6px',
               flexWrap: 'wrap'
             }}>
-              <span>Uploader: <strong style={{ color: '#e2e8f0' }}>{activeDoc.uploadedByName || (currentIsFirstTimer ? 'Onboarding Officer' : activeDoc.signedBy?.[0] || 'MDA Lead Officer')}</strong></span>
+              <span>Uploader: <strong style={{ color: '#e2e8f0' }}>{activeDoc.uploadedByName || activeDoc.signedBy?.[0] || 'MDA Lead Officer'}</strong></span>
               <span>•</span>
               <span>Email: <span style={{ color: '#93c5fd' }}>{activeDoc.uploadedByEmail || 'officer@gov.gh'}</span></span>
               <span>•</span>
-              <span>Role: <span style={{ color: '#a7f3d0' }}>{activeDoc.uploadedByRole || (currentIsFirstTimer ? 'First-Timer / New User' : 'Institutional Officer')}</span></span>
+              <span>Role: <span style={{ color: '#a7f3d0' }}>{activeDoc.uploadedByRole || 'Institutional Officer'}</span></span>
               <span>•</span>
               <span>Review Status: <strong style={{ color: activeDoc.reviewStatus === 'Reviewed & Verified' ? '#10b981' : '#fde68a' }}>{activeDoc.reviewStatus || 'Pending Review'}</strong></span>
             </div>
@@ -607,7 +555,7 @@ export const DocumentReviewGradeModal: React.FC<DocumentReviewGradeModalProps> =
             alignItems: 'start'
           }}>
 
-            {/* LEFT PANEL: FULL DOCUMENT UPLOADED BY FIRST-TIMER / ONBOARDER */}
+            {/* LEFT PANEL: FULL DOCUMENT & OCR DOSSIER */}
             <div style={{
               padding: '16px 18px',
               borderRadius: '14px',
@@ -626,7 +574,7 @@ export const DocumentReviewGradeModal: React.FC<DocumentReviewGradeModalProps> =
                       Full Uploaded Document & OCR Dossier Reader
                     </div>
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                      Complete access to the full document uploaded by the first-timer / onboarder for grading verification
+                      Complete access to the full compliance document for grading verification
                     </div>
                   </div>
                 </div>
@@ -919,7 +867,7 @@ export const DocumentReviewGradeModal: React.FC<DocumentReviewGradeModalProps> =
                         <CheckCircle2 size={14} />
                         <span>{hasRealUploadedFile(activeDoc.id, activeDoc) ? 'Exact Uploaded File Stored & Ready for Download' : 'Full Sovereign Dossier Preserved & Indexed'}</span>
                       </div>
-                      The complete file <strong>{activeDoc.fileName}</strong> uploaded by <strong>{activeDoc.uploadedByName || 'the First-Timer / Onboarder'}</strong> is preserved and can be downloaded in its exact original format using the button above.
+                      The complete file <strong>{activeDoc.fileName}</strong> uploaded by <strong>{activeDoc.uploadedByName || 'the submitting officer'}</strong> is preserved and can be downloaded in its exact original format using the button above.
                     </div>
                   )}
                 </div>
@@ -996,7 +944,7 @@ export const DocumentReviewGradeModal: React.FC<DocumentReviewGradeModalProps> =
                     <MessageSquare size={14} className="text-emerald-400" />
                     <span>Official Reviewer Directive / Comment on Full Document *</span>
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 400 }}>
-                      (Visible to {currentIsFirstTimer ? 'First-Timer / Onboarder' : 'project team'} & logged in audit trail)
+                      (Visible to project team & logged in audit trail)
                     </span>
                   </label>
                   <textarea

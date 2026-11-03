@@ -7,8 +7,7 @@ export type LegacyRole =
   | 'Director General'
   | 'Technical Clearance Team'
   | 'AI Manager'
-  | 'Finance Minister'
-  | 'First-Timer / New User';
+  | 'Finance Minister';
 
 export type AnyRole = ActiveRole | LegacyRole;
 
@@ -41,7 +40,6 @@ export interface UserSession {
   token: string;
   createdAt: string;
   lastActiveAt: string;
-  isFirstTimer?: boolean;
   previousRole?: AnyRole;
   memberType?: 'new_member' | 'in_member';
   onboardingStatus?: 'onboarding' | 'pending_approval' | 'approved';

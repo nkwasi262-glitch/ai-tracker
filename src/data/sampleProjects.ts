@@ -90,7 +90,6 @@ export interface DocumentAsset {
   uploadedByName?: string;
   uploadedByEmail?: string;
   uploadedByMda?: string;
-  isFirstTimerUpload?: boolean;
   reviewStatus?: 'Pending Review' | 'Under Review' | 'Reviewed & Verified' | 'Requires Re-submission';
   reviewerComments?: DocumentReviewComment[];
   fileSize?: string;
@@ -131,9 +130,6 @@ export interface AutoAssessmentDetails {
     technicalStaff: number;
     policyLeadership: number;
   };
-  submittedByFirstTimer?: boolean;
-  firstTimerOfficerEmail?: string;
-  firstTimerOfficerName?: string;
 }
 
 export interface TechnicalReviewDetails {
@@ -190,7 +186,6 @@ export interface AIProject {
   autoAssessment?: AutoAssessmentDetails;
   dpcCertificateNumber?: string;
   zeroAssumptionAudit?: ZeroAssumptionAudit;
-  hasFirstTimerUpload?: boolean;
 }
 
 export const sampleProjects: AIProject[] = [
@@ -270,22 +265,20 @@ export const sampleProjects: AIProject[] = [
       { id: "doc-1-1", fileName: "GhanaPostGPS_GeoDesign_Specs.pdf", fileType: "pdf", uploadedAt: "2018-02-15", version: 1, signedBy: ["Minister of Communications", "NITA Director"], fileSize: "2.4 MB", pageCount: 6, documentCategory: "Technical Architecture & Model Card" },
       {
         id: "doc-onboard-1-2",
-        fileName: "GhanaPostGPS_Onboarder_Act843_Ethics_Dossier.pdf",
+        fileName: "GhanaPostGPS_Act843_Ethics_Dossier.pdf",
         fileType: "pdf",
         uploadedAt: "2026-10-20",
         version: 1,
-        signedBy: ["First-Timer / New User"],
-        uploadedByRole: "First-Timer / New User",
-        uploadedByName: "Kwame Mensah (Onboarding Officer)",
+        signedBy: ["Technical Clearance Officer"],
+        uploadedByRole: "Technical Clearance Team",
+        uploadedByName: "Kwame Mensah (Compliance Officer)",
         uploadedByEmail: "k.mensah@mocd.gov.gh",
-        isFirstTimerUpload: true,
         reviewStatus: "Pending Review",
         fileSize: "1.8 MB",
         pageCount: 5,
         documentCategory: "Ethical Risk & Act 843 Compliance Dossier"
       }
     ],
-    hasFirstTimerUpload: true,
     reviewStatus: "Recommended",
     technicalReview: {
       reviewerName: "Ing. Emmanuel Darko",
@@ -374,22 +367,20 @@ export const sampleProjects: AIProject[] = [
       { id: "doc-2-1", fileName: "NIA_Biometric_Security_Protocol.pdf", fileType: "pdf", uploadedAt: "2019-01-10", version: 3, signedBy: ["Executive Secretary NIA", "DPO"], fileSize: "3.1 MB", pageCount: 6, documentCategory: "Cybersecurity & Biometric Protocol" },
       {
         id: "doc-onboard-2-2",
-        fileName: "NIA_FirstTimer_AFIS_ModelCard_Readiness_Charter.pdf",
+        fileName: "NIA_AFIS_ModelCard_Readiness_Charter.pdf",
         fileType: "pdf",
         uploadedAt: "2026-10-22",
         version: 1,
-        signedBy: ["First-Timer / New User"],
-        uploadedByRole: "First-Timer / New User",
-        uploadedByName: "Abena Ofori (Onboarding Officer)",
+        signedBy: ["Technical Clearance Officer"],
+        uploadedByRole: "Technical Clearance Team",
+        uploadedByName: "Abena Ofori (Compliance Officer)",
         uploadedByEmail: "a.ofori@nia.gov.gh",
-        isFirstTimerUpload: true,
         reviewStatus: "Pending Review",
         fileSize: "2.2 MB",
         pageCount: 5,
         documentCategory: "Model Card & Institutional Readiness Charter"
       }
     ],
-    hasFirstTimerUpload: true,
     reviewStatus: "Recommended",
     technicalReview: {
       reviewerName: "Ama Osei-Bonsu",
@@ -475,22 +466,20 @@ export const sampleProjects: AIProject[] = [
       { id: "doc-3-1", fileName: "CMS_Farming_Data_Provenance.pdf", fileType: "pdf", uploadedAt: "2021-04-12", version: 1, signedBy: ["CMS Project Lead"], fileSize: "1.9 MB", pageCount: 5, documentCategory: "Dataset Provenance & Inclusivity Charter" },
       {
         id: "doc-onboard-3-2",
-        fileName: "COCOBOD_Onboarder_DPC_Filing_And_Fairness_Audit.pdf",
+        fileName: "COCOBOD_DPC_Filing_And_Fairness_Audit.pdf",
         fileType: "pdf",
         uploadedAt: "2026-10-24",
         version: 1,
-        signedBy: ["First-Timer / New User"],
-        uploadedByRole: "First-Timer / New User",
-        uploadedByName: "Yaw Boateng (Onboarding Officer)",
+        signedBy: ["Technical Clearance Officer"],
+        uploadedByRole: "Technical Clearance Team",
+        uploadedByName: "Yaw Boateng (Compliance Officer)",
         uploadedByEmail: "y.boateng@cocobod.gov.gh",
-        isFirstTimerUpload: true,
         reviewStatus: "Pending Review",
         fileSize: "2.6 MB",
         pageCount: 6,
         documentCategory: "Data Protection Commission Filing & Fairness Audit"
       }
     ],
-    hasFirstTimerUpload: true,
     reviewStatus: "Recommended",
     technicalReview: {
       reviewerName: "Kofi Annan Jr.",
@@ -1262,19 +1251,19 @@ export function resolveMdaMetadata(institution: string): {
   return { mdaName: clean, mdaCode, sector, slug };
 }
 
-export function getFirstTimerMdaProjectId(institution: string): string {
+export function getMdaProjectId(institution: string): string {
   const { slug } = resolveMdaMetadata(institution);
-  return `proj-mda-onboard-${slug}`;
+  return `proj-mda-${slug}`;
 }
 
-export function ensureFirstTimerMdaProject(
+export function ensureMdaProject(
   projects: AIProject[],
   institution: string,
   officerName?: string,
   _officerEmail?: string
 ): { projects: AIProject[]; mdaProject: AIProject; changed: boolean } {
   const { mdaName, mdaCode, sector, slug } = resolveMdaMetadata(institution);
-  const targetId = `proj-mda-onboard-${slug}`;
+  const targetId = `proj-mda-${slug}`;
 
   // Collect any documents uploaded under this same MDA across the registry so all documents uploaded are under the same MDA
   const matchingMdaDocs: DocumentAsset[] = [];
@@ -1370,7 +1359,6 @@ export function ensureFirstTimerMdaProject(
     ],
     risks: [],
     documents: matchingMdaDocs,
-    hasFirstTimerUpload: true,
     reviewStatus: matchingMdaDocs.length > 0 ? 'Recommended' : 'Under Technical Review',
     technicalClearanceReview: {
       reviewerName: 'National Technical Clearance Taskforce',
@@ -1425,3 +1413,6 @@ export function computeZeroAssumptionSummary(projects: AIProject[]) {
     portfolioAssurancePercent
   };
 }
+
+export const getFirstTimerMdaProjectId = getMdaProjectId;
+export const ensureFirstTimerMdaProject = ensureMdaProject;

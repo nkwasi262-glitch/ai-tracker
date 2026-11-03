@@ -8,19 +8,17 @@ import { AIReadiness } from './components/AIReadiness';
 import { RiskManagement } from './components/RiskManagement';
 import { DocumentManager } from './components/DocumentManager';
 import { AIChatAssistant } from './components/AIChatAssistant';
-import { DGDecisionQueue } from './components/DGDecisionQueue';
 import { FinanceMinisterView } from './components/FinanceMinisterView';
 import { InternalReportsHub } from './components/InternalReportsHub';
 import { AuditLogViewer } from './components/AuditLogViewer';
 import { EntryGateModal } from './components/EntryGateModal';
 import { AccessDenied } from './components/AccessDenied';
 import { ActiveRoleSelectorModal } from './components/ActiveRoleSelectorModal';
-import { PublicRegistrationPage } from './components/PublicRegistrationPage';
 import { PendingApprovalNotice } from './components/PendingApprovalNotice';
 import { SignOutConfirmModal } from './components/SignOutConfirmModal';
-import { AIProject, ComplianceScore, DocumentAsset, DocumentReviewComment, ReviewWorkflowStatus, AutoAssessmentDetails, ZeroAssumptionAudit, ensureFirstTimerMdaProject, getFirstTimerMdaProjectId } from './data/sampleProjects';
+import { AIProject, ComplianceScore, DocumentAsset, DocumentReviewComment, ReviewWorkflowStatus, AutoAssessmentDetails, ZeroAssumptionAudit } from './data/sampleProjects';
 import { UserSession, ActiveRole } from './data/authTypes';
-import { getStoredSession, clearSession, elevateFromFirstTimer, saveSession } from './services/authService';
+import { getStoredSession, clearSession, saveSession } from './services/authService';
 import { AppModuleId, canAccessModule, MODULE_REGISTRY } from './services/rbacPolicy';
 import { generateAssessmentFromDocuments } from './services/assessmentEngine';
 import { loadStoredProjects, saveStoredProjects, resetProjectsStorage } from './services/projectStorage';
@@ -56,41 +54,20 @@ function App() {
 
   // 2. Central Registry & Navigation States (Persistent across reloads)
   const [projects, setProjects] = useState<AIProject[]>(() => {
-    const initial = loadStoredProjects();
-    const s = getStoredSession();
-    if (s && (s.role === 'First-Timer / New User' || s.memberType === 'new_member' || s.isFirstTimer) && s.institution) {
-      const { projects: synced } = ensureFirstTimerMdaProject(initial, s.institution, s.fullName, s.email);
-      return synced;
-    }
-    return initial;
+    return loadStoredProjects();
   });
-
-  // Ensure First-Timer's logged-in MDA project is always registered and active with all documents under that same MDA
-  useEffect(() => {
-    if (session && (session.role === 'First-Timer / New User' || session.memberType === 'new_member' || session.isFirstTimer) && session.institution) {
-      setProjects(prev => {
-        const { projects: synced, changed } = ensureFirstTimerMdaProject(prev, session.institution, session.fullName, session.email);
-        if (changed) {
-          saveStoredProjects(synced);
-          return synced;
-        }
-        return prev;
-      });
-    }
-  }, [session?.sessionId, session?.institution, session?.role, session?.memberType]);
 
   // Sync projects changes to persistent storage
   useEffect(() => {
     saveStoredProjects(projects);
   }, [projects]);
+
   const [activeTab, setActiveTab] = useState<string>('dashboard');
-  const [portalMode, setPortalMode] = useState<'public' | 'admin'>('admin');
 
   const [targetReviewItem, setTargetReviewItem] = useState<{ projectId: string; docId?: string } | null>(null);
 
   const handleNavigateToReview = (projectId: string, docId?: string) => {
     setTargetReviewItem({ projectId, docId });
-    setPortalMode('admin');
     setActiveTab('documents');
   };
 
@@ -127,12 +104,16 @@ function App() {
     handleRequestSignOut();
   };
 
-  // Handle activation from First-Timer onboarding to an official active role profile
+  // Handle active role profile switch
   const handleActivateRoleProfile = (selectedRole: ActiveRole) => {
-    const updated = elevateFromFirstTimer(selectedRole);
-    if (updated) {
+    if (session) {
+      const updated: UserSession = {
+        ...session,
+        role: selectedRole,
+        lastActiveAt: new Date().toISOString()
+      };
+      saveSession(updated);
       setSession(updated);
-      setPortalMode('admin');
       setActiveTab('dashboard');
     }
   };
@@ -199,32 +180,15 @@ function App() {
     }));
   };
 
-  // Appends uploaded PDF metadata inside MinIO simulation and auto-generates Governance & Readiness
+  // Appends uploaded PDF metadata and auto-generates Governance & Readiness
   const handleAddDocument = (projectId: string, newDoc: DocumentAsset) => {
     setProjects(prev => {
-      const isFromFirstTimer = session?.role === 'First-Timer / New User' || session?.memberType === 'new_member' || !!session?.isFirstTimer;
-      let baseList = prev;
-      let targetProjectId = projectId;
-
-      if (isFromFirstTimer && session?.institution) {
-        const ensured = ensureFirstTimerMdaProject(prev, session.institution, session.fullName, session.email);
-        baseList = ensured.projects;
-        targetProjectId = getFirstTimerMdaProjectId(session.institution);
-      }
-
-      const enrichedDoc: DocumentAsset = {
-        ...newDoc,
-        uploadedByMda: isFromFirstTimer && session?.institution ? session.institution : newDoc.uploadedByMda
-      };
-
-      const updated = baseList.map(p => {
-        if (p.id === targetProjectId) {
-          const existingWithoutDup = (p.documents || []).filter(d => d.id !== enrichedDoc.id);
-          const updatedDocs = [enrichedDoc, ...existingWithoutDup];
+      const updated = prev.map(p => {
+        if (p.id === projectId) {
+          const existingWithoutDup = (p.documents || []).filter(d => d.id !== newDoc.id);
+          const updatedDocs = [newDoc, ...existingWithoutDup];
           const tempProject: AIProject = {
             ...p,
-            name: isFromFirstTimer && session?.institution ? session.institution : p.name,
-            mda: isFromFirstTimer && session?.institution ? session.institution : p.mda,
             documents: updatedDocs
           };
           const auto = generateAssessmentFromDocuments(tempProject, session || undefined);
@@ -237,16 +201,13 @@ function App() {
             readinessScore: auto.readinessScore,
             autoAssessment: auto.details,
             zeroAssumptionAudit: auto.zeroAssumptionAudit,
-            hasFirstTimerUpload: isFromFirstTimer || p.hasFirstTimerUpload,
             reviewStatus: newReviewStatus,
             technicalClearanceReview: p.technicalClearanceReview || {
               reviewerName: 'National Technical Clearance Taskforce',
-              reviewerRole: 'Technical Clearance Team',
+              reviewerRole: 'Technical Director',
               reviewedAt: new Date().toISOString(),
               recommendationNotes: 'Compliance documents sent to Technical Clearance System. Recommended for statutory review.'
-            },
-            dgFinalVerdict: isFromFirstTimer ? undefined : p.dgFinalVerdict,
-            status: isFromFirstTimer ? 'Delayed' : p.status
+            }
           };
           return updatedProj;
         }
@@ -691,7 +652,6 @@ function App() {
       <EntryGateModal 
         onSuccess={(newSession) => {
           setSession(newSession);
-          setPortalMode('admin');
           setActiveTab('dashboard');
         }} 
       />
@@ -703,19 +663,6 @@ function App() {
 
   // 6. Conditional Tab Routing Canvas
   const renderTabContent = () => {
-    // If user is currently in Public Registration & Upload mode
-    if (portalMode === 'public') {
-      return (
-        <PublicRegistrationPage
-          session={session}
-          projects={projects}
-          onAddProject={handleAddProject}
-          onAddDocument={handleAddDocument}
-          onNavigateToAdmin={() => setPortalMode('admin')}
-        />
-      );
-    }
-
     // If user is in pending_approval onboarding status, check if module is restricted
     if (session.onboardingStatus === 'pending_approval') {
       if (!['dashboard', 'gis', 'chat'].includes(activeTab)) {
@@ -809,15 +756,6 @@ function App() {
             onClearInitialTarget={() => setTargetReviewItem(null)}
           />
         );
-      case 'dg_queue':
-        return (
-          <DGDecisionQueue
-            projects={projects}
-            session={session}
-            onUpdateProjectStatus={handleUpdateProjectReviewStatus}
-            onReviewDocument={handleReviewDocument}
-          />
-        );
       case 'finance':
         return (
           <FinanceMinisterView
@@ -850,8 +788,6 @@ function App() {
     <>
       <Layout 
         session={session}
-        portalMode={portalMode}
-        onTogglePortalMode={setPortalMode}
         onSwitchRole={handleSwitchRole}
         onSelectRole={handleActivateRoleProfile}
         onOpenRoleSelector={() => setShowRoleSelectorModal(true)}

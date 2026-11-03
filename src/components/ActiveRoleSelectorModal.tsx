@@ -41,7 +41,7 @@ export const ActiveRoleSelectorModal: React.FC<ActiveRoleSelectorModalProps> = (
       badge: 'Tier-1 Security Oversight',
       color: '#ef4444',
       desc: 'Complete administrative oversight across all national registries, security audits, technical evaluations, and system configurations.',
-      unlockedModules: ['dashboard', 'registry', 'gis', 'governance', 'readiness', 'risk', 'documents', 'dg_queue', 'finance', 'reports', 'audit', 'chat']
+      unlockedModules: ['dashboard', 'registry', 'gis', 'governance', 'readiness', 'risk', 'documents', 'finance', 'reports', 'audit', 'chat']
     },
     {
       role: 'Technical Director',
@@ -49,7 +49,7 @@ export const ActiveRoleSelectorModal: React.FC<ActiveRoleSelectorModalProps> = (
       badge: 'Clearance Leadership',
       color: '#6366f1',
       desc: 'Supervises national technical clearance evaluations, ethical audits, escalations, dossier recommendations, and clearance verdicts.',
-      unlockedModules: ['dashboard', 'registry', 'gis', 'governance', 'readiness', 'risk', 'documents', 'dg_queue', 'finance', 'reports', 'audit', 'chat']
+      unlockedModules: ['dashboard', 'registry', 'gis', 'governance', 'readiness', 'risk', 'documents', 'finance', 'reports', 'audit', 'chat']
     },
     {
       role: 'Public User',

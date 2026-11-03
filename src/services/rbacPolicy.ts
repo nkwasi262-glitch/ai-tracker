@@ -8,7 +8,6 @@ export type AppModuleId =
   | 'readiness'
   | 'risk'
   | 'documents'
-  | 'dg_queue'
   | 'finance'
   | 'reports'
   | 'audit'
@@ -81,12 +80,6 @@ export const MODULE_REGISTRY: Record<AppModuleId, ModuleDefinition> = {
     description: 'Compliance document validation, OCR text extraction, and technical clearance review.',
     category: 'technical'
   },
-  dg_queue: {
-    id: 'dg_queue',
-    label: 'DG Decision Queue',
-    description: 'Executive decision queue for projects recommended by technical clearance teams.',
-    category: 'executive'
-  },
   finance: {
     id: 'finance',
     label: 'Financial Suite',
@@ -123,7 +116,6 @@ const ROLE_MODULE_PERMISSIONS: Record<string, AppModuleId[]> = {
     'readiness',
     'risk',
     'documents',
-    'dg_queue',
     'finance',
     'reports',
     'audit',
@@ -137,7 +129,6 @@ const ROLE_MODULE_PERMISSIONS: Record<string, AppModuleId[]> = {
     'readiness',
     'risk',
     'documents',
-    'dg_queue',
     'finance',
     'reports',
     'audit',
@@ -151,7 +142,6 @@ const ROLE_MODULE_PERMISSIONS: Record<string, AppModuleId[]> = {
   // Legacy role definitions preserved for backward compatibility
   'Director General': [
     'dashboard',
-    'dg_queue',
     'gis',
     'finance',
     'reports',
@@ -187,11 +177,6 @@ const ROLE_MODULE_PERMISSIONS: Record<string, AppModuleId[]> = {
     'dashboard',
     'finance',
     'chat'
-  ],
-  'First-Timer / New User': [
-    'documents',
-    'readiness',
-    'governance'
   ]
 };
 
@@ -307,20 +292,6 @@ const ROLE_ACTION_PERMISSIONS: Record<string, Partial<Record<AppAction, boolean>
     VIEW_AUDIT_LOG: false,
     PURGE_AUDIT_LOG: false,
     VERIFY_FINANCIAL_EXPENDITURE: true
-  },
-  'First-Timer / New User': {
-    VIEW: true,
-    CREATE: true,
-    EDIT: false,
-    DELETE: false,
-    RECOMMEND_TO_DG: false,
-    PASS_DG_VERDICT: false,
-    EXPORT_FINANCIALS: false,
-    CREATE_INTERNAL_REPORT: false,
-    COMMENT_INTERNAL_REPORT: false,
-    SIGN_DOCUMENT: true,
-    VIEW_AUDIT_LOG: false,
-    PURGE_AUDIT_LOG: false
   }
 };
 
