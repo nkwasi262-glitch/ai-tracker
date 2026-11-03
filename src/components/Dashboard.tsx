@@ -18,7 +18,10 @@ import {
   XCircle,
   RotateCcw,
   Clock,
-  ArrowRight
+  ArrowRight,
+  FileText,
+  FileCheck2,
+  Eye
 } from 'lucide-react';
 import { AIProject, formatNumberToWords, computeZeroAssumptionSummary } from '../data/sampleProjects';
 import { getDGVerdicts } from '../services/verdictService';
@@ -73,9 +76,10 @@ interface DashboardProps {
   projects: AIProject[];
   currentRole: UserRole;
   onNavigate?: (tab: string) => void;
+  onNavigateToReview?: (projectId: string, docId?: string) => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onNavigate }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onNavigate, onNavigateToReview }) => {
   const [selectedSector, setSelectedSector] = useState<string>('All');
   const [showProjectsTooltip, setShowProjectsTooltip] = useState(false);
   const [verdictFilter, setVerdictFilter] = useState<'All' | 'Approved' | 'Requires More Understanding' | 'Rejected' | 'Awaiting DG'>('All');
@@ -296,6 +300,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
     if (verdictFilter === 'All') return true;
     return resolveProjectDGVerdict(p).statusLabel === verdictFilter;
   });
+
+  // Projects linked to the National Technical Clearance System
+  const technicalClearanceProjects = filteredProjects.filter(p => {
+    const hasDocs = Boolean(p.documents && p.documents.length > 0);
+    const isRecommended = p.reviewStatus === 'Recommended' || 
+                          p.reviewStatus === 'Recommended to Technical Director' || 
+                          p.reviewStatus === 'Under Technical Review' ||
+                          p.reviewStatus === 'Approved';
+    return hasDocs || isRecommended;
+  });
+
+  const totalRecommendedDocsCount = technicalClearanceProjects.reduce(
+    (acc, p) => acc + (p.documents?.length || 0), 0
+  );
+
+  const totalPendingReviewDocsCount = technicalClearanceProjects.reduce(
+    (acc, p) => acc + (p.documents?.filter(d => d.reviewStatus !== 'Reviewed & Verified').length || 0), 0
+  );
 
   return (
     <div>
@@ -585,6 +607,357 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
             Ethical Governance Score: <span style={{ color: 'var(--ghana-emerald)' }}>Good</span>
           </div>
           <Activity className="kpi-icon-wrapper" />
+        </div>
+      </div>
+
+      {/* =========================================================================
+          NATIONAL AI TECHNICAL CLEARANCE SYSTEM: RECOMMENDED PROJECTS & DOCUMENTS
+          ========================================================================= */}
+      <div style={{
+        background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(13, 20, 36, 0.98) 100%)',
+        border: '1px solid rgba(16, 185, 129, 0.45)',
+        borderRadius: '16px',
+        padding: '24px',
+        marginBottom: '28px',
+        boxShadow: '0 12px 36px rgba(0, 0, 0, 0.45)',
+        position: 'relative',
+        overflow: 'hidden'
+      }}>
+        {/* Header */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          flexWrap: 'wrap',
+          gap: '16px',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          paddingBottom: '16px',
+          marginBottom: '20px'
+        }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+              <span style={{
+                fontSize: '0.68rem',
+                fontWeight: 800,
+                padding: '3px 10px',
+                borderRadius: '999px',
+                background: 'rgba(16, 185, 129, 0.2)',
+                color: '#6ee7b7',
+                border: '1px solid rgba(16, 185, 129, 0.5)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
+                LINKED TO TECHNICAL CLEARANCE SYSTEM
+              </span>
+              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                NITA Act 771 & Ghana AI Policy 2026
+              </span>
+            </div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', margin: 0 }}>
+              National Technical Clearance System • Recommended AI Projects & Documents
+            </h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px', margin: 0 }}>
+              All AI projects with documents sent to the technical clearance system are recommended to the system. Inspect recommended compliance documents and review them directly in Documents & OCR.
+            </p>
+          </div>
+
+          {onNavigate && (
+            <button
+              onClick={() => onNavigate('documents')}
+              className="btn btn-primary"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '7px',
+                padding: '8px 16px',
+                fontSize: '0.78rem',
+                fontWeight: 700
+              }}
+            >
+              <FileCheck2 size={15} />
+              <span>Open in Documents & OCR</span>
+              <ArrowRight size={14} />
+            </button>
+          )}
+        </div>
+
+        {/* Quick Clearance Metrics Bar */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gap: '12px',
+          marginBottom: '20px'
+        }}>
+          <div style={{
+            padding: '12px 14px',
+            borderRadius: '10px',
+            background: 'rgba(255, 255, 255, 0.03)',
+            border: '1px solid rgba(255, 255, 255, 0.08)'
+          }}>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+              Projects in Technical Clearance
+            </div>
+            <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#10b981', marginTop: '2px' }}>
+              {technicalClearanceProjects.length}
+            </div>
+            <div style={{ fontSize: '0.68rem', color: '#6ee7b7', marginTop: '2px' }}>
+              ✓ Recommended to System
+            </div>
+          </div>
+
+          <div style={{
+            padding: '12px 14px',
+            borderRadius: '10px',
+            background: 'rgba(255, 255, 255, 0.03)',
+            border: '1px solid rgba(255, 255, 255, 0.08)'
+          }}>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+              Recommended Documents
+            </div>
+            <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#38bdf8', marginTop: '2px' }}>
+              {totalRecommendedDocsCount}
+            </div>
+            <div style={{ fontSize: '0.68rem', color: '#7dd3fc', marginTop: '2px' }}>
+              Statutory Dossiers & Specs
+            </div>
+          </div>
+
+          <div style={{
+            padding: '12px 14px',
+            borderRadius: '10px',
+            background: 'rgba(255, 255, 255, 0.03)',
+            border: '1px solid rgba(255, 255, 255, 0.08)'
+          }}>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+              Awaiting Document Review
+            </div>
+            <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#fbbf24', marginTop: '2px' }}>
+              {totalPendingReviewDocsCount}
+            </div>
+            <div style={{ fontSize: '0.68rem', color: '#fde68a', marginTop: '2px' }}>
+              Action Required: Review in OCR
+            </div>
+          </div>
+
+          <div style={{
+            padding: '12px 14px',
+            borderRadius: '10px',
+            background: 'rgba(255, 255, 255, 0.03)',
+            border: '1px solid rgba(255, 255, 255, 0.08)'
+          }}>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+              Clearance System Link
+            </div>
+            <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#a7f3d0', marginTop: '2px' }}>
+              Connected
+            </div>
+            <div style={{ fontSize: '0.68rem', color: '#10b981', marginTop: '2px' }}>
+              🟢 Live Bi-Directional State
+            </div>
+          </div>
+        </div>
+
+        {/* Project Cards with Recommended Documents */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {technicalClearanceProjects.map(proj => {
+            const docs = proj.documents || [];
+            return (
+              <div 
+                key={proj.id}
+                style={{
+                  padding: '16px 18px',
+                  borderRadius: '12px',
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px'
+                }}
+              >
+                {/* Project Header Info */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{
+                        fontFamily: 'monospace',
+                        fontSize: '0.74rem',
+                        fontWeight: 800,
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        background: 'rgba(16, 185, 129, 0.15)',
+                        color: 'var(--ghana-emerald)',
+                        border: '1px solid rgba(16, 185, 129, 0.35)'
+                      }}>
+                        {proj.projectCode}
+                      </span>
+                      <h4 style={{ fontSize: '0.98rem', fontWeight: 800, color: '#fff', margin: 0 }}>
+                        {proj.name}
+                      </h4>
+                      <span style={{
+                        fontSize: '0.68rem',
+                        padding: '2px 8px',
+                        borderRadius: '999px',
+                        background: 'rgba(56, 189, 248, 0.15)',
+                        color: '#38bdf8',
+                        fontWeight: 700
+                      }}>
+                        {proj.sector}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                      Managing MDA: <strong style={{ color: '#e2e8f0' }}>{proj.mda}</strong> ({proj.mdaCode}) • Region: <strong style={{ color: '#e2e8f0' }}>{proj.region}</strong>
+                    </div>
+                  </div>
+
+                  {/* Recommendation Status Pill */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      padding: '4px 10px',
+                      borderRadius: '999px',
+                      fontSize: '0.72rem',
+                      fontWeight: 800,
+                      background: 'rgba(16, 185, 129, 0.2)',
+                      color: '#6ee7b7',
+                      border: '1px solid rgba(16, 185, 129, 0.45)'
+                    }}>
+                      <CheckCircle2 size={13} />
+                      <span>RECOMMENDED TO TECHNICAL CLEARANCE SYSTEM</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Recommendation Notes */}
+                <div style={{
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  background: 'rgba(16, 185, 129, 0.06)',
+                  borderLeft: '3px solid #10b981',
+                  fontSize: '0.74rem',
+                  color: '#d1fae5'
+                }}>
+                  <strong>Technical Clearance Recommendation:</strong> {proj.technicalClearanceReview?.recommendationNotes || proj.technicalReview?.recommendationNotes || 'Compliance dossiers screened and officially recommended for statutory technical clearance and Director General sign-off.'}
+                </div>
+
+                {/* Documents List */}
+                <div>
+                  <div style={{
+                    fontSize: '0.72rem',
+                    fontWeight: 800,
+                    color: 'var(--text-muted)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    marginBottom: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <FileText size={13} />
+                    <span>Recommended Documents ({docs.length}) — Click to Review:</span>
+                  </div>
+
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                    gap: '8px'
+                  }}>
+                    {docs.map(doc => {
+                      const isReviewed = doc.reviewStatus === 'Reviewed & Verified';
+                      return (
+                        <div
+                          key={doc.id}
+                          style={{
+                            padding: '10px 12px',
+                            borderRadius: '8px',
+                            background: 'rgba(255, 255, 255, 0.03)',
+                            border: '1px solid rgba(255, 255, 255, 0.07)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'space-between',
+                            gap: '8px'
+                          }}
+                        >
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
+                              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#fff', wordBreak: 'break-word' }}>
+                                {doc.fileName}
+                              </span>
+                              <span style={{
+                                fontSize: '0.62rem',
+                                fontWeight: 800,
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                background: isReviewed ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                                color: isReviewed ? '#6ee7b7' : '#fde68a',
+                                whiteSpace: 'nowrap'
+                              }}>
+                                {isReviewed ? '✓ Reviewed' : '⏳ Ready for Review'}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '3px' }}>
+                              Category: <strong style={{ color: '#cbd5e1' }}>{doc.documentCategory || 'Statutory Compliance Dossier'}</strong>
+                            </div>
+                          </div>
+
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+                            paddingTop: '6px'
+                          }}>
+                            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+                              Uploaded: {doc.uploadedAt}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (onNavigateToReview) {
+                                  onNavigateToReview(proj.id, doc.id);
+                                } else if (onNavigate) {
+                                  onNavigate('documents');
+                                }
+                              }}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '4px 9px',
+                                borderRadius: '5px',
+                                background: 'rgba(16, 185, 129, 0.15)',
+                                border: '1px solid rgba(16, 185, 129, 0.4)',
+                                color: '#a7f3d0',
+                                fontSize: '0.68rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(16, 185, 129, 0.3)';
+                                e.currentTarget.style.color = '#fff';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(16, 185, 129, 0.15)';
+                                e.currentTarget.style.color = '#a7f3d0';
+                              }}
+                            >
+                              <Eye size={12} />
+                              <span>Review Document</span>
+                              <ArrowRight size={11} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 

@@ -1369,13 +1369,20 @@ export function ensureFirstTimerMdaProject(
     risks: [],
     documents: matchingMdaDocs,
     hasFirstTimerUpload: true,
-    reviewStatus: 'Under Technical Review',
+    reviewStatus: matchingMdaDocs.length > 0 ? 'Recommended' : 'Under Technical Review',
+    technicalClearanceReview: {
+      reviewerName: 'National Technical Clearance Taskforce',
+      reviewerRole: 'Technical Clearance Team',
+      reviewerEmail: 'clearance@nita.gov.gh',
+      reviewedAt: new Date().toISOString(),
+      recommendationNotes: `All uploaded compliance documents and OCR dossiers for ${mdaName} screened and recommended to the National Technical Clearance System.`
+    },
     technicalReview: {
       reviewerName: 'GNAPRMS Automated Grading Engine',
       reviewerRole: 'Technical Clearance Team',
       reviewerEmail: 'clearance@nita.gov.gh',
       reviewedAt: new Date().toISOString(),
-      recommendationNotes: `Onboarding submission for ${mdaName} (${mdaCode}). Automatically graded against Ghana AI Governance & Ethics rubric and AI Readiness capability framework. Awaiting Technical Clearance Team recommendation to Technical Director.`
+      recommendationNotes: `Onboarding submission for ${mdaName} (${mdaCode}). Automatically graded against Ghana AI Governance & Ethics rubric and AI Readiness capability framework. Recommended to Technical Clearance System.`
     }
   };
 

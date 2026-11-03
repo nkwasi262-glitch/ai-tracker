@@ -932,6 +932,22 @@ const frameworkQuestions: Record<string, AuditQuestion[]> = {
   }
 `;
 
+const ANSWERS_STORAGE_KEY = 'gnaprms_gov_rubric_answers_v2';
+
+function getStoredRubricAnswers(): Record<string, Record<string, 'yes' | 'no'>> {
+  try {
+    const raw = localStorage.getItem(ANSWERS_STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return {};
+}
+
+function saveStoredRubricAnswers(data: Record<string, Record<string, 'yes' | 'no'>>) {
+  try {
+    localStorage.setItem(ANSWERS_STORAGE_KEY, JSON.stringify(data));
+  } catch {}
+}
+
 export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
   projects,
   onUpdateCompliance,
@@ -971,13 +987,16 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
   });
 
   const [framework, setFramework] = useState<string>('Ghana');
-  const [answers, setAnswers] = useState<Record<string, 'yes' | 'no'>>({});
 
-  // Initialize metadata answers based on active project's current compliance scores
-  useEffect(() => {
-    const score = selectedProjectId === 'general' ? generalCompliance : activeProject?.compliance;
-    if (!score) return;
-    const initialAnswers: Record<string, 'yes' | 'no'> = {
+  const [allProjectAnswers, setAllProjectAnswers] = useState<Record<string, Record<string, 'yes' | 'no'>>>(() => 
+    getStoredRubricAnswers()
+  );
+
+  const getInitialAnswers = (projId: string, compScore?: ComplianceScore): Record<string, 'yes' | 'no'> => {
+    const existing = allProjectAnswers[projId];
+    if (existing) return existing;
+    const score = compScore || generalCompliance;
+    return {
       f1_sub1: score.fairness >= 60 ? 'yes' : 'no',
       f1_sub2: score.fairness >= 80 ? 'yes' : 'no',
       f2_sub1: score.fairness >= 80 ? 'yes' : 'no',
@@ -1009,22 +1028,46 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
       s3_sub2: score.security >= 100 ? 'yes' : 'no',
       s4_sub1: score.security >= 100 ? 'yes' : 'no',
     };
-    setAnswers(initialAnswers);
-  }, [selectedProjectId, activeProject?.compliance, activeProject?.documents?.length]);
+  };
+
+  const [answers, setAnswers] = useState<Record<string, 'yes' | 'no'>>(() =>
+    getInitialAnswers(selectedProjectId, activeProject?.compliance)
+  );
+
+  // Sync answers ONLY when selectedProjectId changes (never overwrite active clicks on score change)
+  useEffect(() => {
+    const existing = allProjectAnswers[selectedProjectId];
+    if (existing) {
+      setAnswers(existing);
+    } else {
+      const initial = getInitialAnswers(selectedProjectId, activeProject?.compliance);
+      setAnswers(initial);
+      setAllProjectAnswers(prev => {
+        const updated = { ...prev, [selectedProjectId]: initial };
+        saveStoredRubricAnswers(updated);
+        return updated;
+      });
+    }
+  }, [selectedProjectId]);
 
   const handleAnswerChange = (subId: string, val: 'yes' | 'no') => {
-    if (!canAudit) return;
-
-    const newAnswers = {
+    // Both YES and NO buttons respond immediately to clicking
+    const newAnswers: Record<string, 'yes' | 'no'> = {
       ...answers,
       [subId]: val
     };
     setAnswers(newAnswers);
 
+    // Save in persistent map
+    setAllProjectAnswers(prev => {
+      const updated = { ...prev, [selectedProjectId]: newAnswers };
+      saveStoredRubricAnswers(updated);
+      return updated;
+    });
+
     const computeCategoryScore = (subIds: string[]) => {
       const yesCount = subIds.filter(id => newAnswers[id] === 'yes').length;
       if (subIds.length === 0) return 100;
-      // Dynamically scale from 40% baseline to 100% based on total sub-parameters in group
       return Math.round(40 + (yesCount / subIds.length) * 60);
     };
 
@@ -1044,7 +1087,7 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
     const newScore: ComplianceScore = {
       fairness,
       transparency,
-      accountability: transparency, // Maintain compatibility
+      accountability: transparency,
       privacy,
       security,
       overallGrade
@@ -1229,40 +1272,52 @@ export const GovernanceCompliance: React.FC<GovernanceComplianceProps> = ({
                           {/* Sub-Parameter Yes/No Controls */}
                           <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                             <button
-                              onClick={() => handleAnswerChange(sub.id, 'yes')}
-                              disabled={!canAudit}
-                              style={{
-                                padding: '5px 11px',
-                                borderRadius: '5px',
-                                border: '1px solid ' + (isYes ? '#10b981' : 'rgba(255,255,255,0.06)'),
-                                background: isYes ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255,255,255,0.01)',
-                                color: isYes ? '#34d399' : 'var(--text-muted)',
-                                fontSize: '0.68rem',
-                                fontWeight: 700,
-                                cursor: canAudit ? 'pointer' : 'default',
-                                transition: 'all 0.12s ease',
-                                boxShadow: isYes ? '0 0 6px rgba(16, 185, 129, 0.15)' : 'none'
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAnswerChange(sub.id, 'yes');
                               }}
+                              style={{
+                                padding: '6px 13px',
+                                borderRadius: '6px',
+                                border: isYes ? '2px solid #10b981' : '1px solid rgba(255,255,255,0.12)',
+                                background: isYes ? 'rgba(16, 185, 129, 0.28)' : 'rgba(255,255,255,0.03)',
+                                color: isYes ? '#34d399' : '#94a3b8',
+                                fontSize: '0.72rem',
+                                fontWeight: 800,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
+                                boxShadow: isYes ? '0 0 10px rgba(16, 185, 129, 0.35)' : 'none',
+                                transform: isYes ? 'scale(1.05)' : 'scale(1)',
+                                outline: 'none'
+                              }}
+                              title={`Click to set ${sub.text} to YES`}
                             >
-                              YES
+                              {isYes ? '✓ YES' : 'YES'}
                             </button>
                             <button
-                              onClick={() => handleAnswerChange(sub.id, 'no')}
-                              disabled={!canAudit}
-                              style={{
-                                padding: '5px 11px',
-                                borderRadius: '5px',
-                                border: '1px solid ' + (isNo ? '#f43f5e' : 'rgba(255,255,255,0.06)'),
-                                background: isNo ? 'rgba(244, 63, 94, 0.15)' : 'rgba(255,255,255,0.01)',
-                                color: isNo ? '#fb7185' : 'var(--text-muted)',
-                                fontSize: '0.68rem',
-                                fontWeight: 700,
-                                cursor: canAudit ? 'pointer' : 'default',
-                                transition: 'all 0.12s ease',
-                                boxShadow: isNo ? '0 0 6px rgba(244, 63, 94, 0.15)' : 'none'
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAnswerChange(sub.id, 'no');
                               }}
+                              style={{
+                                padding: '6px 13px',
+                                borderRadius: '6px',
+                                border: isNo ? '2px solid #f43f5e' : '1px solid rgba(255,255,255,0.12)',
+                                background: isNo ? 'rgba(244, 63, 94, 0.28)' : 'rgba(255,255,255,0.03)',
+                                color: isNo ? '#fb7185' : '#94a3b8',
+                                fontSize: '0.72rem',
+                                fontWeight: 800,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
+                                boxShadow: isNo ? '0 0 10px rgba(244, 63, 94, 0.35)' : 'none',
+                                transform: isNo ? 'scale(1.05)' : 'scale(1)',
+                                outline: 'none'
+                              }}
+                              title={`Click to set ${sub.text} to NO`}
                             >
-                              NO
+                              {isNo ? '✕ NO' : 'NO'}
                             </button>
                           </div>
                         </div>

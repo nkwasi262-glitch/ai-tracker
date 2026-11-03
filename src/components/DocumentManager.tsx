@@ -73,6 +73,9 @@ interface DocumentManagerProps {
     newReadinessScore?: number,
     newProjectStatus?: ReviewWorkflowStatus
   ) => void;
+  initialProjectId?: string;
+  initialDocId?: string;
+  onClearInitialTarget?: () => void;
 }
 
 export const DocumentManager: React.FC<DocumentManagerProps> = ({
@@ -83,7 +86,10 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
   session,
   onUpdateProjectStatus,
   onUpdateProjectAssessment,
-  onReviewDocument
+  onReviewDocument,
+  initialProjectId,
+  initialDocId,
+  onClearInitialTarget
 }) => {
   // Role permissions checks
   const isFirstTimer = session?.role === 'First-Timer / New User' || currentRole === 'First-Timer / New User' || !!session?.isFirstTimer || session?.memberType === 'new_member';
@@ -103,7 +109,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
   })();
 
   const [selectedProjectId, setSelectedProjectId] = useState<string>(
-    firstTimerMdaProjectId || projects[0]?.id || ''
+    initialProjectId || firstTimerMdaProjectId || projects[0]?.id || ''
   );
 
   const activeProject = (() => {
@@ -145,6 +151,23 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
 
   // Review & Grade modal state
   const [reviewingItem, setReviewingItem] = useState<{ doc: DocumentAsset; project: AIProject } | null>(null);
+
+  // Auto-select and open review modal when navigating from Dashboard with initial target
+  useEffect(() => {
+    if (initialProjectId) {
+      setSelectedProjectId(initialProjectId);
+      if (initialDocId) {
+        const targetProj = projects.find(p => p.id === initialProjectId);
+        if (targetProj) {
+          const targetDoc = targetProj.documents?.find(d => d.id === initialDocId);
+          if (targetDoc) {
+            setReviewingItem({ doc: targetDoc, project: targetProj });
+          }
+        }
+      }
+      onClearInitialTarget?.();
+    }
+  }, [initialProjectId, initialDocId]);
 
   // Filter for first-timer uploads only
   const [onlyFirstTimerFilter, setOnlyFirstTimerFilter] = useState(false);

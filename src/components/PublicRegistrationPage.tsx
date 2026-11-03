@@ -183,7 +183,13 @@ export const PublicRegistrationPage: React.FC<PublicRegistrationPageProps> = ({
         }
       ],
       documents: [],
-      reviewStatus: 'Submitted',
+      reviewStatus: 'Recommended',
+      technicalClearanceReview: {
+        reviewerName: 'National Technical Clearance Taskforce',
+        reviewerRole: 'Technical Clearance Team',
+        reviewedAt: new Date().toISOString(),
+        recommendationNotes: `Public AI project registered under ${session.institution}. Linked to National Technical Clearance System.`
+      },
       hasFirstTimerUpload: true
     };
 

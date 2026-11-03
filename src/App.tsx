@@ -90,13 +90,15 @@ function App() {
     if (s?.role === 'First-Timer / New User') return 'documents';
     return 'dashboard';
   });
-  const [portalMode, setPortalMode] = useState<'public' | 'admin'>(() => {
-    const s = getStoredSession();
-    if (s?.role === 'Public User' || s?.role === 'First-Timer / New User') {
-      return 'public';
-    }
-    return 'admin';
-  });
+  const [portalMode, setPortalMode] = useState<'public' | 'admin'>('admin');
+
+  const [targetReviewItem, setTargetReviewItem] = useState<{ projectId: string; docId?: string } | null>(null);
+
+  const handleNavigateToReview = (projectId: string, docId?: string) => {
+    setTargetReviewItem({ projectId, docId });
+    setPortalMode('admin');
+    setActiveTab('documents');
+  };
 
   const [showRoleSelectorModal, setShowRoleSelectorModal] = useState<boolean>(false);
   const [viewingOnboardingHub, setViewingOnboardingHub] = useState<boolean>(false);
@@ -138,18 +140,9 @@ function App() {
     const updated = elevateFromFirstTimer(selectedRole);
     if (updated) {
       setSession(updated);
-      if (selectedRole === 'Public User') {
-        setPortalMode('public');
-      } else {
-        setPortalMode('admin');
-        const targetTab = selectedRole === 'Director General' ? 'dg_queue' :
-                          selectedRole === 'Finance Minister' ? 'finance' :
-                          selectedRole === 'Technical Director' ? 'documents' :
-                          selectedRole === 'Technical Clearance Team' ? 'documents' :
-                          selectedRole === 'AI Manager' ? 'registry' :
-                          'dashboard';
-        setActiveTab(targetTab);
-      }
+      setPortalMode('admin');
+      const targetTab = selectedRole === 'First-Timer / New User' ? 'documents' : 'dashboard';
+      setActiveTab(targetTab);
     }
   };
 
@@ -244,11 +237,9 @@ function App() {
             documents: updatedDocs
           };
           const auto = generateAssessmentFromDocuments(tempProject, session || undefined);
-          const newReviewStatus: ReviewWorkflowStatus = isFromFirstTimer
-            ? 'Under Technical Review'
-            : p.reviewStatus === 'Approved'
+          const newReviewStatus: ReviewWorkflowStatus = p.reviewStatus === 'Approved'
             ? 'Approved'
-            : 'Under Technical Review';
+            : 'Recommended';
           const updatedProj: AIProject = {
             ...tempProject,
             compliance: auto.compliance,
@@ -257,6 +248,12 @@ function App() {
             zeroAssumptionAudit: auto.zeroAssumptionAudit,
             hasFirstTimerUpload: isFromFirstTimer || p.hasFirstTimerUpload,
             reviewStatus: newReviewStatus,
+            technicalClearanceReview: p.technicalClearanceReview || {
+              reviewerName: 'National Technical Clearance Taskforce',
+              reviewerRole: 'Technical Clearance Team',
+              reviewedAt: new Date().toISOString(),
+              recommendationNotes: 'Compliance documents sent to Technical Clearance System. Recommended for statutory review.'
+            },
             dgFinalVerdict: isFromFirstTimer ? undefined : p.dgFinalVerdict,
             status: isFromFirstTimer ? 'Delayed' : p.status
           };
@@ -703,18 +700,9 @@ function App() {
       <EntryGateModal 
         onSuccess={(newSession) => {
           setSession(newSession);
-          if (newSession.role === 'Public User' || newSession.role === 'First-Timer / New User') {
-            setPortalMode('public');
-          } else {
-            setPortalMode('admin');
-            const initialTab = newSession.role === 'Director General' ? 'dg_queue' :
-                              newSession.role === 'Finance Minister' ? 'finance' :
-                              newSession.role === 'Technical Director' ? 'documents' :
-                              newSession.role === 'Technical Clearance Team' ? 'documents' :
-                              newSession.role === 'AI Manager' ? 'registry' :
-                              'dashboard';
-            setActiveTab(initialTab);
-          }
+          setPortalMode('admin');
+          const initialTab = newSession.role === 'First-Timer / New User' ? 'documents' : 'dashboard';
+          setActiveTab(initialTab);
         }} 
       />
     );
@@ -802,7 +790,14 @@ function App() {
 
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard projects={projects} currentRole={session.role as any} onNavigate={(tab) => setActiveTab(tab)} />;
+        return (
+          <Dashboard 
+            projects={projects} 
+            currentRole={session.role as any} 
+            onNavigate={(tab) => setActiveTab(tab)} 
+            onNavigateToReview={handleNavigateToReview}
+          />
+        );
       case 'registry':
         return (
           <ProjectRegistry 
@@ -854,6 +849,9 @@ function App() {
             onUpdateProjectStatus={handleUpdateProjectReviewStatus}
             onUpdateProjectAssessment={handleUpdateProjectAssessment}
             onReviewDocument={handleReviewDocument}
+            initialProjectId={targetReviewItem?.projectId}
+            initialDocId={targetReviewItem?.docId}
+            onClearInitialTarget={() => setTargetReviewItem(null)}
           />
         );
       case 'dg_queue':
