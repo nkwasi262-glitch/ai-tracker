@@ -30,7 +30,7 @@ export const ActiveRoleSelectorModal: React.FC<ActiveRoleSelectorModalProps> = (
   onClose,
   onSelectRole
 }) => {
-  const [selectedRole, setSelectedRole] = useState<ActiveRole>(session.role || 'AI Manager');
+  const [selectedRole, setSelectedRole] = useState<ActiveRole>((session.role as ActiveRole) || 'Super Admin');
 
   if (!isOpen) return null;
 
@@ -40,64 +40,24 @@ export const ActiveRoleSelectorModal: React.FC<ActiveRoleSelectorModalProps> = (
       title: 'Super Administrator',
       badge: 'Tier-1 Security Oversight',
       color: '#ef4444',
-      desc: 'Complete administrative oversight across all national registries, security audits, and configuration consoles.',
+      desc: 'Complete administrative oversight across all national registries, security audits, technical evaluations, and system configurations.',
       unlockedModules: ['dashboard', 'registry', 'gis', 'governance', 'readiness', 'risk', 'documents', 'dg_queue', 'finance', 'reports', 'audit', 'chat']
-    },
-    {
-      role: 'Director General',
-      title: 'Director General (DG)',
-      badge: 'Executive Statutory Clearance',
-      color: '#fbbf24',
-      desc: 'Exclusive executive decision queue to pass formal clearance, directives, or rejections on recommended AI projects.',
-      unlockedModules: ['dashboard', 'dg_queue', 'gis', 'finance', 'reports', 'audit', 'chat']
     },
     {
       role: 'Technical Director',
       title: 'Technical Director',
       badge: 'Clearance Leadership',
       color: '#6366f1',
-      desc: 'Supervises national technical evaluations, ethical audits, escalations, and dossier recommendations.',
+      desc: 'Supervises national technical clearance evaluations, ethical audits, escalations, dossier recommendations, and clearance verdicts.',
       unlockedModules: ['dashboard', 'registry', 'gis', 'governance', 'readiness', 'risk', 'documents', 'dg_queue', 'finance', 'reports', 'audit', 'chat']
-    },
-    {
-      role: 'Technical Clearance Team',
-      title: 'Technical Clearance Team',
-      badge: 'Technical Inspector',
-      color: '#10b981',
-      desc: 'Audits algorithmic source documents, OCR extractions, and compliance matrices; recommends cleared dossiers to DG.',
-      unlockedModules: ['dashboard', 'registry', 'gis', 'governance', 'readiness', 'risk', 'documents', 'finance', 'reports', 'audit', 'chat']
-    },
-    {
-      role: 'AI Manager',
-      title: 'Institutional AI Manager',
-      badge: 'Managing Lead (MDA / MMDA / SOE)',
-      color: '#06b6d4',
-      desc: 'Official representative registering and maintaining project portfolios, milestone tracking, and readiness surveys.',
-      unlockedModules: ['dashboard', 'registry', 'gis', 'governance', 'readiness', 'risk', 'documents', 'finance', 'reports', 'chat']
-    },
-    {
-      role: 'Finance Minister',
-      title: 'Finance Minister / Fiscal Lead',
-      badge: 'Sovereign Fiscal Authority',
-      color: '#f59e0b',
-      desc: 'Isolated financial monitoring suite tracking national AI budget caps, actual disbursements, and value-for-money metrics.',
-      unlockedModules: ['dashboard', 'finance', 'chat']
     },
     {
       role: 'Public User',
       title: 'Public Citizen / Open Observer',
       badge: 'Citizen Transparency',
       color: '#94a3b8',
-      desc: 'Transparent public view of high-level national statistics, regional GIS deployments, and the regulatory assistant.',
+      desc: 'Transparent public view of high-level national AI statistics, regional GIS deployments, and the regulatory assistant.',
       unlockedModules: ['dashboard', 'gis', 'chat']
-    },
-    {
-      role: 'First-Timer / New User',
-      title: 'First-Timer / New User',
-      badge: 'Guided Orientation',
-      color: '#10b981',
-      desc: 'Initial onboarding orientation for new institutional officers submitting project documents.',
-      unlockedModules: ['documents', 'readiness', 'governance']
     }
   ];
 

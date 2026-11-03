@@ -16,9 +16,9 @@ export function getLastSelectedRole(): ActiveRole | null {
   }
 }
 
-export function setLastSelectedRole(role: ActiveRole): void {
+export function setLastSelectedRole(role: ActiveRole | string): void {
   try {
-    if (role !== 'First-Timer / New User') {
+    if ((role as string) !== 'First-Timer / New User') {
       localStorage.setItem(LAST_ROLE_KEY, role);
     }
   } catch (e) {
@@ -26,14 +26,14 @@ export function setLastSelectedRole(role: ActiveRole): void {
   }
 }
 
-export function elevateFromFirstTimer(newRole: ActiveRole): UserSession | null {
+export function elevateFromFirstTimer(newRole: ActiveRole | string): UserSession | null {
   const session = getStoredSession();
   if (!session) return null;
-  const isFT = newRole === 'First-Timer / New User';
+  const isFT = (newRole as string) === 'First-Timer / New User';
   const updated: UserSession = {
     ...session,
     previousRole: session.role,
-    role: newRole,
+    role: newRole as any,
     isFirstTimer: isFT,
     lastActiveAt: new Date().toISOString()
   };
@@ -98,7 +98,7 @@ export interface GateSubmissionInput {
   fullName: string;
   institution: string;
   institutionCategory: InstitutionCategory;
-  role: ActiveRole;
+  role: ActiveRole | string;
   email: string;
   submissionDate: string;
   isFirstTimer?: boolean;
@@ -137,8 +137,8 @@ export function submitOnboardingForApproval(): UserSession | null {
 
 export function processGateSubmission(input: GateSubmissionInput): GateResult {
   const isDomainApproved = isApprovedInstitutionalEmail(input.email);
-  const isFirstTimerRole = input.isFirstTimer || input.role === 'First-Timer / New User' || input.memberType === 'new_member';
-  const assignedRole: ActiveRole = isFirstTimerRole ? 'First-Timer / New User' : input.role;
+  const isFirstTimerRole = input.isFirstTimer || (input.role as string) === 'First-Timer / New User' || input.memberType === 'new_member';
+  const assignedRole: any = isFirstTimerRole ? 'First-Timer / New User' : input.role;
 
   // Remember chosen active role for session persistence
   setLastSelectedRole(assignedRole);
@@ -203,7 +203,7 @@ export function verifyPendingOtp(enteredOtp: string): { success: boolean; sessio
       fullName: input.fullName.trim(),
       institution: input.institution.trim(),
       institutionCategory: input.institutionCategory,
-      role: input.role,
+      role: input.role as any,
       email: input.email.trim().toLowerCase(),
       submissionDate: input.submissionDate,
       isVerified: true,

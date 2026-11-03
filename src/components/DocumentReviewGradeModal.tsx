@@ -204,13 +204,13 @@ export const DocumentReviewGradeModal: React.FC<DocumentReviewGradeModalProps> =
     // Step 2: Technical Director -> Recommended to Director General ('Recommended')
     // Step 3: Director General / Super Admin -> Final Verdict ('Approved' | 'Returned' | 'Rejected')
     let updatedWorkflowStatus: ReviewWorkflowStatus | undefined = undefined;
-    if (session.role === 'Technical Clearance Team') {
+    if ((session.role as string) === 'Technical Clearance Team') {
       if (verdict === 'Approved' || verdict === 'Conditionally Cleared') updatedWorkflowStatus = 'Recommended to Technical Director';
       else if (verdict === 'Changes Requested' || verdict === 'Under Investigation') updatedWorkflowStatus = 'Needs Correction';
     } else if (session.role === 'Technical Director') {
       if (verdict === 'Approved' || verdict === 'Conditionally Cleared') updatedWorkflowStatus = 'Recommended';
       else if (verdict === 'Changes Requested' || verdict === 'Under Investigation') updatedWorkflowStatus = 'Needs Correction';
-    } else if (session.role === 'Director General' || session.role === 'Super Admin') {
+    } else if ((session.role as string) === 'Director General' || session.role === 'Super Admin') {
       if (verdict === 'Approved' || verdict === 'Conditionally Cleared') updatedWorkflowStatus = 'Approved';
       else if (verdict === 'Changes Requested') updatedWorkflowStatus = 'Returned';
       else if (verdict === 'Under Investigation') updatedWorkflowStatus = 'Rejected';
@@ -1249,7 +1249,7 @@ export const DocumentReviewGradeModal: React.FC<DocumentReviewGradeModalProps> =
                   >
                     <Send size={14} />
                     <span>
-                      {session.role === 'Technical Clearance Team'
+                      {(session.role as string) === 'Technical Clearance Team'
                         ? 'Save Review, Apply Grades & Recommend to Technical Director'
                         : session.role === 'Technical Director'
                         ? 'Save Review, Apply Grades & Recommend to Director General'

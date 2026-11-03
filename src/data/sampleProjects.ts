@@ -141,6 +141,8 @@ export interface TechnicalReviewDetails {
   reviewerRole?: string;
   reviewerEmail?: string;
   reviewedAt?: string;
+  recommendedAt?: string;
+  recommendedBy?: string;
   recommendationNotes?: string;
   flaggedDefects?: string[];
 }

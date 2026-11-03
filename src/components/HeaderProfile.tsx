@@ -2,15 +2,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   ShieldAlert, 
   Award, 
-  ShieldCheck, 
-  UserCheck, 
-  DollarSign, 
   Globe, 
   LogOut, 
   CheckCircle2, 
   AlertCircle,
   Building2,
-  Sparkles,
   ChevronDown,
   Check
 } from 'lucide-react';
@@ -40,13 +36,6 @@ const ALL_ACTIVE_ROLES: RoleDropdownOption[] = [
     color: '#ef4444'
   },
   {
-    role: 'Director General',
-    label: 'Director General',
-    badge: 'Executive Statutory Clearance',
-    icon: <Award size={14} className="text-amber-400" />,
-    color: '#fbbf24'
-  },
-  {
     role: 'Technical Director',
     label: 'Technical Director',
     badge: 'Clearance Leadership',
@@ -54,39 +43,11 @@ const ALL_ACTIVE_ROLES: RoleDropdownOption[] = [
     color: '#6366f1'
   },
   {
-    role: 'Technical Clearance Team',
-    label: 'Technical Clearance Team',
-    badge: 'Technical Inspector',
-    icon: <ShieldCheck size={14} className="text-emerald-400" />,
-    color: '#10b981'
-  },
-  {
-    role: 'AI Manager',
-    label: 'AI Manager',
-    badge: 'Institutional Lead',
-    icon: <UserCheck size={14} className="text-cyan-400" />,
-    color: '#06b6d4'
-  },
-  {
-    role: 'Finance Minister',
-    label: 'Finance Minister',
-    badge: 'Fiscal Authority',
-    icon: <DollarSign size={14} className="text-amber-400" />,
-    color: '#f59e0b'
-  },
-  {
     role: 'Public User',
     label: 'Public User',
     badge: 'Open Citizen Access',
     icon: <Globe size={14} className="text-slate-400" />,
     color: '#94a3b8'
-  },
-  {
-    role: 'First-Timer / New User',
-    label: 'First-Timer / New User',
-    badge: 'Guided Orientation',
-    icon: <Sparkles size={14} className="text-emerald-400" />,
-    color: '#10b981'
   }
 ];
 
@@ -114,15 +75,8 @@ export const HeaderProfile: React.FC<HeaderProfileProps> = ({
     };
   }, [isDropdownOpen]);
 
-  const getRoleBadgeStyle = (role: ActiveRole) => {
+  const getRoleBadgeStyle = (role: ActiveRole | string) => {
     switch (role) {
-      case 'First-Timer / New User':
-        return {
-          bg: 'rgba(251, 191, 36, 0.15)',
-          border: 'rgba(251, 191, 36, 0.4)',
-          text: '#fde68a',
-          icon: <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-        };
       case 'Super Admin':
         return {
           bg: 'rgba(239, 68, 68, 0.15)',
@@ -130,40 +84,12 @@ export const HeaderProfile: React.FC<HeaderProfileProps> = ({
           text: '#fca5a5',
           icon: <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
         };
-      case 'Director General':
-        return {
-          bg: 'rgba(251, 191, 36, 0.15)',
-          border: 'rgba(251, 191, 36, 0.4)',
-          text: '#fde68a',
-          icon: <Award className="w-3.5 h-3.5 text-amber-400" />
-        };
       case 'Technical Director':
         return {
           bg: 'rgba(99, 102, 241, 0.15)',
           border: 'rgba(99, 102, 241, 0.4)',
           text: '#c7d2fe',
           icon: <Award className="w-3.5 h-3.5 text-indigo-400" />
-        };
-      case 'Technical Clearance Team':
-        return {
-          bg: 'rgba(16, 185, 129, 0.15)',
-          border: 'rgba(16, 185, 129, 0.4)',
-          text: '#a7f3d0',
-          icon: <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-        };
-      case 'AI Manager':
-        return {
-          bg: 'rgba(6, 182, 212, 0.15)',
-          border: 'rgba(6, 182, 212, 0.4)',
-          text: '#a5f3fc',
-          icon: <UserCheck className="w-3.5 h-3.5 text-cyan-400" />
-        };
-      case 'Finance Minister':
-        return {
-          bg: 'rgba(245, 158, 11, 0.15)',
-          border: 'rgba(245, 158, 11, 0.4)',
-          text: '#fde68a',
-          icon: <DollarSign className="w-3.5 h-3.5 text-amber-400" />
         };
       case 'Public User':
       default:

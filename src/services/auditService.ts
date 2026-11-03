@@ -117,7 +117,7 @@ export function recordAuditEvent(params: {
   eventType: AuditEventType;
   actorName: string;
   actorEmail: string;
-  actorRole: ActiveRole;
+  actorRole: ActiveRole | string;
   actorInstitution: string;
   targetModule: string;
   targetEntityId?: string;

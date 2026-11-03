@@ -112,7 +112,7 @@ export function createInternalReport(params: {
   severity: ReportSeverity;
   assignedRole: 'Technical Director' | 'Technical Clearance Team' | 'Super Admin' | 'Director General';
   authorName: string;
-  authorRole: ActiveRole;
+  authorRole: ActiveRole | string;
   authorEmail: string;
   authorInstitution: string;
 }): InternalReport {
@@ -165,7 +165,7 @@ export function addReportComment(params: {
   content: string;
   attachmentName?: string;
   authorName: string;
-  authorRole: ActiveRole;
+  authorRole: ActiveRole | string;
   authorEmail: string;
   authorInstitution: string;
 }): ReportComment | null {

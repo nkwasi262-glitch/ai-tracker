@@ -169,13 +169,22 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
 
     const institutionName = selectedInstId === 'other' ? customInstitution.trim() : getSelectedInstName();
 
+    // Normalize any role strictly to one of the 3 active role profiles
+    const normalizeToActiveRole = (r?: string): ActiveRole => {
+      if (r === 'Super Admin') return 'Super Admin';
+      if (r === 'Technical Director' || r === 'Director General' || r === 'Technical Clearance Team' || r === 'AI Manager') return 'Technical Director';
+      return 'Public User';
+    };
+
     // Determine initial active role:
     // 1. Preserved role from Neon Postgres DB if user previously saved
     // 2. Or last selected role
-    // 3. Or default to Super Admin for NITA, else AI Manager
-    const assignedRole: ActiveRole = dbUserFound?.role || 
+    // 3. Or default to Super Admin for NITA, else Technical Director
+    const assignedRole: ActiveRole = normalizeToActiveRole(
+      dbUserFound?.role || 
       getLastSelectedRole() || 
-      (cleanEmail.includes('nita.gov.gh') ? 'Super Admin' : 'AI Manager');
+      (cleanEmail.includes('nita.gov.gh') ? 'Super Admin' : 'Technical Director')
+    );
 
     try {
       // Process submission: saves to local cache & syncs directly to Neon PostgreSQL DB
@@ -186,7 +195,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
         role: assignedRole,
         email: cleanEmail,
         submissionDate: date,
-        isFirstTimer: assignedRole === 'First-Timer / New User',
+        isFirstTimer: false,
         memberType: 'in_member',
         onboardingStatus: 'approved'
       });
@@ -209,7 +218,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
         role: assignedRole,
         email: cleanEmail,
         submissionDate: date,
-        isFirstTimer: assignedRole === 'First-Timer / New User',
+        isFirstTimer: false,
         memberType: 'in_member',
         onboardingStatus: 'approved'
       });

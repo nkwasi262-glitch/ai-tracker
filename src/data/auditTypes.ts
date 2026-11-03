@@ -1,4 +1,4 @@
-import { ActiveRole } from './authTypes';
+import { ActiveRole, LegacyRole } from './authTypes';
 
 export type AuditEventType =
   | 'GATE_SUBMISSION'
@@ -27,7 +27,8 @@ export type AuditEventType =
   | 'ASSESSMENT_AUTO_GENERATED'
   | 'ASSUMPTION_ELIMINATED'
   | 'AUDIT_DISCREPANCY_FLAGGED'
-  | 'FINANCIAL_VERIFICATION_UPDATE';
+  | 'FINANCIAL_VERIFICATION_UPDATE'
+  | 'TECHNICAL_CLEARANCE_DOCUMENT_RECEIVED';
 
 export interface AuditLogEntry {
   id: string;
@@ -35,7 +36,7 @@ export interface AuditLogEntry {
   eventType: AuditEventType;
   actorName: string;
   actorEmail: string;
-  actorRole: ActiveRole;
+  actorRole: ActiveRole | LegacyRole | string;
   actorInstitution: string;
   targetModule: string;
   targetEntityId?: string;

@@ -312,8 +312,8 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({
   const [reviewingDoc, setReviewingDoc] = useState<DocumentAsset | null>(null);
   const [expandedFullDocId, setExpandedFullDocId] = useState<string | null>(null);
 
-  const canReview = session?.role === 'Super Admin' || session?.role === 'Director General' || session?.role === 'Technical Clearance Team' || session?.role === 'Technical Director' || currentRole === 'Super Admin' || currentRole === 'Director General' || currentRole === 'Technical Clearance Team' || currentRole === 'Technical Director';
-  const isFirstTimer = session?.role === 'First-Timer / New User' || currentRole === 'First-Timer / New User' || !!session?.isFirstTimer || session?.memberType === 'new_member';
+  const canReview = session?.role === 'Super Admin' || (session?.role as string) === 'Director General' || (session?.role as string) === 'Technical Clearance Team' || session?.role === 'Technical Director' || currentRole === 'Super Admin' || (currentRole as string) === 'Director General' || (currentRole as string) === 'Technical Clearance Team' || currentRole === 'Technical Director';
+  const isFirstTimer = (session?.role as string) === 'First-Timer / New User' || (currentRole as string) === 'First-Timer / New User' || !!session?.isFirstTimer || session?.memberType === 'new_member';
   const firstTimerMdaProjId = isFirstTimer && session?.institution
     ? getFirstTimerMdaProjectId(session.institution)
     : '';
@@ -681,7 +681,7 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({
           </div>
           <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>AI Readiness Assessment & Capability Matrix</h2>
           <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '2px 0 0 0' }}>
-            System automatically synchronizes readiness pillars with all uploaded project dossiers and First-Timer filings.
+            System automatically synchronizes readiness pillars with all uploaded project dossiers and technical clearance filings.
           </p>
         </div>
 
@@ -754,7 +754,7 @@ export const AIReadiness: React.FC<AIReadinessProps> = ({
                     border: '1px solid rgba(251, 191, 36, 0.35)'
                   }}>
                     <FolderOpen size={12} />
-                    <span>First-Timer Submission ({activeProject.autoAssessment?.firstTimerOfficerName || session?.fullName || 'Orientation Officer'})</span>
+                    <span>Clearance Submission ({activeProject.autoAssessment?.firstTimerOfficerName || session?.fullName || 'Clearance Officer'})</span>
                   </span>
                 )}
 

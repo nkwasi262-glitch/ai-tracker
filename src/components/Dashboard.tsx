@@ -649,17 +649,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
                 gap: '5px'
               }}>
                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
-                LINKED TO TECHNICAL CLEARANCE SYSTEM
+                INTAKE PATH ALWAYS READY • LINKED TO TECHNICAL CLEARANCE SYSTEM
               </span>
-              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                NITA Act 771 & Ghana AI Policy 2026
+              <span style={{ fontSize: '0.68rem', color: '#6ee7b7', fontWeight: 600 }}>
+                Endpoint: <code>/api/technical-clearance/documents</code>
               </span>
             </div>
             <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', margin: 0 }}>
               National Technical Clearance System • Recommended AI Projects & Documents
             </h3>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px', margin: 0 }}>
-              All AI projects with documents sent to the technical clearance system are recommended to the system. Inspect recommended compliance documents and review them directly in Documents & OCR.
+              The system intake path is always ready to receive documents from the technical clearance system. Submissions are automatically scanned and graded using the standards of Governance & Ethics and AI Readiness, set to Recommended, and displayed for review.
             </p>
           </div>
 

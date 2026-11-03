@@ -9,7 +9,7 @@ import {
   isApprovedInstitutionalEmail,
   AppModuleId
 } from '../services/rbacPolicy';
-import { ActiveRole } from '../data/authTypes';
+import { ActiveRole, AnyRole } from '../data/authTypes';
 
 interface TestResult {
   role: string;
@@ -74,7 +74,7 @@ assert(!canPerformAction(superAdminRole, 'PURGE_AUDIT_LOG'), 'Super Admin', 'Act
 // TEST 3: Director General (DG) Clearance Matrix (Executive Decision Isolation)
 // -----------------------------------------------------------------------------
 console.log('--- 3. DIRECTOR GENERAL CLEARANCE TEST ---');
-const dgRole: ActiveRole = 'Director General';
+const dgRole: AnyRole = 'Director General';
 
 // Permitted modules for DG
 assert(canAccessModule(dgRole, 'dashboard'), 'Director General', 'Access: dashboard', 'Can access Executive Overview Dashboard');
@@ -115,7 +115,7 @@ assert(!canPerformAction(techDirRole, 'PASS_DG_VERDICT'), 'Technical Director', 
 // TEST 5: Technical Clearance Team Clearance Matrix
 // -----------------------------------------------------------------------------
 console.log('--- 5. TECHNICAL CLEARANCE TEAM CLEARANCE TEST ---');
-const techClearanceRole: ActiveRole = 'Technical Clearance Team';
+const techClearanceRole: AnyRole = 'Technical Clearance Team';
 
 assert(canAccessModule(techClearanceRole, 'documents'), 'Technical Clearance Team', 'Access: documents', 'Can inspect documents');
 assert(canAccessModule(techClearanceRole, 'governance'), 'Technical Clearance Team', 'Access: governance', 'Can audit governance');
@@ -129,7 +129,7 @@ assert(!canPerformAction(techClearanceRole, 'PASS_DG_VERDICT'), 'Technical Clear
 // TEST 6: AI Manager Clearance Matrix
 // -----------------------------------------------------------------------------
 console.log('--- 6. AI MANAGER CLEARANCE TEST ---');
-const aiManagerRole: ActiveRole = 'AI Manager';
+const aiManagerRole: AnyRole = 'AI Manager';
 
 assert(canAccessModule(aiManagerRole, 'registry'), 'AI Manager', 'Access: registry', 'Can manage project registrations');
 assert(canAccessModule(aiManagerRole, 'documents'), 'AI Manager', 'Access: documents', 'Can upload and view compliance docs');
@@ -141,7 +141,7 @@ assert(!canAccessModule(aiManagerRole, 'audit'), 'AI Manager', 'Block: audit', '
 // TEST 7: Finance Minister Clearance Matrix (Strict Financial Isolation)
 // -----------------------------------------------------------------------------
 console.log('--- 7. FINANCE MINISTER CLEARANCE TEST ---');
-const financeMinisterRole: ActiveRole = 'Finance Minister';
+const financeMinisterRole: AnyRole = 'Finance Minister';
 
 // Allowed:
 assert(canAccessModule(financeMinisterRole, 'dashboard'), 'Finance Minister', 'Access: dashboard', 'Can access M&E Dashboard');
@@ -193,7 +193,7 @@ forbiddenForPublic.forEach(mod => {
 // TEST 9: First-Timer / New User Guided Track Test
 // -----------------------------------------------------------------------------
 console.log('--- 9. FIRST-TIMER / NEW USER GUIDED TRACK TEST ---');
-const firstTimerRole: ActiveRole = 'First-Timer / New User';
+const firstTimerRole: AnyRole = 'First-Timer / New User';
 
 // Allowed (Guidance & Upload only):
 assert(canAccessModule(firstTimerRole, 'documents'), 'First-Timer', 'Access: documents', 'Can access Document & OCR to upload required files');

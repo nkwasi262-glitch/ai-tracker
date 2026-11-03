@@ -140,7 +140,7 @@ export function recordDGVerdict(params: {
     eventType: 'DG_VERDICT_ISSUED',
     actorName: params.reviewedByName,
     actorEmail: params.reviewedByEmail,
-    actorRole: params.reviewedByRole,
+    actorRole: params.reviewedByRole as any,
     actorInstitution: 'National Information Technology Agency (NITA)',
     targetModule: 'dg_queue',
     targetEntityId: params.projectId,

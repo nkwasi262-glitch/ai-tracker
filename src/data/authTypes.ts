@@ -1,12 +1,22 @@
 export type ActiveRole =
   | 'Super Admin'
-  | 'Director General'
   | 'Technical Director'
+  | 'Public User';
+
+export type LegacyRole =
+  | 'Director General'
   | 'Technical Clearance Team'
   | 'AI Manager'
   | 'Finance Minister'
-  | 'Public User'
   | 'First-Timer / New User';
+
+export type AnyRole = ActiveRole | LegacyRole;
+
+export const ACTIVE_ROLES: ActiveRole[] = [
+  'Super Admin',
+  'Technical Director',
+  'Public User'
+];
 
 export type InstitutionCategory = 'MDA' | 'MMDA' | 'SOE' | 'Private Sector' | 'Other';
 
@@ -22,7 +32,7 @@ export interface UserSession {
   fullName: string;
   institution: string;
   institutionCategory: InstitutionCategory;
-  role: ActiveRole;
+  role: AnyRole;
   email: string;
   submissionDate: string;
   isVerified: boolean;
@@ -32,7 +42,7 @@ export interface UserSession {
   createdAt: string;
   lastActiveAt: string;
   isFirstTimer?: boolean;
-  previousRole?: ActiveRole;
+  previousRole?: AnyRole;
   memberType?: 'new_member' | 'in_member';
   onboardingStatus?: 'onboarding' | 'pending_approval' | 'approved';
 }

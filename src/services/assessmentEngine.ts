@@ -1262,9 +1262,9 @@ export function generateAssessmentFromDocuments(
       technicalStaff: pillarStaff,
       policyLeadership: pillarPolicy
     },
-    submittedByFirstTimer: session?.role === 'First-Timer / New User' || !!session?.isFirstTimer,
-    firstTimerOfficerName: (session?.role === 'First-Timer / New User' || !!session?.isFirstTimer) ? session?.fullName : undefined,
-    firstTimerOfficerEmail: (session?.role === 'First-Timer / New User' || !!session?.isFirstTimer) ? session?.email : undefined
+    submittedByFirstTimer: (session?.role as string) === 'First-Timer / New User' || !!session?.isFirstTimer,
+    firstTimerOfficerName: ((session?.role as string) === 'First-Timer / New User' || !!session?.isFirstTimer) ? session?.fullName : undefined,
+    firstTimerOfficerEmail: ((session?.role as string) === 'First-Timer / New User' || !!session?.isFirstTimer) ? session?.email : undefined
   };
 
   if (session) {

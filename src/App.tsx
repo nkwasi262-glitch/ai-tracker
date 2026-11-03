@@ -15,13 +15,12 @@ import { AuditLogViewer } from './components/AuditLogViewer';
 import { EntryGateModal } from './components/EntryGateModal';
 import { AccessDenied } from './components/AccessDenied';
 import { ActiveRoleSelectorModal } from './components/ActiveRoleSelectorModal';
-import { FirstTimerOnboardingHub } from './components/FirstTimerOnboardingHub';
 import { PublicRegistrationPage } from './components/PublicRegistrationPage';
 import { PendingApprovalNotice } from './components/PendingApprovalNotice';
 import { SignOutConfirmModal } from './components/SignOutConfirmModal';
 import { AIProject, ComplianceScore, DocumentAsset, DocumentReviewComment, ReviewWorkflowStatus, AutoAssessmentDetails, ZeroAssumptionAudit, ensureFirstTimerMdaProject, getFirstTimerMdaProjectId } from './data/sampleProjects';
 import { UserSession, ActiveRole } from './data/authTypes';
-import { getStoredSession, clearSession, elevateFromFirstTimer, submitOnboardingForApproval, saveSession } from './services/authService';
+import { getStoredSession, clearSession, elevateFromFirstTimer, saveSession } from './services/authService';
 import { AppModuleId, canAccessModule, MODULE_REGISTRY } from './services/rbacPolicy';
 import { generateAssessmentFromDocuments } from './services/assessmentEngine';
 import { loadStoredProjects, saveStoredProjects, resetProjectsStorage } from './services/projectStorage';
@@ -84,12 +83,7 @@ function App() {
   useEffect(() => {
     saveStoredProjects(projects);
   }, [projects]);
-  const [activeTab, setActiveTab] = useState<string>(() => {
-    const s = getStoredSession();
-    if (s?.onboardingStatus === 'pending_approval') return 'dashboard';
-    if (s?.role === 'First-Timer / New User') return 'documents';
-    return 'dashboard';
-  });
+  const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [portalMode, setPortalMode] = useState<'public' | 'admin'>('admin');
 
   const [targetReviewItem, setTargetReviewItem] = useState<{ projectId: string; docId?: string } | null>(null);
@@ -101,14 +95,12 @@ function App() {
   };
 
   const [showRoleSelectorModal, setShowRoleSelectorModal] = useState<boolean>(false);
-  const [viewingOnboardingHub, setViewingOnboardingHub] = useState<boolean>(false);
   const [showSignOutConfirmModal, setShowSignOutConfirmModal] = useState<boolean>(false);
 
   // Ensure active tab is reset if current role changes to one without permission (pending_approval users may browse all modules to see notices)
   useEffect(() => {
     if (session && session.onboardingStatus !== 'pending_approval' && !canAccessModule(session.role, activeTab as AppModuleId)) {
-      const fallbackTab = session.role === 'First-Timer / New User' ? 'documents' : 'dashboard';
-      setActiveTab(fallbackTab);
+      setActiveTab('dashboard');
     }
   }, [session, activeTab]);
 
@@ -141,8 +133,7 @@ function App() {
     if (updated) {
       setSession(updated);
       setPortalMode('admin');
-      const targetTab = selectedRole === 'First-Timer / New User' ? 'documents' : 'dashboard';
-      setActiveTab(targetTab);
+      setActiveTab('dashboard');
     }
   };
 
@@ -701,45 +692,9 @@ function App() {
         onSuccess={(newSession) => {
           setSession(newSession);
           setPortalMode('admin');
-          const initialTab = newSession.role === 'First-Timer / New User' ? 'documents' : 'dashboard';
-          setActiveTab(initialTab);
+          setActiveTab('dashboard');
         }} 
       />
-    );
-  }
-
-  // 4b. Render FirstTimerOnboardingHub only if explicitly requested by the user
-  if (viewingOnboardingHub) {
-    return (
-      <div className="layout-wrapper" style={{ minHeight: '100vh', background: 'var(--bg-dark)', padding: '24px 16px' }}>
-        <div style={{ maxWidth: '1240px', margin: '0 auto' }}>
-          <FirstTimerOnboardingHub
-            session={session}
-            projects={projects}
-            onAddDocument={handleAddDocument}
-            onUpdateProjectAssessment={handleUpdateProjectAssessment}
-            onReviewDocument={handleReviewDocument}
-            onSubmitForApproval={() => {
-              const updated = submitOnboardingForApproval();
-              if (updated) {
-                setSession(updated);
-              }
-            }}
-            onProceedToMonitoring={() => {
-              setViewingOnboardingHub(false);
-              setActiveTab('dashboard');
-            }}
-            onSwitchRole={handleRequestSignOut}
-          />
-        </div>
-
-        <SignOutConfirmModal
-          isOpen={showSignOutConfirmModal}
-          onConfirm={handleConfirmSignOut}
-          onCancel={() => setShowSignOutConfirmModal(false)}
-          session={session}
-        />
-      </div>
     );
   }
 
@@ -782,7 +737,7 @@ function App() {
           userName={session.fullName}
           userEmail={session.email}
           userInstitution={session.institution}
-          onNavigateHome={() => setActiveTab(session.role === 'First-Timer / New User' ? 'dashboard' : 'dashboard')}
+          onNavigateHome={() => setActiveTab('dashboard')}
           onRequestElevation={() => setShowRoleSelectorModal(true)}
         />
       );
@@ -900,7 +855,6 @@ function App() {
         onSwitchRole={handleSwitchRole}
         onSelectRole={handleActivateRoleProfile}
         onOpenRoleSelector={() => setShowRoleSelectorModal(true)}
-        onOpenOnboardingHub={session.memberType === 'new_member' ? () => setViewingOnboardingHub(true) : undefined}
         activeTab={activeTab} 
         setActiveTab={setActiveTab}
       >

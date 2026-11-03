@@ -1,4 +1,4 @@
-import { ActiveRole } from './authTypes';
+import { ActiveRole, LegacyRole } from './authTypes';
 
 export type ReportSeverity = 'Information' | 'Medium Priority' | 'Urgent' | 'Critical Escalation';
 export type ReportStatus = 'Open' | 'Under Investigation' | 'Resolved' | 'Closed';
@@ -7,7 +7,7 @@ export interface ReportComment {
   id: string;
   reportId: string;
   authorName: string;
-  authorRole: ActiveRole;
+  authorRole: ActiveRole | LegacyRole | string;
   authorEmail: string;
   authorInstitution: string;
   timestamp: string;
@@ -26,7 +26,7 @@ export interface InternalReport {
   severity: ReportSeverity;
   status: ReportStatus;
   createdByName: string;
-  createdByRole: ActiveRole;
+  createdByRole: ActiveRole | LegacyRole | string;
   createdByEmail: string;
   createdAt: string;
   updatedAt: string;

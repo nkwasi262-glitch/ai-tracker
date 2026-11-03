@@ -14,7 +14,6 @@ import {
   FileCheck2,
   MessageSquare,
   ShieldAlert,
-  Sparkles,
   LogOut,
   Lock,
   Clock
@@ -28,7 +27,6 @@ interface LayoutProps {
   onSwitchRole: () => void;
   onOpenRoleSelector?: () => void;
   onSelectRole?: (role: ActiveRole) => void;
-  onOpenOnboardingHub?: () => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
   portalMode?: 'public' | 'admin';
@@ -41,7 +39,6 @@ export const Layout: React.FC<LayoutProps> = ({
   onSwitchRole, 
   onOpenRoleSelector,
   onSelectRole,
-  onOpenOnboardingHub,
   activeTab, 
   setActiveTab, 
   portalMode = 'admin',
@@ -447,85 +444,6 @@ export const Layout: React.FC<LayoutProps> = ({
                     Your project documents are under statutory review. You have active monitoring access to the <strong>M&E Dashboard</strong>, <strong>GIS Spatial Map</strong>, and <strong>AI Chat Assistant</strong>.
                   </div>
                 </div>
-              </div>
-
-              {onOpenOnboardingHub && (
-                <button
-                  onClick={onOpenOnboardingHub}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '8px 16px',
-                    borderRadius: '8px',
-                    background: 'rgba(234, 179, 8, 0.15)',
-                    border: '1px solid rgba(234, 179, 8, 0.4)',
-                    color: '#fde68a',
-                    fontSize: '0.76rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  <Sparkles size={13} />
-                  <span>View Graded Dossier</span>
-                </button>
-              )}
-            </div>
-          )}
-
-          {session.role === 'First-Timer / New User' && !isPendingApproval && (
-            <div style={{
-              margin: '0 0 20px 0',
-              padding: '14px 20px',
-              borderRadius: '12px',
-              background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.12), rgba(16, 185, 129, 0.1))',
-              border: '1px solid rgba(251, 191, 36, 0.35)',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '16px'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '10px',
-                  background: 'rgba(251, 191, 36, 0.2)',
-                  border: '1px solid rgba(251, 191, 36, 0.4)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#fbbf24',
-                  flexShrink: 0
-                }}>
-                  <Sparkles size={18} />
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#fde68a' }}>
-                    First-Timer Onboarding Mode: Guided Services Active
-                  </div>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                    You have guided access to <strong>Documents & OCR</strong> (upload required compliance files), <strong>AI Readiness</strong>, and <strong>Governance & Ethics</strong>. Access to select an Active Role Profile is restricted during onboarding; Super Admin audits uploaded documents, auto-generates governance & readiness ratings, and decides project registration.
-                  </div>
-                </div>
-              </div>
-
-              <div style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 16px',
-                borderRadius: '8px',
-                background: 'rgba(251, 191, 36, 0.1)',
-                border: '1px solid rgba(251, 191, 36, 0.35)',
-                color: '#fde68a',
-                fontSize: '0.78rem',
-                fontWeight: 700,
-                whiteSpace: 'nowrap'
-              }}>
-                <Lock size={14} className="text-amber-400" />
               </div>
             </div>
           )}

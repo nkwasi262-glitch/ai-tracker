@@ -17,7 +17,6 @@ import {
   Layers,
   ShieldAlert,
   X,
-  FolderOpen,
   MessageSquare,
   BookOpen,
   Download,
@@ -50,6 +49,7 @@ import {
   onRealFilesHydrated
 } from '../services/assessmentEngine';
 import { DocumentReviewGradeModal } from './DocumentReviewGradeModal';
+import { simulateIncomingClearanceDossier } from '../services/technicalClearanceService';
 
 interface DocumentManagerProps {
   projects: AIProject[];
@@ -92,7 +92,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
   onClearInitialTarget
 }) => {
   // Role permissions checks
-  const isFirstTimer = session?.role === 'First-Timer / New User' || currentRole === 'First-Timer / New User' || !!session?.isFirstTimer || session?.memberType === 'new_member';
+  const isFirstTimer = (session?.role as string) === 'First-Timer / New User' || (currentRole as string) === 'First-Timer / New User' || !!session?.isFirstTimer || session?.memberType === 'new_member';
   const firstTimerMdaProjectId = isFirstTimer && session?.institution
     ? getFirstTimerMdaProjectId(session.institution)
     : '';
@@ -127,9 +127,9 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
     )
   );
   const isSuperAdmin = session?.role === 'Super Admin' || currentRole === 'Super Admin';
-  const isTechClearanceTeam = session?.role === 'Technical Clearance Team' || currentRole === 'Technical Clearance Team';
+  const isTechClearanceTeam = (session?.role as string) === 'Technical Clearance Team' || (currentRole as string) === 'Technical Clearance Team';
   const isTechDirector = session?.role === 'Technical Director' || currentRole === 'Technical Director';
-  const isDirectorGeneral = session?.role === 'Director General' || currentRole === 'Director General';
+  const isDirectorGeneral = (session?.role as string) === 'Director General' || (currentRole as string) === 'Director General';
   const canAccessTechnicalClearanceGate = !isFirstTimer && (
     isTechDirector ||
     isTechClearanceTeam ||
@@ -139,13 +139,13 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
 
   // Statutory authority to review documents, grade modules, and pass comments on first-timer uploads
   const canReviewAndGrade = !isFirstTimer && (
-    session?.role === 'Director General' ||
+    (session?.role as string) === 'Director General' ||
     session?.role === 'Super Admin' ||
-    session?.role === 'Technical Clearance Team' ||
+    (session?.role as string) === 'Technical Clearance Team' ||
     session?.role === 'Technical Director' ||
-    currentRole === 'Director General' ||
+    (currentRole as string) === 'Director General' ||
     currentRole === 'Super Admin' ||
-    currentRole === 'Technical Clearance Team' ||
+    (currentRole as string) === 'Technical Clearance Team' ||
     currentRole === 'Technical Director'
   );
 
@@ -236,6 +236,43 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
   // Super Admin / Director General Registration Clearance states
   const [superAdminDirectiveNotes, setSuperAdminDirectiveNotes] = useState('');
   const [regFeedback, setRegFeedback] = useState<string | null>(null);
+
+  // Technical Clearance System Intake Path states & handler
+  const [isReceivingClearanceDoc, setIsReceivingClearanceDoc] = useState(false);
+  const [clearanceIntakeNotice, setClearanceIntakeNotice] = useState<string | null>(null);
+
+  const handleSimulateClearanceIntake = async () => {
+    setIsReceivingClearanceDoc(true);
+    setClearanceIntakeNotice(null);
+    try {
+      const res = await simulateIncomingClearanceDossier(projects, session);
+      if (res.success) {
+        onAddDocument(res.project.id, res.document);
+        if (onUpdateProjectAssessment && res.project.autoAssessment && res.project.zeroAssumptionAudit) {
+          onUpdateProjectAssessment(
+            res.project.id,
+            res.compliance,
+            res.readinessScore,
+            res.project.autoAssessment,
+            res.project.zeroAssumptionAudit
+          );
+        }
+        if (onUpdateProjectStatus) {
+          onUpdateProjectStatus(res.project.id, 'Recommended', res.project.technicalClearanceReview?.recommendationNotes);
+        }
+        setSelectedProjectId(res.project.id);
+        setSelectedOnboarderDocKey(`${res.project.id}::${res.document.id}`);
+        setClearanceIntakeNotice(`Dossier "${res.document.fileName}" received from Technical Clearance System! Auto-scanned & graded: Ethics [${res.compliance.overallGrade}], Readiness [${res.readinessScore}%]. Status set to Recommended, marked Pending Review.`);
+        // Open the document review modal so reviewer can immediately inspect verbatim OCR & grade:
+        setReviewingItem({ doc: res.document, project: res.project });
+      }
+    } catch (e: any) {
+      console.error('Error receiving clearance dossier:', e);
+      setClearanceIntakeNotice('Error connecting to Technical Clearance intake service.');
+    } finally {
+      setIsReceivingClearanceDoc(false);
+    }
+  };
 
   // Flattened master list of all uploaded documents across all projects
   const allUploadedDocuments = projects.flatMap(p => 
@@ -787,62 +824,118 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       
-      {/* Top Banner for First-Timer Onboarding */}
-      {isFirstTimer && (
+      {/* Ghana National Technical Clearance System: Always-Ready Inbound Path Banner */}
+      <div style={{
+        padding: '16px 20px',
+        borderRadius: '14px',
+        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(15, 23, 42, 0.95) 100%)',
+        border: '1px solid rgba(16, 185, 129, 0.4)',
+        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '16px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', maxWidth: '780px' }}>
+          <div style={{
+            width: '44px',
+            height: '44px',
+            borderRadius: '12px',
+            background: 'rgba(16, 185, 129, 0.2)',
+            border: '1px solid rgba(16, 185, 129, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#10b981',
+            flexShrink: 0
+          }}>
+            <ShieldCheck size={24} />
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '2px 8px',
+                borderRadius: '9999px',
+                background: 'rgba(16, 185, 129, 0.22)',
+                border: '1px solid rgba(16, 185, 129, 0.5)',
+                color: '#6ee7b7',
+                fontSize: '0.68rem',
+                fontWeight: 800,
+                letterSpacing: '0.04em'
+              }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', display: 'inline-block', boxShadow: '0 0 6px #10b981' }} />
+                TECHNICAL CLEARANCE INTAKE PATH: ALWAYS READY
+              </span>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                Endpoint: <code>/api/technical-clearance/documents</code>
+              </span>
+            </div>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#fff', margin: '4px 0 2px 0' }}>
+              Statutory Technical Clearance Document Ingestion & Standards Grading
+            </h3>
+            <p style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
+              Intake path is always ready to receive documents from the Technical Clearance System. Incoming submissions are automatically scanned and graded using the standards of <strong>Governance & Ethics</strong> and <strong>AI Readiness</strong>, set to <strong>Recommended</strong>, and kept ready for review.
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            type="button"
+            onClick={handleSimulateClearanceIntake}
+            disabled={isReceivingClearanceDoc}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '9px 18px',
+              borderRadius: '10px',
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              border: 'none',
+              color: '#fff',
+              fontSize: '0.78rem',
+              fontWeight: 800,
+              cursor: isReceivingClearanceDoc ? 'not-allowed' : 'pointer',
+              boxShadow: '0 4px 14px rgba(16, 185, 129, 0.35)',
+              opacity: isReceivingClearanceDoc ? 0.7 : 1,
+              transition: 'all 0.18s ease'
+            }}
+          >
+            <Download size={14} />
+            <span>{isReceivingClearanceDoc ? 'Scanning & Grading...' : 'Receive Inbound Clearance Dossier'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Ingestion Success Feedback */}
+      {clearanceIntakeNotice && (
         <div style={{
-          padding: '14px 20px',
-          borderRadius: '12px',
-          background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.12), rgba(16, 185, 129, 0.08))',
-          border: '1px solid rgba(251, 191, 36, 0.35)',
+          padding: '12px 18px',
+          borderRadius: '10px',
+          background: 'rgba(16, 185, 129, 0.15)',
+          border: '1px solid rgba(16, 185, 129, 0.45)',
+          color: '#a7f3d0',
+          fontSize: '0.82rem',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: '16px',
-          boxShadow: '0 4px 18px rgba(0, 0, 0, 0.2)'
+          gap: '12px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '10px',
-              background: 'rgba(251, 191, 36, 0.2)',
-              border: '1px solid rgba(251, 191, 36, 0.4)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#fbbf24',
-              flexShrink: 0
-            }}>
-              <FolderOpen size={20} />
-            </div>
-            <div>
-              <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fde68a' }}>
-                First-Timer Document Submission & Guided OCR
-              </div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                Upload your project proposal, model specifications, and Act 843 data protection certificates. 
-                The system automatically extracts OCR text and feeds it into the regulatory engine. 
-                Super Admin will inspect all uploaded files, auto-generate Governance & Ethics and AI Readiness ratings, and approve project registration.
-              </div>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <CheckCircle2 size={16} className="text-emerald-400" />
+            <span>{clearanceIntakeNotice}</span>
           </div>
-
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '6px 14px',
-            borderRadius: '8px',
-            background: 'rgba(251, 191, 36, 0.1)',
-            border: '1px solid rgba(251, 191, 36, 0.3)',
-            color: '#fde68a',
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            whiteSpace: 'nowrap'
-          }}>
-            <Lock size={13} className="text-amber-400" />
-            <span>Clearance & Role Selection Locked</span>
-          </div>
+          <button
+            type="button"
+            onClick={() => setClearanceIntakeNotice(null)}
+            style={{ background: 'none', border: 'none', color: '#a7f3d0', cursor: 'pointer', padding: 0 }}
+          >
+            <X size={14} />
+          </button>
         </div>
       )}
 
@@ -915,7 +1008,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
             }}
           >
             <BookOpen size={14} className="text-amber-400" />
-            <span>⚡ First-Timer / Onboarder Full Documents (Review & Grading: {firstTimerUploadsCount})</span>
+            <span>⚡ Technical Clearance Inbound Dossiers (Review & Grading: {firstTimerUploadsCount})</span>
           </button>
 
           <button
@@ -942,7 +1035,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
         </div>
       </div>
 
-      {/* VIEW MODE 0: FIRST-TIMER / ONBOARDER FULL DOCUMENTS REVIEW & GRADING STUDIO */}
+      {/* VIEW MODE 0: TECHNICAL CLEARANCE INBOUND DOSSIERS REVIEW & GRADING STUDIO */}
       {viewMode === 'onboarders' ? (
         <div className="glass-card" style={{
           display: 'flex',
@@ -964,13 +1057,13 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
             <div>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#fde68a', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 <BookOpen size={14} />
-                <span>First-Timer & Onboarder Full Document Access • Review & Module Grading Studio</span>
+                <span>Technical Clearance System Intake • Review & Standards Grading Studio</span>
               </div>
               <h2 style={{ fontSize: '1.18rem', fontWeight: 800, margin: '4px 0 0 0', color: '#fff' }}>
-                Full Documents Uploaded by First-Timers / Onboarders (Review & Grading Workspace)
+                Technical Clearance Submissions & Inbound Dossiers (Review & Grading Workspace)
               </h2>
               <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: '2px 0 0 0' }}>
-                Read the complete multi-page statutory submissions uploaded by First-Timers and Onboarders side-by-side while reviewing, commenting, and grading Governance & Ethics and AI Readiness.
+                Inspect complete statutory submissions from the Technical Clearance System side-by-side with full verbatim OCR text while reviewing, commenting, and grading Governance & Ethics and AI Readiness.
               </p>
             </div>
 

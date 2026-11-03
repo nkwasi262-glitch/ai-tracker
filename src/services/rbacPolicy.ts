@@ -113,8 +113,8 @@ export const MODULE_REGISTRY: Record<AppModuleId, ModuleDefinition> = {
   }
 };
 
-// Module access matrix by role
-const ROLE_MODULE_PERMISSIONS: Record<ActiveRole, AppModuleId[]> = {
+// Module access matrix by role (Active roles: Super Admin, Technical Director, Public User)
+const ROLE_MODULE_PERMISSIONS: Record<string, AppModuleId[]> = {
   'Super Admin': [
     'dashboard',
     'registry',
@@ -138,6 +138,21 @@ const ROLE_MODULE_PERMISSIONS: Record<ActiveRole, AppModuleId[]> = {
     'risk',
     'documents',
     'dg_queue',
+    'finance',
+    'reports',
+    'audit',
+    'chat'
+  ],
+  'Public User': [
+    'dashboard',
+    'gis',
+    'chat'
+  ],
+  // Legacy role definitions preserved for backward compatibility
+  'Director General': [
+    'dashboard',
+    'dg_queue',
+    'gis',
     'finance',
     'reports',
     'audit',
@@ -168,23 +183,9 @@ const ROLE_MODULE_PERMISSIONS: Record<ActiveRole, AppModuleId[]> = {
     'reports',
     'chat'
   ],
-  'Director General': [
-    'dashboard',
-    'dg_queue',
-    'gis',
-    'finance',
-    'reports',
-    'audit',
-    'chat'
-  ],
   'Finance Minister': [
     'dashboard',
     'finance',
-    'chat'
-  ],
-  'Public User': [
-    'dashboard',
-    'gis',
     'chat'
   ],
   'First-Timer / New User': [
@@ -195,7 +196,7 @@ const ROLE_MODULE_PERMISSIONS: Record<ActiveRole, AppModuleId[]> = {
 };
 
 // Specific action permissions
-const ROLE_ACTION_PERMISSIONS: Record<ActiveRole, Partial<Record<AppAction, boolean>>> = {
+const ROLE_ACTION_PERMISSIONS: Record<string, Partial<Record<AppAction, boolean>>> = {
   'Super Admin': {
     VIEW: true,
     CREATE: true,
@@ -208,7 +209,7 @@ const ROLE_ACTION_PERMISSIONS: Record<ActiveRole, Partial<Record<AppAction, bool
     COMMENT_INTERNAL_REPORT: true,
     SIGN_DOCUMENT: true,
     VIEW_AUDIT_LOG: true,
-    PURGE_AUDIT_LOG: false, // Tamper-evident: even super admin cannot purge immutable logs
+    PURGE_AUDIT_LOG: false,
     VERIFY_FINANCIAL_EXPENDITURE: true,
     REVIEW_AND_GRADE_DOCUMENT: true,
     COMMENT_ON_ONBOARDER_DOCUMENT: true
@@ -217,9 +218,40 @@ const ROLE_ACTION_PERMISSIONS: Record<ActiveRole, Partial<Record<AppAction, bool
     VIEW: true,
     CREATE: true,
     EDIT: true,
-    DELETE: false,
+    DELETE: true,
     RECOMMEND_TO_DG: true,
-    PASS_DG_VERDICT: false, // Only DG passes final verdict
+    PASS_DG_VERDICT: true,
+    EXPORT_FINANCIALS: true,
+    CREATE_INTERNAL_REPORT: true,
+    COMMENT_INTERNAL_REPORT: true,
+    SIGN_DOCUMENT: true,
+    VIEW_AUDIT_LOG: true,
+    PURGE_AUDIT_LOG: false,
+    REVIEW_AND_GRADE_DOCUMENT: true,
+    COMMENT_ON_ONBOARDER_DOCUMENT: true
+  },
+  'Public User': {
+    VIEW: true,
+    CREATE: false,
+    EDIT: false,
+    DELETE: false,
+    RECOMMEND_TO_DG: false,
+    PASS_DG_VERDICT: false,
+    EXPORT_FINANCIALS: false,
+    CREATE_INTERNAL_REPORT: false,
+    COMMENT_INTERNAL_REPORT: false,
+    SIGN_DOCUMENT: false,
+    VIEW_AUDIT_LOG: false,
+    PURGE_AUDIT_LOG: false
+  },
+  // Legacy role definitions
+  'Director General': {
+    VIEW: true,
+    CREATE: false,
+    EDIT: false,
+    DELETE: false,
+    RECOMMEND_TO_DG: false,
+    PASS_DG_VERDICT: true,
     EXPORT_FINANCIALS: true,
     CREATE_INTERNAL_REPORT: true,
     COMMENT_INTERNAL_REPORT: true,
@@ -261,22 +293,6 @@ const ROLE_ACTION_PERMISSIONS: Record<ActiveRole, Partial<Record<AppAction, bool
     REVIEW_AND_GRADE_DOCUMENT: false,
     COMMENT_ON_ONBOARDER_DOCUMENT: false
   },
-  'Director General': {
-    VIEW: true,
-    CREATE: false,
-    EDIT: false,
-    DELETE: false,
-    RECOMMEND_TO_DG: false,
-    PASS_DG_VERDICT: true, // Core DG responsibility
-    EXPORT_FINANCIALS: true,
-    CREATE_INTERNAL_REPORT: true,
-    COMMENT_INTERNAL_REPORT: true,
-    SIGN_DOCUMENT: true,
-    VIEW_AUDIT_LOG: true,
-    PURGE_AUDIT_LOG: false,
-    REVIEW_AND_GRADE_DOCUMENT: true,
-    COMMENT_ON_ONBOARDER_DOCUMENT: true
-  },
   'Finance Minister': {
     VIEW: true,
     CREATE: false,
@@ -284,7 +300,7 @@ const ROLE_ACTION_PERMISSIONS: Record<ActiveRole, Partial<Record<AppAction, bool
     DELETE: false,
     RECOMMEND_TO_DG: false,
     PASS_DG_VERDICT: false,
-    EXPORT_FINANCIALS: true, // Finance Minister export access
+    EXPORT_FINANCIALS: true,
     CREATE_INTERNAL_REPORT: false,
     COMMENT_INTERNAL_REPORT: false,
     SIGN_DOCUMENT: false,
@@ -292,23 +308,9 @@ const ROLE_ACTION_PERMISSIONS: Record<ActiveRole, Partial<Record<AppAction, bool
     PURGE_AUDIT_LOG: false,
     VERIFY_FINANCIAL_EXPENDITURE: true
   },
-  'Public User': {
-    VIEW: true,
-    CREATE: false,
-    EDIT: false,
-    DELETE: false,
-    RECOMMEND_TO_DG: false,
-    PASS_DG_VERDICT: false,
-    EXPORT_FINANCIALS: false,
-    CREATE_INTERNAL_REPORT: false,
-    COMMENT_INTERNAL_REPORT: false,
-    SIGN_DOCUMENT: false,
-    VIEW_AUDIT_LOG: false,
-    PURGE_AUDIT_LOG: false
-  },
   'First-Timer / New User': {
     VIEW: true,
-    CREATE: true, // Can upload required documents
+    CREATE: true,
     EDIT: false,
     DELETE: false,
     RECOMMEND_TO_DG: false,
@@ -326,7 +328,7 @@ const ROLE_ACTION_PERMISSIONS: Record<ActiveRole, Partial<Record<AppAction, bool
  * Checks whether an active role profile is authorized to access a specific module.
  * If a session is in 'pending_approval' onboarding status, access is strictly limited to dashboard, gis, and chat.
  */
-export function canAccessModule(role: ActiveRole, moduleId: AppModuleId, session?: { onboardingStatus?: string }): boolean {
+export function canAccessModule(role: ActiveRole | string, moduleId: AppModuleId, session?: { onboardingStatus?: string }): boolean {
   if (session?.onboardingStatus === 'pending_approval') {
     return ['dashboard', 'gis', 'chat'].includes(moduleId);
   }
@@ -337,7 +339,7 @@ export function canAccessModule(role: ActiveRole, moduleId: AppModuleId, session
 /**
  * Checks whether an active role profile is authorized to execute an action.
  */
-export function canPerformAction(role: ActiveRole, action: AppAction): boolean {
+export function canPerformAction(role: ActiveRole | string, action: AppAction): boolean {
   const roleActions = ROLE_ACTION_PERMISSIONS[role] || {};
   return !!roleActions[action];
 }
@@ -345,7 +347,7 @@ export function canPerformAction(role: ActiveRole, action: AppAction): boolean {
 /**
  * Returns the list of permitted module IDs for the provided role.
  */
-export function getPermittedModules(role: ActiveRole): AppModuleId[] {
+export function getPermittedModules(role: ActiveRole | string): AppModuleId[] {
   return ROLE_MODULE_PERMISSIONS[role] || [];
 }
 

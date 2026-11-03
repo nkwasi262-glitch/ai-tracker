@@ -5,7 +5,7 @@ import { AppModuleId, MODULE_REGISTRY } from '../services/rbacPolicy';
 import { recordAuditEvent } from '../services/auditService';
 
 interface AccessDeniedProps {
-  currentRole: ActiveRole;
+  currentRole: ActiveRole | string;
   attemptedModule: AppModuleId;
   userName: string;
   userEmail: string;

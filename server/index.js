@@ -556,6 +556,273 @@ app.post('/api/auth/session', async (req, res) => {
 });
 
 // ============================================================================
+// 6. TECHNICAL CLEARANCE SYSTEM ALWAYS-READY INTAKE PATH & AUTO-SCANNER
+// ============================================================================
+
+// Automated Standards Scoring Logic for Governance & Ethics and AI Readiness
+function evaluateDossierStandards(fullText = '', category = 'Technical Specs') {
+  const text = (fullText + ' ' + category).toLowerCase();
+
+  // Governance & Ethics Standard Indicators
+  const fairnessSignals = ['bias', 'fairness', 'demographic', 'gender', 'inclusiv', 'ussd', 'local language', 'twi', 'ga', 'ewe', 'accessibility'];
+  const transSignals = ['model card', 'transparency', 'explainab', 'audit trail', 'architecture', 'documentation', 'specification'];
+  const privacySignals = ['act 843', 'data protection commission', 'dpc', 'pii', 'anonymiz', 'encrypt', 'sha-256', 'tls 1.3', 'consent'];
+  const secSignals = ['owasp', 'security', 'vulnerability', 'hsm', 'rbac', 'firewall', 'national data centre', 'penetration'];
+  const accountSignals = ['steering committee', 'oversight', 'accountab', 'statutory', 'audit', 'director general', 'nita'];
+
+  const countSignals = (signals) => signals.reduce((acc, sig) => acc + (text.includes(sig) ? 1 : 0), 0);
+
+  const fCount = countSignals(fairnessSignals);
+  const tCount = countSignals(transSignals);
+  const pCount = countSignals(privacySignals);
+  const sCount = countSignals(secSignals);
+  const aCount = countSignals(accountSignals);
+
+  const fairness = Math.min(98, Math.max(70, 70 + fCount * 6));
+  const transparency = Math.min(98, Math.max(72, 72 + tCount * 6));
+  const privacy = Math.min(98, Math.max(75, 75 + pCount * 6));
+  const security = Math.min(98, Math.max(74, 74 + sCount * 6));
+  const accountability = Math.min(98, Math.max(72, 72 + aCount * 6));
+
+  const ethicsAverage = Math.round((fairness + transparency + privacy + security + accountability) / 5);
+  const overallGrade = ethicsAverage >= 85 ? 'Low Risk' : ethicsAverage >= 70 ? 'Moderate Risk' : 'High Risk';
+
+  // AI Readiness Standard Indicators
+  const infraSignals = ['compute', 'cloud', 'edge', 'tensorflow', 'gpu', 'data centre', 'low-bandwidth', 'offline'];
+  const dataSignals = ['data governance', 'lineage', 'catalogue', 'curation', 'provenance', 'validation', 'dataset'];
+  const staffSignals = ['ai engineer', 'data scientist', 'competency', 'technical staff', 'training', 'capacity'];
+  const policySignals = ['institutional charter', 'policy', 'strategy', 'leadership', 'compliance', 'framework'];
+
+  const infraScore = Math.min(96, Math.max(68, 68 + countSignals(infraSignals) * 7));
+  const dataGovScore = Math.min(96, Math.max(70, 70 + countSignals(dataSignals) * 7));
+  const staffScore = Math.min(96, Math.max(72, 72 + countSignals(staffSignals) * 7));
+  const policyScore = Math.min(96, Math.max(70, 70 + countSignals(policySignals) * 7));
+
+  const readinessScore = Math.round((infraScore + dataGovScore + staffScore + policyScore) / 4);
+
+  return {
+    compliance: {
+      fairness,
+      transparency,
+      accountability,
+      privacy,
+      security,
+      overallGrade
+    },
+    readinessScore,
+    readinessPillars: {
+      infrastructure: infraScore,
+      dataGovernance: dataGovScore,
+      technicalStaff: staffScore,
+      policyLeadership: policyScore
+    },
+    scannedAt: new Date().toISOString()
+  };
+}
+
+// GET /api/technical-clearance/status — Always-ready health check
+app.get('/api/technical-clearance/status', (req, res) => {
+  res.json({
+    status: 'ACTIVE_LISTENING',
+    ready: true,
+    intakePath: '/api/technical-clearance/documents',
+    protocol: 'Ghana National Technical Clearance Statutory Interconnect v2.0',
+    statutoryStandards: [
+      'Ghana AI Governance & Ethics (Act 843, Inclusivity & Transparency)',
+      'Ghana AI Readiness (Infrastructure, Data Governance, Staffing, Policy)'
+    ],
+    timestamp: new Date().toISOString()
+  });
+});
+
+// POST /api/technical-clearance/documents (or /api/technical-clearance/receive)
+// Intake endpoint: receives incoming documents, automatically scans & grades them, marks project Recommended, and keeps document Pending Review.
+const handleIncomingClearanceDocument = async (req, res) => {
+  const payload = req.body;
+  if (!payload || !payload.document) {
+    return res.status(400).json({ error: 'Missing document payload from Technical Clearance System' });
+  }
+
+  const doc = payload.document;
+  const docId = doc.id || `doc-tc-${Date.now()}`;
+  const projectId = payload.projectId || payload.projectCode || 'proj-1';
+  const mda = payload.mda || doc.uploadedByMda || 'Government of Ghana';
+
+  // 1. Automatically scan and grade according to Governance & Ethics and AI Readiness standards
+  const evaluation = evaluateDossierStandards(
+    (doc.fullDocumentText || doc.text || '') + ' ' + (doc.extractedOcrText || ''),
+    doc.documentCategory || 'Technical Clearance Submission'
+  );
+
+  const documentRecord = {
+    id: docId,
+    projectId: projectId,
+    fileName: doc.fileName || 'Statutory-Technical-Clearance-Dossier.pdf',
+    fileType: doc.fileType || 'PDF',
+    fileSize: doc.fileSize || '3.8 MB',
+    pageCount: doc.pageCount || 8,
+    uploadedAt: new Date().toISOString().split('T')[0],
+    uploadedByRole: 'Technical Clearance System',
+    uploadedByName: payload.submittedByName || 'National Technical Clearance Ingestion Service',
+    uploadedByEmail: payload.submittedByEmail || 'clearance@nita.gov.gh',
+    uploadedByMda: mda,
+    documentCategory: doc.documentCategory || 'Technical Specs',
+    fullDocumentText: doc.fullDocumentText || doc.text || 'Comprehensive Technical Clearance Submission Dossier received via statutory gateway.',
+    fileDataUrl: doc.fileDataUrl || null,
+    // Document remains reviewable by statutory reviewers:
+    reviewStatus: 'Pending Review',
+    signedBy: ['Technical Clearance Gateway'],
+    isFirstTimerUpload: false,
+    autoGraded: true,
+    standardsEvaluation: evaluation,
+    reviewerComments: []
+  };
+
+  const sql = getDb();
+  if (sql && isDbConfigured()) {
+    try {
+      // Register document in documents table
+      await sql`
+        INSERT INTO documents (
+          id, project_id, file_name, file_type, uploaded_at, version, signed_by,
+          uploaded_by_role, uploaded_by_name, uploaded_by_email, uploaded_by_mda,
+          is_first_timer_upload, review_status, file_size, page_count,
+          document_category, full_document_text, file_data_url, reviewer_comments
+        ) VALUES (
+          ${documentRecord.id}, ${projectId}, ${documentRecord.fileName}, ${documentRecord.fileType},
+          ${documentRecord.uploadedAt}, 1, ${JSON.stringify(documentRecord.signedBy)},
+          ${documentRecord.uploadedByRole}, ${documentRecord.uploadedByName}, ${documentRecord.uploadedByEmail},
+          ${documentRecord.uploadedByMda}, false, 'Pending Review', ${documentRecord.fileSize},
+          ${documentRecord.pageCount}, ${documentRecord.documentCategory}, ${documentRecord.fullDocumentText},
+          ${documentRecord.fileDataUrl}, '[]'::jsonb
+        )
+        ON CONFLICT (id) DO UPDATE SET
+          full_document_text = EXCLUDED.full_document_text,
+          updated_at = NOW();
+      `;
+
+      // Update project: mark status Recommended, update compliance & readiness score, append document
+      const proj = await sql`SELECT * FROM projects WHERE id = ${projectId} OR project_code = ${projectId};`;
+      if (proj.length > 0) {
+        const curProj = proj[0];
+        const existingDocs = curProj.documents || [];
+        const updatedDocs = [documentRecord, ...existingDocs.filter(d => d.id !== documentRecord.id)];
+
+        await sql`
+          UPDATE projects SET
+            review_status = 'Recommended',
+            compliance = ${JSON.stringify(evaluation.compliance)}::jsonb,
+            readiness_score = ${evaluation.readinessScore},
+            auto_assessment = ${JSON.stringify({
+              generatedAt: evaluation.scannedAt,
+              generatedBy: 'National Technical Clearance Ingestion Engine',
+              documentCount: updatedDocs.length,
+              documentsAnalyzed: [documentRecord.fileName],
+              readinessPillars: evaluation.readinessPillars,
+              ethicsSummary: `Auto-graded via Technical Clearance intake. Overall Ethics Grade: ${evaluation.compliance.overallGrade}.`,
+              readinessSummary: `Auto-graded via Technical Clearance intake. Institutional Readiness: ${evaluation.readinessScore}%.`
+            })}::jsonb,
+            documents = ${JSON.stringify(updatedDocs)}::jsonb,
+            updated_at = NOW()
+          WHERE id = ${curProj.id};
+        `;
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: 'Technical clearance document received, scanned & graded successfully. Project set to Recommended, document ready for review.',
+        document: documentRecord,
+        evaluation
+      });
+    } catch (err) {
+      console.error('[API] Error ingesting technical clearance document:', err.message);
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // Memory fallback response
+  return res.json({
+    success: true,
+    message: 'Technical clearance document received in memory fallback. Auto-scanned & graded.',
+    document: documentRecord,
+    evaluation
+  });
+};
+
+app.post('/api/technical-clearance/documents', handleIncomingClearanceDocument);
+app.post('/api/technical-clearance/receive', handleIncomingClearanceDocument);
+
+// POST /api/technical-clearance/simulate-incoming — Interactive trigger to simulate receipt of an inbound clearance dossier
+app.post('/api/technical-clearance/simulate-incoming', async (req, res) => {
+  const simulatedDossiers = [
+    {
+      projectId: 'proj-1',
+      projectCode: 'GN-AI-2026-001',
+      mda: 'Ministry of Communications and Digitalisation (MoCD)',
+      submittedByName: 'Dr. Joseph Kwakye (Technical Clearance Secretariat)',
+      submittedByEmail: 'clearance.eval@nita.gov.gh',
+      document: {
+        id: `doc-tc-mocd-${Date.now()}`,
+        fileName: 'GhanaPostGPS_AI_Clearance_Statutory_Dossier_2026.pdf',
+        fileType: 'PDF',
+        fileSize: '4.2 MB',
+        pageCount: 12,
+        documentCategory: 'Technical Specs',
+        fullDocumentText: `REPUBLIC OF GHANA • TECHNICAL CLEARANCE SECRETARIAT (NITA ACT 771)
+PROJECT: GhanaPostGPS National Addressing AI System (GN-AI-2026-001)
+MDA: Ministry of Communications and Digitalisation (MoCD)
+
+1. STATUTORY GOVERNANCE & ETHICS COMPLIANCE:
+- Ghana Data Protection Act, 2012 (Act 843): Data Protection Commission (DPC) Registration active. Certified Data Protection Officer appointed. Personal Identifiable Information (PII) encrypted at ingestion via SHA-256 and stored exclusively within the National Data Centre in Accra.
+- Fairness & Inclusivity Standards: Model calibrated across all 16 administrative regions (Greater Accra, Ashanti, Northern, Western North, Bono East, Upper West, Volta, etc.). Offline fallback channels implemented via USSD (*920#) and multilingual voice routing in English, Twi, Ga, and Ewe to prevent socio-economic exclusion.
+- Security & Resilience: Zero external cross-border data transfer. Hardware Security Modules (HSM) deployed. Penetration testing completed and OWASP Top 10 vulnerabilities cleared.
+
+2. AI READINESS & INFRASTRUCTURE EVALUATION:
+- Infrastructure: Hybrid cloud topology linked to Accra Tier-3 Datacenter with edge TPU acceleration.
+- Data Governance: Formal data catalog, lineage tracking, and automated validation rules active.
+- Human Capital: Steering Committee chaired by Chief Director, supported by 6 AI Engineers and 4 Data Stewards.
+- Policy Alignment: 100% aligned with Ghana National Artificial Intelligence Strategy 2026-2030.
+
+STATUS: Recommended to National AI Projects Monitoring System for statutory review and final Director General clearance.`
+      }
+    },
+    {
+      projectId: 'proj-2',
+      projectCode: 'GN-AI-2026-002',
+      mda: 'National Identification Authority (NIA)',
+      submittedByName: 'Eng. Elizabeth Ansah (NIA AI Systems Director)',
+      submittedByEmail: 'e.ansah@nia.gov.gh',
+      document: {
+        id: `doc-tc-nia-${Date.now()}`,
+        fileName: 'NIA_AFIS_Technical_Clearance_Audit_Charter.pdf',
+        fileType: 'PDF',
+        fileSize: '5.1 MB',
+        pageCount: 15,
+        documentCategory: 'Technical Specs',
+        fullDocumentText: `REPUBLIC OF GHANA • NATIONAL IDENTIFICATION AUTHORITY (NIA)
+TECHNICAL CLEARANCE SUBMISSION: National AFIS Biometric Identity Verification (GN-AI-2026-002)
+
+1. GOVERNANCE & ETHICAL AUDIT:
+- Biometric neural network accuracy validated at 99.85% demographic parity across age and gender brackets.
+- Zero commercial third-party data broker monetization. Full Act 843 statutory adherence.
+- End-to-end TLS 1.3 cryptographic transport and HSM ephemeral hash verification.
+
+2. AI READINESS:
+- High performance compute clusters situated inside primary data facilities.
+- Multi-tier backup and disaster recovery protocols in place.
+- Dedicated technical review panel monitoring false rejection and acceptance rates.
+
+RECOMMENDATION: Transmitted to GNAPRMS as Recommended for statutory technical review.`
+      }
+    }
+  ];
+
+  const chosen = simulatedDossiers[Math.floor(Math.random() * simulatedDossiers.length)];
+  req.body = chosen;
+  return handleIncomingClearanceDocument(req, res);
+});
+
+// ============================================================================
 // SERVER INITIALIZATION
 // ============================================================================
 app.listen(PORT, async () => {
