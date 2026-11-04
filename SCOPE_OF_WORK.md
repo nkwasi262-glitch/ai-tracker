@@ -144,3 +144,4 @@ To eliminate confusion and ensure strict operational clarity, access to GNAPRMS 
 
 ---
 *Republic of Ghana • National Information Technology Agency (NITA) • All Rights Reserved (2026)*
+
