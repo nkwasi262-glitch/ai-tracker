@@ -18,7 +18,8 @@ import {
   ArrowRight,
   FileText,
   FileCheck2,
-  Eye
+  Eye,
+  Lock
 } from 'lucide-react';
 import { AIProject, formatNumberToWords } from '../data/sampleProjects';
 import { UserRole } from './RoleSwitcher';
@@ -211,6 +212,58 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
 
   return (
     <div>
+      {/* Public User View-Only Substance Banner */}
+      {currentRole === 'Public User' && (
+        <div style={{
+          marginBottom: '20px',
+          padding: '14px 20px',
+          borderRadius: '12px',
+          background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(14, 165, 233, 0.08))',
+          border: '1px solid rgba(16, 185, 129, 0.35)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '14px',
+          flexWrap: 'wrap'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: '8px',
+              background: 'rgba(16, 185, 129, 0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#10b981',
+              flexShrink: 0
+            }}>
+              <ShieldCheck size={20} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#a7f3d0' }}>
+                PUBLIC TRANSPARENCY PORTAL (SUBSTANCE VIEW-ONLY MODE)
+              </div>
+              <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>
+                Viewing verified national AI analytics, portfolio statistics, and monitoring distributions under Act 771. Internal document inspection, technical clearance reviews, and administrative configurations are restricted.
+              </div>
+            </div>
+          </div>
+          <span style={{
+            fontSize: '0.72rem',
+            padding: '4px 10px',
+            borderRadius: '9999px',
+            background: 'rgba(16, 185, 129, 0.15)',
+            border: '1px solid rgba(16, 185, 129, 0.3)',
+            color: '#a7f3d0',
+            fontWeight: 700,
+            whiteSpace: 'nowrap'
+          }}>
+            READ-ONLY SUBSTANCE
+          </span>
+        </div>
+      )}
+
       {/* Sector filter bar */}
       <div style={{
         display: 'flex',
@@ -468,7 +521,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
             </p>
           </div>
 
-          {onNavigate && (
+          {currentRole !== 'Public User' && onNavigate && (
             <button
               onClick={() => onNavigate('documents')}
               className="btn btn-primary"
@@ -718,42 +771,59 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
                             <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
                               Uploaded: {doc.uploadedAt}
                             </span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (onNavigateToReview) {
-                                  onNavigateToReview(proj.id, doc.id);
-                                } else if (onNavigate) {
-                                  onNavigate('documents');
-                                }
-                              }}
-                              style={{
+                            {currentRole === 'Public User' ? (
+                              <span style={{
+                                fontSize: '0.66rem',
+                                color: '#94a3b8',
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: '4px',
-                                padding: '4px 9px',
-                                borderRadius: '5px',
-                                background: 'rgba(16, 185, 129, 0.15)',
-                                border: '1px solid rgba(16, 185, 129, 0.4)',
-                                color: '#a7f3d0',
-                                fontSize: '0.68rem',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                transition: 'all 0.15s ease'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'rgba(16, 185, 129, 0.3)';
-                                e.currentTarget.style.color = '#fff';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'rgba(16, 185, 129, 0.15)';
-                                e.currentTarget.style.color = '#a7f3d0';
-                              }}
-                            >
-                              <Eye size={12} />
-                              <span>Review Document</span>
-                              <ArrowRight size={11} />
-                            </button>
+                                padding: '3px 8px',
+                                borderRadius: '4px',
+                                background: 'rgba(255, 255, 255, 0.04)',
+                                border: '1px solid rgba(255, 255, 255, 0.08)'
+                              }}>
+                                <Lock size={10} />
+                                <span>View-Only (Act 771)</span>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (onNavigateToReview) {
+                                    onNavigateToReview(proj.id, doc.id);
+                                  } else if (onNavigate) {
+                                    onNavigate('documents');
+                                  }
+                                }}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  padding: '4px 9px',
+                                  borderRadius: '5px',
+                                  background: 'rgba(16, 185, 129, 0.15)',
+                                  border: '1px solid rgba(16, 185, 129, 0.4)',
+                                  color: '#a7f3d0',
+                                  fontSize: '0.68rem',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background = 'rgba(16, 185, 129, 0.3)';
+                                  e.currentTarget.style.color = '#fff';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = 'rgba(16, 185, 129, 0.15)';
+                                  e.currentTarget.style.color = '#a7f3d0';
+                                }}
+                              >
+                                <Eye size={12} />
+                                <span>Review Document</span>
+                                <ArrowRight size={11} />
+                              </button>
+                            )}
                           </div>
                         </div>
                       );
@@ -816,7 +886,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
             </div>
           </div>
 
-          {onNavigate && (
+          {currentRole !== 'Public User' && onNavigate && (
             <button
               onClick={() => onNavigate('documents')}
               className="btn btn-primary"
@@ -1085,26 +1155,42 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
                   <div>
                     Last Monitored: <strong style={{ color: '#e2e8f0' }}>{project.technicalReview?.reviewedAt ? new Date(project.technicalReview.reviewedAt).toLocaleDateString() : 'Active'}</strong>
                   </div>
-                  {onNavigateToReview && (
-                    <button
-                      type="button"
-                      onClick={() => onNavigateToReview(project.id)}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '5px',
-                        padding: '4px 10px',
-                        borderRadius: '6px',
-                        background: 'rgba(56, 189, 248, 0.14)',
-                        border: '1px solid rgba(56, 189, 248, 0.35)',
-                        color: '#7dd3fc',
-                        fontSize: '0.7rem',
-                        fontWeight: 700,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <FileText size={12} /> Inspect Inbound Dossiers ({project.documents?.length || 0})
-                    </button>
+                  {currentRole === 'Public User' ? (
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '3px 8px',
+                      borderRadius: '5px',
+                      background: 'rgba(255, 255, 255, 0.04)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      color: '#94a3b8',
+                      fontSize: '0.68rem'
+                    }}>
+                      <Lock size={10} /> Inbound Dossiers ({project.documents?.length || 0}) • Protected (Act 771)
+                    </span>
+                  ) : (
+                    onNavigateToReview && (
+                      <button
+                        type="button"
+                        onClick={() => onNavigateToReview(project.id)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          padding: '4px 10px',
+                          borderRadius: '6px',
+                          background: 'rgba(56, 189, 248, 0.14)',
+                          border: '1px solid rgba(56, 189, 248, 0.35)',
+                          color: '#7dd3fc',
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <FileText size={12} /> Inspect Inbound Dossiers ({project.documents?.length || 0})
+                      </button>
+                    )
                   )}
                 </div>
               </div>

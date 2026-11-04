@@ -115,6 +115,23 @@ export const Layout: React.FC<LayoutProps> = ({
                     <span>Lock</span>
                   </span>
                 )}
+                {session.role === 'Public User' && (
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '3px',
+                    fontSize: '0.62rem',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    background: 'rgba(16, 185, 129, 0.12)',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    color: '#a7f3d0',
+                    fontWeight: 700
+                  }}>
+                    <Lock size={9} />
+                    <span>View Only</span>
+                  </span>
+                )}
               </div>
             );
           })}

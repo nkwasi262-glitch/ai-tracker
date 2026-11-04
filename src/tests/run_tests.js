@@ -251,6 +251,16 @@ test('Director General and unprivileged roles CANNOT fabricate financial verific
   assert(!canPerformAction('Public User', 'VERIFY_FINANCIAL_EXPENDITURE'), 'Public User cannot verify financial expenditure');
 });
 
+test('Public User can only see substance in dashboard, gis, and chat (view-only substance, cannot execute or access internal actions)', () => {
+  // Action permissions check
+  assert(!canPerformAction('Public User', 'REVIEW_AND_GRADE_DOCUMENT'), 'Public User cannot review documents');
+  assert(!canPerformAction('Public User', 'CREATE'), 'Public User cannot create projects or queries');
+  assert(!canPerformAction('Public User', 'EDIT'), 'Public User cannot edit projects');
+  assert(!canPerformAction('Public User', 'DELETE'), 'Public User cannot delete projects');
+  assert(!canPerformAction('Public User', 'EXPORT_FINANCIALS'), 'Public User cannot export financials');
+  assert(!canPerformAction('Public User', 'VERIFY_FINANCIAL_EXPENDITURE'), 'Public User cannot verify financials');
+});
+
 test('Project intake forbids assumed disbursements (disbursed must initialize to 0 without warrant)', () => {
   const newIntakeProject = {
     budget: {

@@ -499,7 +499,7 @@ function App() {
           />
         );
       case 'gis':
-        return <GISGeospatial projects={projects} />;
+        return <GISGeospatial projects={projects} currentRole={session.role as any} />;
       case 'governance':
         return (
           <GovernanceCompliance 
@@ -566,7 +566,7 @@ function App() {
           />
         );
       case 'chat':
-        return <AIChatAssistant projects={projects} />;
+        return <AIChatAssistant projects={projects} currentRole={session.role as any} />;
       default:
         return <Dashboard projects={projects} currentRole={session.role as any} />;
     }

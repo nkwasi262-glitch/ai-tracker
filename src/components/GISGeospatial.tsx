@@ -15,7 +15,8 @@ import {
   Compass,
   Radio,
   Sliders,
-  ChevronRight
+  ChevronRight,
+  Lock
 } from 'lucide-react';
 import { AIProject, ghanaRegions, formatNumberToWords } from '../data/sampleProjects';
 import { 
@@ -35,12 +36,13 @@ import {
 
 interface GISGeospatialProps {
   projects: AIProject[];
+  currentRole?: string;
 }
 
 type TileLayerType = 'dark' | 'satellite' | 'streets';
 type PanelTab = 'telemetry' | 'apiConsole' | 'inspector';
 
-export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
+export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects, currentRole }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const tileLayerRef = useRef<any>(null);
@@ -529,6 +531,58 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
 
   return (
     <div>
+      {/* Public Geospatial Substance Banner */}
+      {currentRole === 'Public User' && (
+        <div style={{
+          marginBottom: '20px',
+          padding: '14px 20px',
+          borderRadius: '12px',
+          background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(14, 165, 233, 0.08))',
+          border: '1px solid rgba(16, 185, 129, 0.35)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '14px',
+          flexWrap: 'wrap'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: '8px',
+              background: 'rgba(16, 185, 129, 0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#10b981',
+              flexShrink: 0
+            }}>
+              <ShieldCheck size={20} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#a7f3d0' }}>
+                PUBLIC GEOSPATIAL TRANSPARENCY (SUBSTANCE VIEW-ONLY MODE)
+              </div>
+              <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>
+                Public citizens can view the geographical substance and regional deployment maps of cleared AI projects. Direct spatial API execution, sensor telemetry overrides, and raw GeoJSON exports are restricted under Act 771.
+              </div>
+            </div>
+          </div>
+          <span style={{
+            fontSize: '0.72rem',
+            padding: '4px 10px',
+            borderRadius: '9999px',
+            background: 'rgba(16, 185, 129, 0.15)',
+            border: '1px solid rgba(16, 185, 129, 0.3)',
+            color: '#a7f3d0',
+            fontWeight: 700,
+            whiteSpace: 'nowrap'
+          }}>
+            READ-ONLY SUBSTANCE
+          </span>
+        </div>
+      )}
+
       {/* Top Banner / API Status Header */}
       <div style={{
         display: 'flex',
@@ -571,14 +625,16 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
               <Activity className="w-3.5 h-3.5" />
               <span>Telemetry Registry</span>
             </button>
-            <button
-              onClick={() => setActivePanelTab('apiConsole')}
-              className={`gis-layer-btn ${activePanelTab === 'apiConsole' ? 'active' : ''}`}
-              style={{ border: 'none', padding: '6px 12px' }}
-            >
-              <Terminal className="w-3.5 h-3.5" />
-              <span>Spatial API Console</span>
-            </button>
+            {currentRole !== 'Public User' && (
+              <button
+                onClick={() => setActivePanelTab('apiConsole')}
+                className={`gis-layer-btn ${activePanelTab === 'apiConsole' ? 'active' : ''}`}
+                style={{ border: 'none', padding: '6px 12px' }}
+              >
+                <Terminal className="w-3.5 h-3.5" />
+                <span>Spatial API Console</span>
+              </button>
+            )}
             {selectedProject || selectedSensor ? (
               <button
                 onClick={() => setActivePanelTab('inspector')}
@@ -591,36 +647,53 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
             ) : null}
           </div>
 
-          {/* Export Dropdown Buttons */}
-          <div style={{ display: 'flex', gap: '6px' }}>
-            <button
-              onClick={() => handleExport('geojson')}
-              className="btn btn-secondary"
-              style={{ padding: '6px 12px', fontSize: '0.76rem', display: 'flex', alignItems: 'center', gap: '6px' }}
-              title="Export as RFC 7946 GeoJSON FeatureCollection"
-            >
-              <Download className="w-3.5 h-3.5 text-emerald-400" />
-              <span>GeoJSON</span>
-            </button>
-            <button
-              onClick={() => handleExport('csv')}
-              className="btn btn-secondary"
-              style={{ padding: '6px 12px', fontSize: '0.76rem', display: 'flex', alignItems: 'center', gap: '6px' }}
-              title="Export coordinates to CSV"
-            >
-              <Download className="w-3.5 h-3.5 text-blue-400" />
-              <span>CSV</span>
-            </button>
-            <button
-              onClick={() => handleExport('kml')}
-              className="btn btn-secondary"
-              style={{ padding: '6px 12px', fontSize: '0.76rem', display: 'flex', alignItems: 'center', gap: '6px' }}
-              title="Export KML for Google Earth / GIS"
-            >
-              <Download className="w-3.5 h-3.5 text-amber-400" />
-              <span>KML</span>
-            </button>
-          </div>
+          {/* Export Dropdown Buttons or Public Lock Notice */}
+          {currentRole === 'Public User' ? (
+            <span style={{
+              fontSize: '0.72rem',
+              color: '#94a3b8',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              background: 'rgba(255, 255, 255, 0.03)',
+              border: '1px solid rgba(255, 255, 255, 0.08)'
+            }}>
+              <Lock size={12} className="text-amber-400" />
+              <span>Raw Export: Institutional Only</span>
+            </span>
+          ) : (
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button
+                onClick={() => handleExport('geojson')}
+                className="btn btn-secondary"
+                style={{ padding: '6px 12px', fontSize: '0.76rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                title="Export as RFC 7946 GeoJSON FeatureCollection"
+              >
+                <Download className="w-3.5 h-3.5 text-emerald-400" />
+                <span>GeoJSON</span>
+              </button>
+              <button
+                onClick={() => handleExport('csv')}
+                className="btn btn-secondary"
+                style={{ padding: '6px 12px', fontSize: '0.76rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                title="Export coordinates to CSV"
+              >
+                <Download className="w-3.5 h-3.5 text-blue-400" />
+                <span>CSV</span>
+              </button>
+              <button
+                onClick={() => handleExport('kml')}
+                className="btn btn-secondary"
+                style={{ padding: '6px 12px', fontSize: '0.76rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                title="Export KML for Google Earth / GIS"
+              >
+                <Download className="w-3.5 h-3.5 text-amber-400" />
+                <span>KML</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1034,7 +1107,17 @@ export const GISGeospatial: React.FC<GISGeospatialProps> = ({ projects }) => {
           )}
 
           {/* TAB 2: Interactive GIS Spatial API Console */}
-          {activePanelTab === 'apiConsole' && (
+          {activePanelTab === 'apiConsole' && currentRole === 'Public User' && (
+            <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>
+              <Lock size={32} style={{ margin: '0 auto 12px auto', color: '#fbbf24' }} />
+              <h4 style={{ color: '#fff', fontSize: '1rem', marginBottom: '6px' }}>Spatial API Console Restricted</h4>
+              <p style={{ fontSize: '0.78rem', maxWidth: '400px', margin: '0 auto' }}>
+                Direct execution of PostGIS endpoints and raw GeoJSON queries is restricted to Super Admin and Technical Directorate officers under NITA Act (Act 771).
+              </p>
+            </div>
+          )}
+
+          {activePanelTab === 'apiConsole' && currentRole !== 'Public User' && (
             <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
               <div style={{ marginBottom: '14px' }}>
                 <h3 style={{ fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>

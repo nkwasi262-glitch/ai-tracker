@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, MessageSquareCode } from 'lucide-react';
+import { Send, MessageSquareCode, Lock, ShieldCheck } from 'lucide-react';
 import { AIProject, formatNumberToWords } from '../data/sampleProjects';
 
 interface AIChatAssistantProps {
   projects: AIProject[];
+  currentRole?: string;
 }
 
 interface Message {
@@ -206,7 +207,7 @@ const renderMarkdown = (text: string) => {
   return <>{elements}</>;
 };
 
-export const AIChatAssistant: React.FC<AIChatAssistantProps> = ({ projects }) => {
+export const AIChatAssistant: React.FC<AIChatAssistantProps> = ({ projects, currentRole }) => {
   const [messages, setMessages] = useState<Message[]>([
     { sender: 'assistant', text: 'Welcome to the National AI Governance Assistant! 🇬🇭 I can answer inquiries regarding Ghana\'s Cybersecurity Act 2020 (Act 1038), Data Protection Act 2012 (Act 843), or pull real-time budget, compliance, and risk metrics for all registered projects.' }
   ]);
@@ -720,6 +721,58 @@ Welcome! I am the National AI Governance Assistant. I can help you answer questi
 
   return (
     <div>
+      {/* Public Advisory Substance Banner */}
+      {currentRole === 'Public User' && (
+        <div style={{
+          marginBottom: '20px',
+          padding: '14px 20px',
+          borderRadius: '12px',
+          background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(14, 165, 233, 0.08))',
+          border: '1px solid rgba(16, 185, 129, 0.35)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '14px',
+          flexWrap: 'wrap'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: '8px',
+              background: 'rgba(16, 185, 129, 0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#10b981',
+              flexShrink: 0
+            }}>
+              <ShieldCheck size={20} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#a7f3d0' }}>
+                PUBLIC REGULATORY ADVISORY (SUBSTANCE VIEW-ONLY MODE)
+              </div>
+              <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>
+                You can review official statutory frameworks, AI policy briefings, and compliance standards below. Direct prompt querying and interactive model submissions are restricted under Act 771.
+              </div>
+            </div>
+          </div>
+          <span style={{
+            fontSize: '0.72rem',
+            padding: '4px 10px',
+            borderRadius: '9999px',
+            background: 'rgba(16, 185, 129, 0.15)',
+            border: '1px solid rgba(16, 185, 129, 0.3)',
+            color: '#a7f3d0',
+            fontWeight: 700,
+            whiteSpace: 'nowrap'
+          }}>
+            READ-ONLY SUBSTANCE
+          </span>
+        </div>
+      )}
+
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -757,22 +810,38 @@ Welcome! I am the National AI Governance Assistant. I can help you answer questi
           </div>
 
           {/* Typing area */}
-          <div className="chat-input-area">
+          <div className="chat-input-area" style={{ opacity: currentRole === 'Public User' ? 0.75 : 1 }}>
             <input
               type="text"
-              placeholder="Query acts or project codes..."
+              disabled={currentRole === 'Public User'}
+              placeholder={currentRole === 'Public User' 
+                ? "Public View Only — Interactive AI query access is restricted to institutional officers under Act 771." 
+                : "Query acts or project codes..."}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSend(inputValue)}
+              onKeyDown={(e) => currentRole !== 'Public User' && e.key === 'Enter' && handleSend(inputValue)}
               className="form-input"
-              style={{ flex: 1, borderRadius: '8px' }}
+              style={{
+                flex: 1,
+                borderRadius: '8px',
+                cursor: currentRole === 'Public User' ? 'not-allowed' : 'text',
+                background: currentRole === 'Public User' ? 'rgba(255, 255, 255, 0.02)' : undefined
+              }}
             />
             <button 
-              onClick={() => handleSend(inputValue)}
+              disabled={currentRole === 'Public User' || !inputValue.trim()}
+              onClick={() => currentRole !== 'Public User' && handleSend(inputValue)}
               className="btn btn-primary"
-              style={{ padding: '0 20px', borderRadius: '8px', height: '42px' }}
+              style={{
+                padding: '0 20px',
+                borderRadius: '8px',
+                height: '42px',
+                cursor: currentRole === 'Public User' ? 'not-allowed' : 'pointer',
+                opacity: currentRole === 'Public User' ? 0.6 : 1
+              }}
+              title={currentRole === 'Public User' ? "Interactive querying restricted to institutional officers" : "Send query"}
             >
-              <Send className="w-4 h-4" />
+              {currentRole === 'Public User' ? <Lock className="w-4 h-4 text-amber-400" /> : <Send className="w-4 h-4" />}
             </button>
           </div>
         </div>
@@ -781,18 +850,22 @@ Welcome! I am the National AI Governance Assistant. I can help you answer questi
         <div className="glass-card" style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <MessageSquareCode className="w-5 h-5 text-emerald-400" />
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>helper questions</h3>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>
+              {currentRole === 'Public User' ? 'Core Statutory Topics' : 'helper questions'}
+            </h3>
           </div>
           
           <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: 1.4 }}>
-            Click on any baseline helper query to immediately run policy and status checks.
+            {currentRole === 'Public User' 
+              ? 'Official topics covered in statutory national frameworks (read-only substance).' 
+              : 'Click on any baseline helper query to immediately run policy and status checks.'}
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {sampleQuestions.map((q, idx) => (
-              <button
+              <div
                 key={idx}
-                onClick={() => handleSend(q)}
+                onClick={() => currentRole !== 'Public User' && handleSend(q)}
                 style={{
                   padding: '12px 14px',
                   borderRadius: '8px',
@@ -802,21 +875,30 @@ Welcome! I am the National AI Governance Assistant. I can help you answer questi
                   fontSize: '0.8rem',
                   fontWeight: 500,
                   textAlign: 'left',
-                  cursor: 'pointer',
+                  cursor: currentRole === 'Public User' ? 'default' : 'pointer',
                   transition: 'all 0.2s ease',
-                  lineHeight: 1.4
+                  lineHeight: 1.4,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '8px'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = 'rgba(16,185,129,0.3)';
-                  e.currentTarget.style.color = '#fff';
+                  if (currentRole !== 'Public User') {
+                    e.currentTarget.style.borderColor = 'rgba(16,185,129,0.3)';
+                    e.currentTarget.style.color = '#fff';
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--border-color)';
-                  e.currentTarget.style.color = 'var(--text-secondary)';
+                  if (currentRole !== 'Public User') {
+                    e.currentTarget.style.borderColor = 'var(--border-color)';
+                    e.currentTarget.style.color = 'var(--text-secondary)';
+                  }
                 }}
               >
-                {q}
-              </button>
+                <span>{q}</span>
+                {currentRole === 'Public User' && <Lock size={12} className="text-amber-400 flex-shrink-0" />}
+              </div>
             ))}
           </div>
         </div>
