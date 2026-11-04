@@ -3,7 +3,6 @@ import {
   ShieldCheck, 
   Building2, 
   Mail, 
-  Calendar, 
   User, 
   AlertTriangle, 
   ArrowRight, 
@@ -41,8 +40,8 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [consentGiven, setConsentGiven] = useState(false);
+  const submissionDate = new Date().toISOString().split('T')[0];
 
   // Postgres DB State: Auto-detection of existing user type
   const [isCheckingDb, setIsCheckingDb] = useState(false);
@@ -153,13 +152,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
       return;
     }
 
-    // 5. Date validation
-    if (!date) {
-      setErrorMessage('Access date is mandatory.');
-      return;
-    }
-
-    // 6. Act 843 statutory consent
+    // 5. Act 843 statutory consent
     if (!consentGiven) {
       setErrorMessage('You must confirm statutory compliance under the Ghana Data Protection Act, 2012 (Act 843).');
       return;
@@ -194,7 +187,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
         institutionCategory: instCategory,
         role: assignedRole,
         email: cleanEmail,
-        submissionDate: date,
+        submissionDate,
         memberType: 'in_member',
         onboardingStatus: 'approved'
       });
@@ -216,7 +209,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
         institutionCategory: instCategory,
         role: assignedRole,
         email: cleanEmail,
-        submissionDate: date,
+        submissionDate,
         memberType: 'in_member',
         onboardingStatus: 'approved'
       });
@@ -656,40 +649,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
               </div>
             </div>
 
-            {/* 5. ACCESS DATE */}
-            <div style={{ gridColumn: 'span 2' }}>
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '0.78rem',
-                fontWeight: 700,
-                color: 'var(--text-primary)',
-                letterSpacing: '0.04em',
-                marginBottom: '6px'
-              }}>
-                <Calendar size={14} className="text-emerald-400" />
-                <span>ACCESS DATE *</span>
-              </label>
-              <input
-                type="date"
-                required
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '11px 14px',
-                  borderRadius: '8px',
-                  background: 'rgba(255, 255, 255, 0.04)',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                  color: '#fff',
-                  fontSize: '0.88rem',
-                  outline: 'none'
-                }}
-              />
-            </div>
-
-            {/* 6. STATUTORY CONSENT UNDER ACT 843 */}
+            {/* 5. STATUTORY CONSENT UNDER ACT 843 */}
             <div style={{
               gridColumn: 'span 2',
               marginTop: '4px',
