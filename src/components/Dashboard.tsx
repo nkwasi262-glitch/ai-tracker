@@ -18,9 +18,11 @@ import {
   ArrowRight,
   FileText,
   FileCheck2,
-  Eye
+  Eye,
+  Download
 } from 'lucide-react';
 import { AIProject, formatNumberToWords } from '../data/sampleProjects';
+import { downloadScopeOfWork } from '../data/scopeOfWorkContent';
 import { UserRole } from './RoleSwitcher';
 
 const CustomTooltip = ({ active, payload }: any) => {
@@ -228,7 +230,39 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
             Real-time analytics for government Artificial Intelligence implementations
           </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={downloadScopeOfWork}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 14px',
+              borderRadius: '8px',
+              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.25))',
+              border: '1px solid rgba(16, 185, 129, 0.45)',
+              color: '#a7f3d0',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.35), rgba(5, 150, 105, 0.4))';
+              e.currentTarget.style.color = '#fff';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.25))';
+              e.currentTarget.style.color = '#a7f3d0';
+            }}
+            title="Download official Ghana National AI Projects Registry Scope of Work"
+          >
+            <Download size={14} />
+            <span>Download Scope of Work (SOW)</span>
+          </button>
+
           <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
             Sector Focus:
           </span>
