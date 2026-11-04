@@ -146,6 +146,33 @@ export async function initializeDatabase() {
     console.log('[Neon DB Init] Internal reports seeded successfully.');
   }
 
+  // Seed Statutory Test Users
+  const userCount = await sql`SELECT COUNT(*)::int as count FROM user_sessions;`;
+  if (userCount[0]?.count === 0 && Array.isArray(seedData.users)) {
+    console.log(`[Neon DB Init] Seeding ${seedData.users.length} statutory test users into Neon DB...`);
+    for (const u of seedData.users) {
+      await sql`
+        INSERT INTO user_sessions (
+          id, email, full_name, institution, institution_category,
+          role, member_type, onboarding_status, is_first_timer,
+          authenticated_at, last_active_at, session_data
+        ) VALUES (
+          ${u.id}, ${u.email.toLowerCase()}, ${u.fullName}, ${u.institution},
+          ${u.institutionCategory || 'MDA'}, ${u.role}, ${u.memberType || 'in_member'},
+          ${u.onboardingStatus || 'approved'}, ${u.isFirstTimer || false},
+          NOW(), NOW(), ${JSON.stringify(u)}
+        ) ON CONFLICT (email) DO UPDATE SET
+          full_name = EXCLUDED.full_name,
+          institution = EXCLUDED.institution,
+          institution_category = EXCLUDED.institution_category,
+          role = EXCLUDED.role,
+          last_active_at = NOW(),
+          session_data = EXCLUDED.session_data;
+      `;
+    }
+    console.log('[Neon DB Init] Statutory test users seeded successfully.');
+  }
+
   console.log('[Neon DB Init] Database initialization complete.');
   return { success: true };
 }

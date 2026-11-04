@@ -1405,5 +1405,40 @@
         }
       ]
     }
+  ],
+  "users": [
+    {
+      "id": "user-superadmin-001",
+      "email": "superadmin@nita.gov.gh",
+      "fullName": "Dr. Kwabena Boateng (Super Admin)",
+      "institution": "National Information Technology Agency (NITA)",
+      "institutionCategory": "MDA",
+      "role": "Super Admin",
+      "memberType": "in_member",
+      "onboardingStatus": "approved",
+      "isFirstTimer": false
+    },
+    {
+      "id": "user-techdirector-002",
+      "email": "techdirector@mocd.gov.gh",
+      "fullName": "Eng. Emmanuel Darko (Technical Director)",
+      "institution": "Ministry of Communications and Digitalisation",
+      "institutionCategory": "MDA",
+      "role": "Technical Director",
+      "memberType": "in_member",
+      "onboardingStatus": "approved",
+      "isFirstTimer": false
+    },
+    {
+      "id": "user-publicuser-003",
+      "email": "public.user@gov.gh",
+      "fullName": "Kwame Mensah (Citizen Observer)",
+      "institution": "National Information Technology Agency (NITA)",
+      "institutionCategory": "MDA",
+      "role": "Public User",
+      "memberType": "in_member",
+      "onboardingStatus": "approved",
+      "isFirstTimer": false
+    }
   ]
 }

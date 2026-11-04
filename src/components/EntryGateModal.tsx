@@ -10,7 +10,8 @@ import {
   Database,
   Lock,
   Eye,
-  EyeOff
+  EyeOff,
+  Sparkles
 } from 'lucide-react';
 import { 
   ActiveRole, 
@@ -18,6 +19,7 @@ import {
   STANDARD_INSTITUTIONS,
   UserSession 
 } from '../data/authTypes';
+import { TEST_ACCOUNTS, TestAccount } from '../data/testAccounts';
 import { 
   processGateSubmission, 
   GateResult,
@@ -53,6 +55,17 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
 
   const cleanEmail = email.trim().toLowerCase();
   const isGovGhEmail = cleanEmail.endsWith('.gov.gh');
+
+  const handleQuickFill = (account: TestAccount) => {
+    setFullName(account.fullName);
+    setSelectedInstId(account.institutionId);
+    setInstCategory(account.institutionCategory);
+    setCustomInstitution(account.institutionId === 'other' ? account.institution : '');
+    setEmail(account.email);
+    setPassword(account.password);
+    setConsentGiven(true);
+    setErrorMessage(null);
+  };
 
   // Look up existing user type in Neon PostgreSQL whenever email changes
   useEffect(() => {
@@ -170,14 +183,25 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
     };
 
     // Determine initial active role:
-    // 1. Preserved role from Neon Postgres DB if user previously saved
-    // 2. Or last selected role
-    // 3. Or default to Super Admin for NITA, else Technical Director
-    const assignedRole: ActiveRole = normalizeToActiveRole(
-      dbUserFound?.role || 
-      getLastSelectedRole() || 
-      (cleanEmail.includes('nita.gov.gh') ? 'Super Admin' : 'Technical Director')
-    );
+    // 1. Pre-configured test account exact match
+    // 2. Preserved role from Neon Postgres DB if user previously saved
+    // 3. Email keyword hints
+    // 4. Last selected role or defaults
+    const matchedTest = TEST_ACCOUNTS.find(a => a.email.toLowerCase() === cleanEmail);
+    let assignedRole: ActiveRole = 'Super Admin';
+    if (matchedTest) {
+      assignedRole = matchedTest.role;
+    } else if (dbUserFound?.role) {
+      assignedRole = normalizeToActiveRole(dbUserFound.role);
+    } else if (cleanEmail === 'techdirector@mocd.gov.gh' || cleanEmail.includes('techdirector') || cleanEmail.includes('director')) {
+      assignedRole = 'Technical Director';
+    } else if (cleanEmail === 'public.user@gov.gh' || cleanEmail.includes('public') || cleanEmail.includes('citizen')) {
+      assignedRole = 'Public User';
+    } else if (cleanEmail === 'superadmin@nita.gov.gh' || cleanEmail.includes('admin')) {
+      assignedRole = 'Super Admin';
+    } else {
+      assignedRole = normalizeToActiveRole(getLastSelectedRole() || (cleanEmail.includes('nita.gov.gh') ? 'Super Admin' : 'Technical Director'));
+    }
 
     try {
       // Process submission: saves to local cache & syncs directly to Neon PostgreSQL DB
@@ -351,6 +375,93 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
         <form onSubmit={handleSubmit} style={{ padding: '24px 32px 32px 32px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px' }}>
             
+            {/* QUICK TEST ACCOUNTS PICKER */}
+            <div style={{
+              gridColumn: 'span 2',
+              background: 'rgba(255, 255, 255, 0.025)',
+              border: '1px solid rgba(16, 185, 129, 0.25)',
+              borderRadius: '12px',
+              padding: '14px 16px',
+              marginBottom: '4px'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '10px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', fontWeight: 700, color: '#a7f3d0' }}>
+                  <Sparkles size={14} className="text-emerald-400" />
+                  <span>PRE-CONFIGURED TEST ACCOUNTS (CLICK TO AUTO-FILL)</span>
+                </div>
+                <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                  Strictly 3 Active Roles
+                </span>
+              </div>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                gap: '10px'
+              }}>
+                {TEST_ACCOUNTS.map((acc) => {
+                  const isSelected = cleanEmail === acc.email.toLowerCase();
+                  return (
+                    <button
+                      key={acc.role}
+                      type="button"
+                      onClick={() => handleQuickFill(acc)}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: '8px',
+                        background: isSelected ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 255, 255, 0.04)',
+                        border: isSelected ? `1.5px solid ${acc.badgeColor}` : '1px solid rgba(255, 255, 255, 0.1)',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '4px'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isSelected) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.07)';
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isSelected) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
+                      }}
+                      title={`Click to fill credentials for ${acc.fullName} (${acc.role})`}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 800,
+                          color: acc.badgeColor,
+                          textTransform: 'uppercase'
+                        }}>
+                          {acc.role}
+                        </span>
+                        <span style={{
+                          fontSize: '0.62rem',
+                          padding: '1px 5px',
+                          borderRadius: '4px',
+                          background: `${acc.badgeColor}25`,
+                          color: acc.badgeColor,
+                          fontWeight: 700
+                        }}>
+                          TEST
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {acc.fullName}
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: '#94a3b8', fontFamily: 'monospace' }}>
+                        {acc.email}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* 1. FULL NAME */}
             <div style={{ gridColumn: 'span 2' }}>
               <label style={{

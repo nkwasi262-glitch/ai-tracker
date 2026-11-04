@@ -497,14 +497,44 @@ app.get('/api/auth/user/:email', async (req, res) => {
         };
         return res.json({ success: true, exists: true, user: userObj });
       }
-      return res.json({ success: true, exists: false, user: null });
     } catch (e) {
       console.error('[API] Error fetching user by email:', e.message);
-      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // Fallback check against seed test accounts
+  const seed = getLocalSeedData();
+  if (Array.isArray(seed.users)) {
+    const matched = seed.users.find(u => u.email.toLowerCase() === email);
+    if (matched) {
+      return res.json({
+        success: true,
+        exists: true,
+        user: {
+          sessionId: matched.id,
+          email: matched.email,
+          fullName: matched.fullName,
+          institution: matched.institution,
+          institutionCategory: matched.institutionCategory || 'MDA',
+          role: matched.role,
+          memberType: matched.memberType || 'in_member',
+          onboardingStatus: matched.onboardingStatus || 'approved',
+          isFirstTimer: false
+        }
+      });
     }
   }
 
   return res.json({ success: true, exists: false, user: null });
+});
+
+// GET /api/auth/test-accounts — Return configured statutory test accounts
+app.get('/api/auth/test-accounts', (req, res) => {
+  const seed = getLocalSeedData();
+  res.json({
+    success: true,
+    testAccounts: seed.users || []
+  });
 });
 
 // Save or keep user type / session in Neon PostgreSQL
