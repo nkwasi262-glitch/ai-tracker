@@ -2,10 +2,13 @@ import express from 'express';
 import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { getDb, isDbConfigured, testDbConnection } from './db.js';
 import { initializeDatabase } from './initDb.js';
+import { createDatabaseBackup, listBackups } from './backup.js';
+import { runDisasterRecoveryDrill } from './restoreTest.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -14,6 +17,50 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
 const PORT = process.env.API_PORT || process.env.PORT || 5000;
+
+// Security Headers & Request Correlation ID Middleware
+app.use((req, res, next) => {
+  const correlationId = req.headers['x-correlation-id'] || req.headers['x-request-id'] || `req-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  req.correlationId = correlationId;
+  res.setHeader('X-Correlation-ID', correlationId);
+  res.setHeader('X-Request-ID', correlationId);
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  next();
+});
+
+// In-Memory Rate Limiter for /api to protect database and endpoints
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const MAX_REQUESTS_PER_WINDOW = 300; // 300 requests per minute per IP
+
+app.use('/api', (req, res, next) => {
+  const ip = req.ip || req.connection?.remoteAddress || '127.0.0.1';
+  const now = Date.now();
+  const clientData = rateLimitMap.get(ip) || { count: 0, resetTime: now + RATE_LIMIT_WINDOW_MS };
+
+  if (now > clientData.resetTime) {
+    clientData.count = 1;
+    clientData.resetTime = now + RATE_LIMIT_WINDOW_MS;
+  } else {
+    clientData.count++;
+  }
+
+  rateLimitMap.set(ip, clientData);
+  res.setHeader('X-RateLimit-Limit', MAX_REQUESTS_PER_WINDOW);
+  res.setHeader('X-RateLimit-Remaining', Math.max(0, MAX_REQUESTS_PER_WINDOW - clientData.count));
+  res.setHeader('X-RateLimit-Reset', Math.ceil(clientData.resetTime / 1000));
+
+  if (clientData.count > MAX_REQUESTS_PER_WINDOW) {
+    return res.status(429).json({
+      error: 'Too Many Requests',
+      message: 'Government National AI Registry rate limit exceeded. Please retry in a few moments.',
+      correlationId: req.correlationId
+    });
+  }
+  next();
+});
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
@@ -176,6 +223,8 @@ app.put('/api/projects/:id', async (req, res) => {
         return res.status(404).json({ error: 'Project not found in Neon DB' });
       }
 
+      const prevRow = existing[0];
+
       await sql`
         UPDATE projects SET
           status = COALESCE(${updates.status}, status),
@@ -191,6 +240,44 @@ app.put('/api/projects/:id', async (req, res) => {
           updated_at = NOW()
         WHERE id = ${id};
       `;
+
+      // Forensic Audit Logging: Record previous values, new values, and correlation ID
+      try {
+        const auditId = `audit-upd-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+        const actorName = req.headers['x-actor-name'] || updates.updatedByName || 'Authorized Technical Officer';
+        const actorEmail = req.headers['x-actor-email'] || updates.updatedByEmail || 'evaluator@nita.gov.gh';
+        const actorRole = req.headers['x-actor-role'] || updates.updatedByRole || 'Technical Director';
+        const actorInstitution = req.headers['x-actor-institution'] || prevRow.mda || 'NITA';
+        const integrityHash = crypto.createHash('sha256')
+          .update(`${auditId}:${id}:${JSON.stringify(updates)}:${req.correlationId || ''}`)
+          .digest('hex');
+
+        const prevValues = {
+          status: prevRow.status,
+          reviewStatus: prevRow.review_status,
+          readinessScore: prevRow.readiness_score,
+          riskLevel: prevRow.risk_level
+        };
+
+        await sql`
+          INSERT INTO audit_logs (
+            id, timestamp, event_type, actor_name, actor_email, actor_role, actor_institution,
+            target_module, target_entity_id, action_details, integrity_hash, retention_until,
+            previous_values, new_values, correlation_id
+          ) VALUES (
+            ${auditId}, NOW(), 'PROJECT_FIELD_UPDATE', ${actorName}, ${actorEmail}, ${actorRole}, ${actorInstitution},
+            'Projects Registry', ${id},
+            ${`Statutory record updated for project ${prevRow.project_code || id}: modified [${Object.keys(updates).join(', ')}]`},
+            ${integrityHash}, NOW() + INTERVAL '7 years',
+            ${JSON.stringify(prevValues)}::jsonb,
+            ${JSON.stringify(updates)}::jsonb,
+            ${req.correlationId || null}
+          );
+        `;
+      } catch (auditErr) {
+        console.warn('[API] Automatic forensic audit logging warning:', auditErr.message);
+      }
+
       return res.json({ success: true, message: `Project ${id} updated in Neon DB` });
     } catch (error) {
       console.error('[API] Error updating project:', error.message);
@@ -347,7 +434,10 @@ app.get('/api/audit-logs', async (req, res) => {
         targetEntityId: r.target_entity_id,
         actionDetails: r.action_details,
         integrityHash: r.integrity_hash,
-        retentionUntil: r.retention_until ? new Date(r.retention_until).toISOString() : '2031-12-31T00:00:00Z'
+        retentionUntil: r.retention_until ? new Date(r.retention_until).toISOString() : '2031-12-31T00:00:00Z',
+        previousValues: typeof r.previous_values === 'string' ? JSON.parse(r.previous_values) : (r.previous_values || null),
+        newValues: typeof r.new_values === 'string' ? JSON.parse(r.new_values) : (r.new_values || null),
+        correlationId: r.correlation_id || null
       }));
       return res.json({ source: 'neon_postgres', auditLogs: formatted });
     } catch (e) {
@@ -368,15 +458,23 @@ app.post('/api/audit-logs', async (req, res) => {
   const sql = getDb();
   if (sql && isDbConfigured()) {
     try {
+      const correlationId = a.correlationId || req.correlationId || null;
+      const prevVals = a.previousValues ? JSON.stringify(a.previousValues) : null;
+      const newVals = a.newValues ? JSON.stringify(a.newValues) : null;
+
       await sql`
         INSERT INTO audit_logs (
           id, timestamp, event_type, actor_name, actor_email, actor_role, actor_institution,
-          target_module, target_entity_id, action_details, integrity_hash, retention_until
+          target_module, target_entity_id, action_details, integrity_hash, retention_until,
+          previous_values, new_values, correlation_id
         ) VALUES (
           ${a.id}, ${a.timestamp || new Date().toISOString()}, ${a.eventType},
           ${a.actorName}, ${a.actorEmail}, ${a.actorRole}, ${a.actorInstitution},
           ${a.targetModule}, ${a.targetEntityId || null}, ${a.actionDetails},
-          ${a.integrityHash}, ${a.retentionUntil || '2031-12-31T00:00:00Z'}
+          ${a.integrityHash}, ${a.retentionUntil || '2031-12-31T00:00:00Z'},
+          ${prevVals ? prevVals : null}::jsonb,
+          ${newVals ? newVals : null}::jsonb,
+          ${correlationId}
         )
         ON CONFLICT (id) DO NOTHING;
       `;
@@ -850,6 +948,269 @@ RECOMMENDATION: Transmitted to GNAPRMS as Recommended for statutory technical re
   const chosen = simulatedDossiers[Math.floor(Math.random() * simulatedDossiers.length)];
   req.body = chosen;
   return handleIncomingClearanceDocument(req, res);
+});
+
+// ============================================================================
+// 7. INSTITUTIONS DIRECTORY ENDPOINTS (MDAs / MMDAs / SOEs)
+// ============================================================================
+app.get('/api/institutions', async (req, res) => {
+  const { category, region, status, search } = req.query;
+  const sql = getDb();
+
+  if (sql && isDbConfigured()) {
+    try {
+      let rows = await sql`SELECT * FROM institutions ORDER BY category ASC, name ASC;`;
+
+      if (category) {
+        rows = rows.filter(r => r.category.toLowerCase() === category.toLowerCase());
+      }
+      if (region) {
+        rows = rows.filter(r => r.region.toLowerCase() === region.toLowerCase());
+      }
+      if (status) {
+        rows = rows.filter(r => r.status.toLowerCase() === status.toLowerCase());
+      }
+      if (search) {
+        const s = search.toLowerCase();
+        rows = rows.filter(r =>
+          r.name.toLowerCase().includes(s) ||
+          r.code.toLowerCase().includes(s) ||
+          (r.head_of_institution && r.head_of_institution.toLowerCase().includes(s))
+        );
+      }
+
+      const formatted = rows.map(r => ({
+        id: r.id,
+        code: r.code,
+        name: r.name,
+        category: r.category,
+        region: r.region,
+        status: r.status,
+        contactEmail: r.contact_email,
+        contactPhone: r.contact_phone,
+        headOfInstitution: r.head_of_institution,
+        totalProjects: r.total_projects || 0,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at
+      }));
+
+      return res.json({ source: 'neon_postgres', institutions: formatted, total: formatted.length });
+    } catch (error) {
+      console.error('[API] Error fetching institutions from Neon DB:', error.message);
+    }
+  }
+
+  const seed = getLocalSeedData();
+  let fallback = seed.institutions || [];
+  if (category) fallback = fallback.filter(i => i.category.toLowerCase() === category.toLowerCase());
+  return res.json({ source: 'seed_fallback', institutions: fallback, total: fallback.length });
+});
+
+app.post('/api/institutions', async (req, res) => {
+  const inst = req.body;
+  if (!inst || !inst.name || !inst.code || !inst.category) {
+    return res.status(400).json({ error: 'Missing required institution fields (name, code, category)' });
+  }
+
+  const id = inst.id || `inst-${Date.now()}`;
+  const sql = getDb();
+
+  if (sql && isDbConfigured()) {
+    try {
+      await sql`
+        INSERT INTO institutions (
+          id, code, name, category, region, status, contact_email, contact_phone, head_of_institution, total_projects
+        ) VALUES (
+          ${id}, ${inst.code.trim().toUpperCase()}, ${inst.name.trim()}, ${inst.category},
+          ${inst.region || 'Greater Accra'}, ${inst.status || 'Active'}, ${inst.contactEmail || null},
+          ${inst.contactPhone || null}, ${inst.headOfInstitution || null}, ${inst.totalProjects || 0}
+        )
+        ON CONFLICT (code) DO UPDATE SET
+          name = EXCLUDED.name,
+          category = EXCLUDED.category,
+          region = EXCLUDED.region,
+          status = EXCLUDED.status,
+          contact_email = EXCLUDED.contact_email,
+          contact_phone = EXCLUDED.contact_phone,
+          head_of_institution = EXCLUDED.head_of_institution,
+          updated_at = NOW();
+      `;
+
+      try {
+        const auditId = `audit-inst-${Date.now()}`;
+        const integrityHash = crypto.createHash('sha256').update(`${auditId}:${id}:${inst.code}`).digest('hex');
+        await sql`
+          INSERT INTO audit_logs (
+            id, timestamp, event_type, actor_name, actor_email, actor_role, actor_institution,
+            target_module, target_entity_id, action_details, integrity_hash, retention_until,
+            correlation_id
+          ) VALUES (
+            ${auditId}, NOW(), 'INSTITUTION_REGISTERED', 'Super Admin', 'admin@nita.gov.gh',
+            'Super Admin', 'NITA', 'Institutions Directory', ${id},
+            ${`Statutory Institution registered or updated: ${inst.name} (${inst.code})`},
+            ${integrityHash}, NOW() + INTERVAL '7 years',
+            ${req.correlationId || null}
+          );
+        `;
+      } catch (auditErr) {
+        console.warn('[API] Audit log error for institution creation:', auditErr.message);
+      }
+
+      return res.status(201).json({ success: true, message: 'Institution saved to Neon DB', institution: { ...inst, id } });
+    } catch (error) {
+      console.error('[API] Error saving institution:', error.message);
+      return res.status(500).json({ error: error.message });
+    }
+  }
+
+  return res.status(201).json({ success: true, message: 'Institution saved in fallback', institution: { ...inst, id } });
+});
+
+// ============================================================================
+// 8. APPLICATION VERSION MANAGEMENT & RELEASE TRACKING
+// ============================================================================
+app.get('/api/system/versions', async (req, res) => {
+  const sql = getDb();
+  if (sql && isDbConfigured()) {
+    try {
+      const rows = await sql`SELECT * FROM app_versions ORDER BY release_date DESC;`;
+      const formatted = rows.map(r => ({
+        id: r.id,
+        versionNumber: r.version || r.version_number,
+        releaseNumber: r.release_number,
+        releaseDate: r.release_date,
+        title: r.title || `Release v${r.version}`,
+        deploymentStatus: r.deployment_status,
+        developerResponsible: r.deployed_by || r.developer_responsible || 'NITA Engineering Directorate',
+        featuresAdded: typeof r.new_features === 'string' ? JSON.parse(r.new_features) : (r.new_features || r.features_added || []),
+        bugFixes: typeof r.bug_fixes === 'string' ? JSON.parse(r.bug_fixes) : (r.bug_fixes || []),
+        securityImprovements: typeof r.security_improvements === 'string' ? JSON.parse(r.security_improvements) : (r.security_improvements || []),
+        releaseNotes: r.release_notes,
+        createdAt: r.created_at
+      }));
+      return res.json({ source: 'neon_postgres', versions: formatted, currentVersion: formatted[0] || null });
+    } catch (error) {
+      console.error('[API] Error fetching app versions:', error.message);
+    }
+  }
+
+  const seed = getLocalSeedData();
+  const versions = (seed.appVersions || []).map(v => ({
+    id: v.id,
+    versionNumber: v.version,
+    releaseNumber: v.releaseNumber,
+    releaseDate: v.releaseDate,
+    title: v.title,
+    deploymentStatus: v.deploymentStatus,
+    developerResponsible: v.deployedBy,
+    featuresAdded: v.newFeatures,
+    bugFixes: v.bugFixes,
+    securityImprovements: v.securityImprovements,
+    releaseNotes: v.releaseNotes
+  }));
+  return res.json({ source: 'seed_fallback', versions, currentVersion: versions[0] || null });
+});
+
+app.post('/api/system/versions', async (req, res) => {
+  const v = req.body;
+  const verNum = v.versionNumber || v.version;
+  const relNum = v.releaseNumber;
+  if (!v || !verNum || !relNum) {
+    return res.status(400).json({ error: 'Missing required version fields (versionNumber, releaseNumber)' });
+  }
+
+  const id = v.id || `ver-${Date.now()}`;
+  const sql = getDb();
+
+  if (sql && isDbConfigured()) {
+    try {
+      await sql`
+        INSERT INTO app_versions (
+          id, version, release_number, release_date, title,
+          release_notes, new_features, bug_fixes, security_improvements,
+          deployed_by, deployment_status
+        ) VALUES (
+          ${id}, ${verNum}, ${typeof relNum === 'number' ? relNum : parseInt(relNum) || 1},
+          ${v.releaseDate ? v.releaseDate.split('T')[0] : new Date().toISOString().split('T')[0]},
+          ${v.title || `Release v${verNum}`},
+          ${v.releaseNotes || ''},
+          ${JSON.stringify(v.featuresAdded || v.newFeatures || [])}::jsonb,
+          ${JSON.stringify(v.bugFixes || [])}::jsonb,
+          ${JSON.stringify(v.securityImprovements || [])}::jsonb,
+          ${v.developerResponsible || v.deployedBy || 'NITA Engineering Directorate'},
+          ${v.deploymentStatus || 'Deployed'}
+        )
+        ON CONFLICT (version) DO UPDATE SET
+          deployment_status = EXCLUDED.deployment_status,
+          release_notes = EXCLUDED.release_notes;
+      `;
+
+      return res.status(201).json({ success: true, message: 'Application version registered', version: { ...v, id } });
+    } catch (error) {
+      console.error('[API] Error registering version:', error.message);
+      return res.status(500).json({ error: error.message });
+    }
+  }
+
+  return res.status(201).json({ success: true, message: 'Version registered in fallback', version: { ...v, id } });
+});
+
+// ============================================================================
+// 9. AUTOMATED BACKUP & DISASTER RECOVERY ENDPOINTS
+// ============================================================================
+app.get('/api/system/backups', (req, res) => {
+  try {
+    const backups = listBackups();
+    return res.json({ success: true, backups, total: backups.length });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/system/backup', async (req, res) => {
+  try {
+    const actor = req.headers['x-actor-name'] || req.body?.triggeredBy || 'Super Admin Console';
+    const result = await createDatabaseBackup(actor);
+
+    // Record in audit log
+    const sql = getDb();
+    if (sql && isDbConfigured()) {
+      try {
+        const auditId = `audit-bkp-${Date.now()}`;
+        await sql`
+          INSERT INTO audit_logs (
+            id, timestamp, event_type, actor_name, actor_email, actor_role, actor_institution,
+            target_module, target_entity_id, action_details, integrity_hash, retention_until,
+            correlation_id
+          ) VALUES (
+            ${auditId}, NOW(), 'SYSTEM_BACKUP_EXECUTED', 'Super Admin', 'admin@nita.gov.gh',
+            'Super Admin', 'NITA', 'Disaster Recovery', ${result.backupId},
+            ${`Full system backup created: ${result.filename} (${result.sizeKb} KB, checksum: ${result.checksum})`},
+            ${result.checksum}, NOW() + INTERVAL '7 years',
+            ${req.correlationId || null}
+          );
+        `;
+      } catch (e) {
+        console.warn('[API] Warning logging backup event:', e.message);
+      }
+    }
+
+    return res.json({ success: true, message: 'Backup successfully generated', backup: result });
+  } catch (err) {
+    console.error('[API] Backup failed:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/system/dr-drill', async (req, res) => {
+  try {
+    const { backupFilename } = req.body || {};
+    const report = await runDisasterRecoveryDrill(backupFilename);
+    return res.json({ success: true, message: 'Disaster recovery drill completed successfully', report });
+  } catch (err) {
+    console.error('[API] Disaster recovery drill failed:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
 });
 
 // ============================================================================

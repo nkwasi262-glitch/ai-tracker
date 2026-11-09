@@ -85,3 +85,6 @@ Thumbs.db
 
 # Local MinIO / data caches if any
 .minio.sys/
+
+# Database backup snapshots
+server/backups/gnaprms_backup_*.json

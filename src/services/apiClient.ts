@@ -4,6 +4,44 @@ import { AuditLogEntry } from '../data/auditTypes';
 import { InternalReport } from '../data/reportTypes';
 import { UserSession } from '../data/authTypes';
 
+export interface InstitutionRecord {
+  id: string;
+  code: string;
+  name: string;
+  category: 'MDA' | 'MMDA' | 'SOE' | 'Regulatory' | string;
+  region: string;
+  status: 'Active' | 'Pending' | 'Suspended' | string;
+  contactEmail?: string;
+  contactPhone?: string;
+  headOfInstitution?: string;
+  totalProjects: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface AppVersionRecord {
+  id: string;
+  versionNumber: string;
+  releaseNumber: string;
+  releaseDate: string;
+  deploymentStatus: string;
+  developerResponsible: string;
+  featuresAdded: string[];
+  bugFixes: string[];
+  securityImprovements: string[];
+  releaseNotes: string;
+  createdAt?: string;
+}
+
+export interface BackupRecord {
+  filename: string;
+  filePath: string;
+  sizeKb: string;
+  createdAt: string;
+  modifiedAt: string;
+  metadata?: any;
+}
+
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string) || '/api';
 
 /**
@@ -215,6 +253,100 @@ class ApiClient {
       return res.ok;
     } catch {
       return false;
+    }
+  }
+
+  // ==========================================================================
+  // INSTITUTIONS DIRECTORY (MDAs / MMDAs / SOEs)
+  // ==========================================================================
+
+  async fetchInstitutions(params?: { category?: string; region?: string; status?: string; search?: string }): Promise<InstitutionRecord[] | null> {
+    try {
+      const query = new URLSearchParams();
+      if (params?.category) query.append('category', params.category);
+      if (params?.region) query.append('region', params.region);
+      if (params?.status) query.append('status', params.status);
+      if (params?.search) query.append('search', params.search);
+
+      const qs = query.toString() ? `?${query.toString()}` : '';
+      const res = await fetch(`${this.base}/institutions${qs}`, { signal: AbortSignal.timeout(5000) });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return Array.isArray(data.institutions) ? data.institutions : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async saveInstitution(inst: Partial<InstitutionRecord>): Promise<boolean> {
+    try {
+      const res = await fetch(`${this.base}/institutions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(inst)
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  // ==========================================================================
+  // SYSTEM VERSIONING & AUDIT RELEASE TRACKING
+  // ==========================================================================
+
+  async fetchAppVersions(): Promise<{ versions: AppVersionRecord[]; currentVersion: AppVersionRecord | null } | null> {
+    try {
+      const res = await fetch(`${this.base}/system/versions`, { signal: AbortSignal.timeout(4000) });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return {
+        versions: data.versions || [],
+        currentVersion: data.currentVersion || null
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  // ==========================================================================
+  // BACKUPS & DISASTER RECOVERY DRILLS
+  // ==========================================================================
+
+  async fetchBackups(): Promise<BackupRecord[]> {
+    try {
+      const res = await fetch(`${this.base}/system/backups`, { signal: AbortSignal.timeout(4000) });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.backups || [];
+    } catch {
+      return [];
+    }
+  }
+
+  async triggerBackup(triggeredBy?: string): Promise<{ success: boolean; backup?: any; error?: string }> {
+    try {
+      const res = await fetch(`${this.base}/system/backup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ triggeredBy: triggeredBy || 'Super Admin Dashboard' })
+      });
+      return await res.json();
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  async triggerDrDrill(backupFilename?: string): Promise<{ success: boolean; report?: any; error?: string }> {
+    try {
+      const res = await fetch(`${this.base}/system/dr-drill`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ backupFilename })
+      });
+      return await res.json();
+    } catch (e: any) {
+      return { success: false, error: e.message };
     }
   }
 }

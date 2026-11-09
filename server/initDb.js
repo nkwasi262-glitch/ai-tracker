@@ -173,6 +173,43 @@ export async function initializeDatabase() {
     console.log('[Neon DB Init] Statutory test users seeded successfully.');
   }
 
+  // Seed MDAs, MMDAs, and SOEs Institutions
+  const instCount = await sql`SELECT COUNT(*)::int as count FROM institutions;`;
+  if (instCount[0]?.count === 0 && Array.isArray(seedData.institutions)) {
+    console.log(`[Neon DB Init] Seeding ${seedData.institutions.length} public institutions into Neon DB...`);
+    for (const inst of seedData.institutions) {
+      await sql`
+        INSERT INTO institutions (
+          id, code, name, category, sector, status, contact_email, region, district, active_projects_count
+        ) VALUES (
+          ${inst.id}, ${inst.code}, ${inst.name}, ${inst.category || 'MDA'}, ${inst.sector || 'Cross-Sector'},
+          ${inst.status || 'Active'}, ${inst.contactEmail || ''}, ${inst.region || 'Greater Accra'},
+          ${inst.district || 'Accra Metropolitan'}, ${inst.activeProjectsCount || 0}
+        ) ON CONFLICT (code) DO NOTHING;
+      `;
+    }
+    console.log('[Neon DB Init] Public institutions seeded successfully.');
+  }
+
+  // Seed Application Versions & Release Tracking History
+  const versionCount = await sql`SELECT COUNT(*)::int as count FROM app_versions;`;
+  if (versionCount[0]?.count === 0 && Array.isArray(seedData.appVersions)) {
+    console.log(`[Neon DB Init] Seeding ${seedData.appVersions.length} statutory app versions into Neon DB...`);
+    for (const v of seedData.appVersions) {
+      await sql`
+        INSERT INTO app_versions (
+          id, version, release_number, release_date, title, release_notes,
+          new_features, bug_fixes, security_improvements, deployed_by, deployment_status
+        ) VALUES (
+          ${v.id}, ${v.version}, ${v.releaseNumber}, ${v.releaseDate}, ${v.title}, ${v.releaseNotes},
+          ${JSON.stringify(v.newFeatures || [])}, ${JSON.stringify(v.bugFixes || [])},
+          ${JSON.stringify(v.securityImprovements || [])}, ${v.deployedBy}, ${v.deploymentStatus || 'Deployed'}
+        ) ON CONFLICT (version) DO NOTHING;
+      `;
+    }
+    console.log('[Neon DB Init] App versions seeded successfully.');
+  }
+
   console.log('[Neon DB Init] Database initialization complete.');
   return { success: true };
 }

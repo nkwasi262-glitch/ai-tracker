@@ -88,16 +88,71 @@ Records an executive verdict (`Approve`, `Return for Further Review`, `Reject`).
 ### 4. Act 843 Statutory Audit Logs
 
 #### `GET /api/audit-logs`
-Fetches the immutable statutory audit trail (most recent 500 records).
+Fetches the immutable statutory audit trail (most recent 500 records), including forensic `previousValues`, `newValues`, and distributed `correlationId`.
 
 #### `POST /api/audit-logs`
-Appends an immutable audit log record with SHA-256 block integrity hash.
+Appends an immutable audit log record with SHA-256 block integrity hash and optional field diff payload.
 
 ---
 
 ### 5. Classified Internal Reports
 
 #### `GET /api/reports`
+Retrieves all classified technical defect and drift monitoring reports.
+
+#### `POST /api/reports`
+Creates or updates an internal report dossier.
+
+---
+
+### 6. Institutions Directory (MDAs, MMDAs, SOEs)
+
+#### `GET /api/institutions`
+Retrieves registered public institutions across Ghana.
+- **Query Parameters**:
+  - `category`: Filter by `MDA`, `MMDA`, `SOE`, `Regulatory`
+  - `region`: Filter by administrative region (e.g., `Greater Accra`, `Ashanti`)
+  - `status`: Filter by `Active`, `Pending`, `Suspended`
+  - `search`: Case-insensitive text query matching code, name, or head of institution
+
+#### `POST /api/institutions`
+Registers or updates a public institution.
+- Automatically generates an immutable audit record in `audit_logs`.
+
+---
+
+### 7. Application Version & Release Management
+
+#### `GET /api/system/versions`
+Retrieves chronological software version releases, changelogs, feature additions, bug fixes, and security improvements.
+
+#### `POST /api/system/versions`
+Registers a new application release version.
+
+---
+
+### 8. System Backups & Disaster Recovery
+
+#### `GET /api/system/backups`
+Lists all available backup snapshot archives stored in the secure backup repository.
+
+#### `POST /api/system/backup`
+Triggers an immediate cryptographic snapshot export of all 8 core PostgreSQL tables, generating a timestamped JSON file with SHA-256 checksum and automated retention pruning.
+
+#### `POST /api/system/dr-drill`
+Executes an automated disaster recovery integrity drill against the latest backup snapshot, validating SHA-256 checksum signatures, schema completeness, referential foreign key sanity, and automated RTO/RPO SLA reporting.
+
+---
+
+### 9. Security Headers, Rate Limiting & Correlation IDs
+
+Every response from the GNAPRMS API includes statutory security and traceability headers:
+- `X-Request-ID` / `X-Correlation-ID`: Unique tracing token for end-to-end request lifecycle auditing.
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: DENY`
+- `X-XSS-Protection: 1; mode=block`
+- `X-RateLimit-Limit: 300` (Max 300 requests per minute per IP)
+- `X-RateLimit-Remaining`: Remaining request quota in the active sliding window.
 Retrieves all internal technical reports, categorized by severity.
 
 #### `POST /api/reports`

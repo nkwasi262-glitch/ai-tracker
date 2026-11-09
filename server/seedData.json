@@ -1440,5 +1440,68 @@
       "onboardingStatus": "approved",
       "isFirstTimer": false
     }
+  ],
+  "institutions": [
+    { "id": "inst-1", "code": "NITA", "name": "National Information Technology Agency (NITA)", "category": "MDA", "sector": "Information Technology", "status": "Active", "contactEmail": "info@nita.gov.gh", "region": "Greater Accra", "district": "Accra Metropolitan", "activeProjectsCount": 4 },
+    { "id": "inst-2", "code": "MOCD", "name": "Ministry of Communications and Digitalisation", "category": "MDA", "sector": "Communications", "status": "Active", "contactEmail": "info@mocd.gov.gh", "region": "Greater Accra", "district": "Accra Metropolitan", "activeProjectsCount": 2 },
+    { "id": "inst-3", "code": "MOF", "name": "Ministry of Finance", "category": "MDA", "sector": "Finance", "status": "Active", "contactEmail": "info@mof.gov.gh", "region": "Greater Accra", "district": "Accra Metropolitan", "activeProjectsCount": 1 },
+    { "id": "inst-4", "code": "DPC", "name": "Data Protection Commission", "category": "MDA", "sector": "Governance", "status": "Active", "contactEmail": "info@dpc.gov.gh", "region": "Greater Accra", "district": "Accra Metropolitan", "activeProjectsCount": 1 },
+    { "id": "inst-5", "code": "MOH", "name": "Ministry of Health", "category": "MDA", "sector": "Health", "status": "Active", "contactEmail": "info@moh.gov.gh", "region": "Greater Accra", "district": "Accra Metropolitan", "activeProjectsCount": 2 },
+    { "id": "inst-6", "code": "MOFA", "name": "Ministry of Food and Agriculture", "category": "MDA", "sector": "Agriculture", "status": "Active", "contactEmail": "info@mofa.gov.gh", "region": "Greater Accra", "district": "Accra Metropolitan", "activeProjectsCount": 1 },
+    { "id": "inst-7", "code": "MOE", "name": "Ministry of Education", "category": "MDA", "sector": "Education", "status": "Active", "contactEmail": "info@moe.gov.gh", "region": "Greater Accra", "district": "Accra Metropolitan", "activeProjectsCount": 1 },
+    { "id": "inst-8", "code": "NHIA", "name": "National Health Insurance Authority", "category": "MDA", "sector": "Health", "status": "Active", "contactEmail": "info@nhia.gov.gh", "region": "Greater Accra", "district": "Accra Metropolitan", "activeProjectsCount": 1 },
+    { "id": "inst-9", "code": "JSG", "name": "Judicial Service of Ghana", "category": "MDA", "sector": "Judiciary", "status": "Active", "contactEmail": "info@jsg.gov.gh", "region": "Greater Accra", "district": "Accra Metropolitan", "activeProjectsCount": 1 },
+    { "id": "inst-10", "code": "MOT", "name": "Ministry of Transport", "category": "MDA", "sector": "Transport", "status": "Active", "contactEmail": "info@mot.gov.gh", "region": "Greater Accra", "district": "Accra Metropolitan", "activeProjectsCount": 1 },
+    { "id": "inst-11", "code": "MINTER", "name": "Ministry of Interior", "category": "MDA", "sector": "Security", "status": "Active", "contactEmail": "info@minter.gov.gh", "region": "Greater Accra", "district": "Accra Metropolitan", "activeProjectsCount": 1 },
+    { "id": "inst-12", "code": "GRA", "name": "Ghana Revenue Authority", "category": "MDA", "sector": "Finance & Revenue", "status": "Active", "contactEmail": "info@gra.gov.gh", "region": "Greater Accra", "district": "Accra Metropolitan", "activeProjectsCount": 1 },
+    { "id": "inst-13", "code": "COCOBOD", "name": "Ghana Cocoa Board (COCOBOD)", "category": "SOE", "sector": "Agriculture", "status": "Active", "contactEmail": "info@cocobod.gh", "region": "Greater Accra", "district": "Accra Metropolitan", "activeProjectsCount": 1 },
+    { "id": "inst-14", "code": "VRA", "name": "Volta River Authority", "category": "SOE", "sector": "Energy", "status": "Active", "contactEmail": "info@vra.com", "region": "Eastern", "district": "Asuogyaman", "activeProjectsCount": 0 },
+    { "id": "inst-15", "code": "ECG", "name": "Electricity Company of Ghana", "category": "SOE", "sector": "Energy", "status": "Active", "contactEmail": "info@ecg.com.gh", "region": "Greater Accra", "district": "Accra Metropolitan", "activeProjectsCount": 0 },
+    { "id": "inst-16", "code": "GPHA", "name": "Ghana Ports and Harbours Authority", "category": "SOE", "sector": "Maritime", "status": "Active", "contactEmail": "info@ghanaports.net", "region": "Greater Accra", "district": "Tema Metropolitan", "activeProjectsCount": 0 },
+    { "id": "inst-17", "code": "AMA", "name": "Accra Metropolitan Assembly", "category": "MMDA", "sector": "Local Government", "status": "Active", "contactEmail": "info@ama.gov.gh", "region": "Greater Accra", "district": "Accra Metropolitan", "activeProjectsCount": 1 },
+    { "id": "inst-18", "code": "KMA", "name": "Kumasi Metropolitan Assembly", "category": "MMDA", "sector": "Local Government", "status": "Active", "contactEmail": "info@kma.gov.gh", "region": "Ashanti", "district": "Kumasi Metropolitan", "activeProjectsCount": 0 },
+    { "id": "inst-19", "code": "STMA", "name": "Sekondi-Takoradi Metropolitan Assembly", "category": "MMDA", "sector": "Local Government", "status": "Active", "contactEmail": "info@stma.gov.gh", "region": "Western", "district": "Sekondi Takoradi", "activeProjectsCount": 0 },
+    { "id": "inst-20", "code": "TMA", "name": "Tamale Metropolitan Assembly", "category": "MMDA", "sector": "Local Government", "status": "Active", "contactEmail": "info@tma.gov.gh", "region": "Northern", "district": "Tamale Metropolitan", "activeProjectsCount": 0 }
+  ],
+  "appVersions": [
+    {
+      "id": "ver-100",
+      "version": "1.0.0",
+      "releaseNumber": 1,
+      "releaseDate": "2026-09-15",
+      "title": "Initial Sovereign AI Registry Platform Launch",
+      "releaseNotes": "Inception release establishing deterministic RBAC, statutory gatekeeper, Project Registry CRUD, and M&E Dashboard analytics.",
+      "newFeatures": ["Zero-Trust Mandatory Gatekeeper", "National AI Project Registry", "GIS Geospatial Deployment Map", "Ghana AI Ethics Framework 5-Pillars"],
+      "bugFixes": ["Initial production stabilization"],
+      "securityImprovements": ["Act 843 data privacy affirmation", "SHA-256 block-hashed audit logging"],
+      "deployedBy": "NITA DevOps Engineering Directorate",
+      "deploymentStatus": "Deployed"
+    },
+    {
+      "id": "ver-110",
+      "version": "1.1.0",
+      "releaseNumber": 2,
+      "releaseDate": "2026-10-25",
+      "title": "National Technical Clearance Intake Architecture",
+      "releaseNotes": "Refactored system into an intake registry for AI projects pre-cleared by the National Technical Clearance System.",
+      "newFeatures": ["Always-ready REST intake endpoint (/api/technical-clearance/documents)", "Automated Standards Scanner", "NITA Verified AI Readiness parameter"],
+      "bugFixes": ["Eliminated external recommendation loops; strictly downstream intake"],
+      "securityImprovements": ["Active role limitation strictly to Super Admin, Technical Director, and Public User (substance view-only)"],
+      "deployedBy": "NITA Systems Integration Directorate",
+      "deploymentStatus": "Deployed"
+    },
+    {
+      "id": "ver-120",
+      "version": "1.2.0",
+      "releaseNumber": 3,
+      "releaseDate": "2026-11-09",
+      "title": "Multi-Institution Governance, Forensic Auditing & Disaster Recovery",
+      "releaseNotes": "Implemented PostgreSQL multi-institution architecture, structured forensic audit diffs, disaster recovery engine, and central admin analytics.",
+      "newFeatures": ["PostgreSQL Institutions Table (MDAs & MMDAs)", "Application Version History & Deployment Management", "Automated Backup & Recovery Engine", "Forensic Audit Field Diffs"],
+      "bugFixes": ["Normalized institutional tenant routing", "Enhanced connection pooler resilience"],
+      "securityImprovements": ["Row-Level Security (RLS) enforcement", "API Rate Limiting & Security Headers", "Correlation ID request tracing"],
+      "deployedBy": "NITA Enterprise Architecture Directorate",
+      "deploymentStatus": "Deployed"
+    }
   ]
 }

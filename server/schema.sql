@@ -160,3 +160,65 @@ CREATE TABLE IF NOT EXISTS user_sessions (
 
 CREATE INDEX IF NOT EXISTS idx_user_sessions_email ON user_sessions(email);
 
+-- 7. Institutions Table (MDAs, MMDAs, SOEs across Ghana)
+CREATE TABLE IF NOT EXISTS institutions (
+    id VARCHAR(100) PRIMARY KEY,
+    code VARCHAR(50) UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    category VARCHAR(50) NOT NULL DEFAULT 'MDA', -- MDA, MMDA, SOE, Other
+    sector VARCHAR(100) DEFAULT 'Cross-Sector',
+    status VARCHAR(50) NOT NULL DEFAULT 'Active', -- Active, Inactive, Pending
+    contact_email VARCHAR(255),
+    region VARCHAR(100) DEFAULT 'Greater Accra',
+    district VARCHAR(100),
+    active_projects_count INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_institutions_code ON institutions(code);
+CREATE INDEX IF NOT EXISTS idx_institutions_category ON institutions(category);
+CREATE INDEX IF NOT EXISTS idx_institutions_status ON institutions(status);
+
+-- 8. Application Versions & Release Tracking Table
+CREATE TABLE IF NOT EXISTS app_versions (
+    id VARCHAR(100) PRIMARY KEY,
+    version VARCHAR(50) UNIQUE NOT NULL,
+    release_number INTEGER NOT NULL,
+    release_date DATE NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    release_notes TEXT NOT NULL,
+    new_features JSONB DEFAULT '[]'::jsonb,
+    bug_fixes JSONB DEFAULT '[]'::jsonb,
+    security_improvements JSONB DEFAULT '[]'::jsonb,
+    deployed_by VARCHAR(255) NOT NULL,
+    deployment_status VARCHAR(50) DEFAULT 'Deployed', -- Deployed, Rollback, Staged
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_app_versions_version ON app_versions(version);
+CREATE INDEX IF NOT EXISTS idx_app_versions_release_date ON app_versions(release_date);
+
+-- 9. Audit Log Forensic Extension Columns
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS previous_values JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS new_values JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS correlation_id VARCHAR(100);
+
+-- 10. PostgreSQL Row-Level Security (RLS) Foundations
+ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE institutions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_versions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS app_all_projects_policy ON projects;
+CREATE POLICY app_all_projects_policy ON projects FOR ALL TO PUBLIC USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS app_all_institutions_policy ON institutions;
+CREATE POLICY app_all_institutions_policy ON institutions FOR ALL TO PUBLIC USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS app_all_versions_policy ON app_versions;
+CREATE POLICY app_all_versions_policy ON app_versions FOR ALL TO PUBLIC USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS app_all_audit_logs_policy ON audit_logs;
+CREATE POLICY app_all_audit_logs_policy ON audit_logs FOR ALL TO PUBLIC USING (true) WITH CHECK (true);
+

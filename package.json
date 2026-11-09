@@ -10,7 +10,7 @@
     "start": "node server/index.js",
     "build": "tsc && vite build",
     "preview": "vite preview --host 0.0.0.0 --port 8080",
-    "test": "node src/tests/run_tests.js && node src/tests/onboarding_superadmin_workflow_tests.js"
+    "test": "node src/tests/run_tests.js && node src/tests/onboarding_superadmin_workflow_tests.js && node src/tests/multi_institution_and_version_tests.js"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",
