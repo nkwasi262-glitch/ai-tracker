@@ -562,11 +562,11 @@ app.post('/api/reports', async (req, res) => {
 // 6. USER SESSIONS & AUTHENTICATION ENDPOINTS (NEON POSTGRESQL)
 // ============================================================================
 
-// Look up existing user type / profile from Neon PostgreSQL by email
-app.get('/api/auth/user/:email', async (req, res) => {
-  const email = (req.params.email || '').trim().toLowerCase();
-  if (!email) {
-    return res.status(400).json({ error: 'Missing email' });
+// Look up existing user type / profile from Neon PostgreSQL by email or full name
+app.get('/api/auth/user/:identifier', async (req, res) => {
+  const query = decodeURIComponent(req.params.identifier || '').trim().toLowerCase();
+  if (!query) {
+    return res.status(400).json({ error: 'Missing identifier' });
   }
 
   const sql = getDb();
@@ -574,7 +574,10 @@ app.get('/api/auth/user/:email', async (req, res) => {
     try {
       const rows = await sql`
         SELECT * FROM user_sessions 
-        WHERE LOWER(email) = ${email} 
+        WHERE LOWER(email) = ${query}
+           OR LOWER(full_name) = ${query}
+           OR LOWER(full_name) LIKE ${'%' + query + '%'}
+        ORDER BY last_active_at DESC
         LIMIT 1;
       `;
       if (rows && rows.length > 0) {
@@ -596,14 +599,17 @@ app.get('/api/auth/user/:email', async (req, res) => {
         return res.json({ success: true, exists: true, user: userObj });
       }
     } catch (e) {
-      console.error('[API] Error fetching user by email:', e.message);
+      console.error('[API] Error fetching user by identifier:', e.message);
     }
   }
 
   // Fallback check against seed test accounts
   const seed = getLocalSeedData();
   if (Array.isArray(seed.users)) {
-    const matched = seed.users.find(u => u.email.toLowerCase() === email);
+    const matched = seed.users.find(u => 
+      u.email.toLowerCase() === query || 
+      u.fullName.toLowerCase().includes(query)
+    );
     if (matched) {
       return res.json({
         success: true,

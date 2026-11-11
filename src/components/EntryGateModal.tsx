@@ -2,15 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, 
   Building2, 
-  Mail, 
   User, 
   AlertTriangle, 
   ArrowRight, 
   Search, 
   Database,
-  Lock,
-  Eye,
-  EyeOff,
   CheckCircle2
 } from 'lucide-react';
 import { 
@@ -31,6 +27,13 @@ interface EntryGateModalProps {
   onSuccess: (session: UserSession) => void;
 }
 
+function generateOfficialEmail(name: string, institution: string): string {
+  const slug = name.toLowerCase().replace(/[^a-z0-9]/g, '.').replace(/\.+/g, '.').replace(/^\.|\.$/g, '') || 'officer';
+  const foundInst = STANDARD_INSTITUTIONS.find(i => i.name.toLowerCase() === institution.toLowerCase());
+  const domain = foundInst ? `${foundInst.code.toLowerCase()}.gov.gh` : 'nita.gov.gh';
+  return `${slug}@${domain}`;
+}
+
 export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => {
   // Form fields
   const [fullName, setFullName] = useState('');
@@ -39,9 +42,6 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
   const [instCategory, setInstCategory] = useState<InstitutionCategory>('MDA');
   const [instSearch, setInstSearch] = useState('');
   const [showInstDropdown, setShowInstDropdown] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [consentGiven, setConsentGiven] = useState(false);
   const submissionDate = new Date().toISOString().split('T')[0];
 
@@ -53,12 +53,10 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const cleanEmail = email.trim().toLowerCase();
-  const isGovGhEmail = cleanEmail.endsWith('.gov.gh');
-
-  // Look up existing user profile in Neon PostgreSQL whenever email is entered
+  // Look up existing user profile in Neon PostgreSQL whenever fullName is entered
   useEffect(() => {
-    if (!cleanEmail || !cleanEmail.includes('@') || cleanEmail.split('@')[1]?.length < 3) {
+    const trimmed = fullName.trim();
+    if (!trimmed || trimmed.length < 3) {
       setDbUserFound(null);
       return;
     }
@@ -67,12 +65,9 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
     const timer = setTimeout(async () => {
       setIsCheckingDb(true);
       try {
-        const found = await apiClient.fetchUserByEmail(cleanEmail);
+        const found = await apiClient.fetchUserByEmail(trimmed);
         if (active && found) {
           setDbUserFound(found);
-          if (found.fullName) {
-            setFullName(found.fullName);
-          }
           if (found.institution) {
             const matched = STANDARD_INSTITUTIONS.find(i => i.name.toLowerCase() === found.institution.toLowerCase());
             if (matched) {
@@ -98,7 +93,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
       active = false;
       clearTimeout(timer);
     };
-  }, [cleanEmail]);
+  }, [fullName]);
 
   // Selected institution name calculation
   const getSelectedInstName = () => {
@@ -130,19 +125,13 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
     e.preventDefault();
     setErrorMessage(null);
 
-    // 1. Email address validation (.gov.gh)
-    if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.endsWith('.gov.gh')) {
-      setErrorMessage('Acceptable email address must end with .gov.gh (e.g. officer@nita.gov.gh, minister@mof.gov.gh).');
+    const trimmedName = fullName.trim();
+    if (!trimmedName) {
+      setErrorMessage('Full name is required to authenticate.');
       return;
     }
 
-    // 2. Password validation
-    if (!password.trim()) {
-      setErrorMessage('Password is required to authenticate.');
-      return;
-    }
-
-    // 3. Act 843 statutory consent
+    // Act 843 statutory consent
     if (!consentGiven) {
       setErrorMessage('You must confirm statutory compliance under the Ghana Data Protection Act, 2012 (Act 843).');
       return;
@@ -152,20 +141,12 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
 
     // Retrieve database profile if not already cached
     let userRecord = dbUserFound;
-    if (!userRecord && cleanEmail) {
+    if (!userRecord && trimmedName.length >= 2) {
       try {
-        userRecord = await apiClient.fetchUserByEmail(cleanEmail);
+        userRecord = await apiClient.fetchUserByEmail(trimmedName);
       } catch (err) {
         // network fallback
       }
-    }
-
-    // 4. Determine effective identity values from database record or form fields
-    const effectiveFullName = (fullName.trim() || userRecord?.fullName || '').trim();
-    if (!effectiveFullName) {
-      setErrorMessage('Full name is mandatory to initialize statutory identity.');
-      setIsSubmitting(false);
-      return;
     }
 
     let institutionName = selectedInstId === 'other' ? customInstitution.trim() : getSelectedInstName();
@@ -185,33 +166,37 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
       return 'Public User';
     };
 
-    // Determine role: prioritize verified DB role -> test account fallback -> domain heuristic
-    const matchedTest = TEST_ACCOUNTS.find(a => a.email.toLowerCase() === cleanEmail);
+    // Determine role: prioritize verified DB role -> test account match -> name heuristic -> last role
+    const lowerName = trimmedName.toLowerCase();
+    const matchedTest = TEST_ACCOUNTS.find(a => a.fullName.toLowerCase().includes(lowerName) || lowerName.includes(a.fullName.toLowerCase()));
     let assignedRole: ActiveRole = 'Super Admin';
+
     if (userRecord?.role) {
       assignedRole = normalizeToActiveRole(userRecord.role);
     } else if (matchedTest) {
       assignedRole = matchedTest.role;
-    } else if (cleanEmail === 'techdirector@mocd.gov.gh' || cleanEmail.includes('techdirector') || cleanEmail.includes('director')) {
-      assignedRole = 'Technical Director';
-    } else if (cleanEmail === 'public.user@gov.gh' || cleanEmail.includes('public') || cleanEmail.includes('citizen')) {
-      assignedRole = 'Public User';
-    } else if (cleanEmail === 'superadmin@nita.gov.gh' || cleanEmail.includes('admin')) {
+    } else if (lowerName.includes('boateng') || lowerName.includes('superadmin') || lowerName.includes('admin')) {
       assignedRole = 'Super Admin';
+    } else if (lowerName.includes('darko') || lowerName.includes('emmanuel') || lowerName.includes('director')) {
+      assignedRole = 'Technical Director';
+    } else if (lowerName.includes('mensah') || lowerName.includes('kwame') || lowerName.includes('public') || lowerName.includes('citizen')) {
+      assignedRole = 'Public User';
     } else {
-      assignedRole = normalizeToActiveRole(getLastSelectedRole() || (cleanEmail.includes('nita.gov.gh') ? 'Super Admin' : 'Technical Director'));
+      assignedRole = normalizeToActiveRole(getLastSelectedRole() || (institutionName.includes('NITA') ? 'Super Admin' : 'Technical Director'));
     }
 
+    // Derive or retrieve official email (.gov.gh)
+    const effectiveEmail = userRecord?.email || (matchedTest ? matchedTest.email : generateOfficialEmail(trimmedName, institutionName));
     const effectiveCategory = userRecord?.institutionCategory || instCategory;
 
     try {
       // Process submission: saves to local cache & syncs directly to Neon PostgreSQL DB
       const result: GateResult = processGateSubmission({
-        fullName: effectiveFullName,
+        fullName: trimmedName,
         institution: institutionName,
         institutionCategory: effectiveCategory,
         role: assignedRole,
-        email: cleanEmail,
+        email: effectiveEmail,
         submissionDate,
         memberType: userRecord?.memberType || 'in_member',
         onboardingStatus: userRecord?.onboardingStatus || 'approved'
@@ -228,11 +213,11 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
       console.error('[Login] Error saving session to database:', err);
       setIsSubmitting(false);
       const fallbackResult = processGateSubmission({
-        fullName: effectiveFullName,
+        fullName: trimmedName,
         institution: institutionName,
         institutionCategory: effectiveCategory,
         role: assignedRole,
-        email: cleanEmail,
+        email: effectiveEmail,
         submissionDate,
         memberType: userRecord?.memberType || 'in_member',
         onboardingStatus: userRecord?.onboardingStatus || 'approved'
@@ -251,13 +236,13 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
       display: 'flex',
       alignItems: 'flex-start',
       justifyContent: 'center',
-      padding: '36px 16px 60px 16px',
+      padding: '40px 16px 60px 16px',
       overflowY: 'auto',
       WebkitOverflowScrolling: 'touch'
     }}>
       {/* Container Box */}
       <div style={{
-        maxWidth: '680px',
+        maxWidth: '640px',
         width: '100%',
         margin: '0 auto',
         background: 'linear-gradient(170deg, #111827 0%, #0d121f 100%)',
@@ -339,10 +324,10 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
 
         {/* Login Form */}
         <form onSubmit={handleSubmit} style={{ padding: '24px 32px 32px 32px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '18px' }}>
             
-            {/* 1. EMAIL ADDRESS (.gov.gh only) */}
-            <div style={{ gridColumn: 'span 2' }}>
+            {/* 1. FULL NAME */}
+            <div>
               <label style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -354,8 +339,8 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
                 marginBottom: '6px'
               }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Mail size={14} className="text-emerald-400" />
-                  <span>INSTITUTIONAL EMAIL ADDRESS (.gov.gh only) *</span>
+                  <User size={14} className="text-emerald-400" />
+                  <span>FULL NAME *</span>
                 </span>
                 {isCheckingDb ? (
                   <span style={{ fontSize: '0.7rem', color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -368,21 +353,17 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
                 ) : null}
               </label>
               <input
-                type="email"
+                type="text"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="e.g. superadmin@nita.gov.gh, techdirector@mocd.gov.gh, public.user@gov.gh"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="e.g. Dr. Kwabena Boateng, Eng. Emmanuel Darko, Kwame Mensah"
                 style={{
                   width: '100%',
                   padding: '11px 14px',
                   borderRadius: '8px',
                   background: 'rgba(255, 255, 255, 0.04)',
-                  border: cleanEmail === '' 
-                    ? '1px solid rgba(255, 255, 255, 0.12)' 
-                    : isGovGhEmail 
-                      ? '1px solid var(--ghana-emerald)' 
-                      : '1px solid rgba(239, 68, 68, 0.6)',
+                  border: dbUserFound ? '1px solid var(--ghana-emerald)' : '1px solid rgba(255, 255, 255, 0.12)',
                   color: '#fff',
                   fontSize: '0.88rem',
                   outline: 'none'
@@ -416,112 +397,8 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
               )}
             </div>
 
-            {/* 2. PASSWORD FIELD */}
-            <div style={{ gridColumn: 'span 2' }}>
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                fontSize: '0.78rem',
-                fontWeight: 700,
-                color: 'var(--text-primary)',
-                letterSpacing: '0.04em',
-                marginBottom: '6px'
-              }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Lock size={14} className="text-emerald-400" />
-                  <span>PASSWORD *</span>
-                </span>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                  Institutional Access Password
-                </span>
-              </label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your institutional password"
-                  style={{
-                    width: '100%',
-                    padding: '11px 40px 11px 14px',
-                    borderRadius: '8px',
-                    background: 'rgba(255, 255, 255, 0.04)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    color: '#fff',
-                    fontSize: '0.88rem',
-                    outline: 'none'
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = 'var(--ghana-emerald)'}
-                  onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.12)'}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={{
-                    position: 'absolute',
-                    right: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--text-muted)',
-                    cursor: 'pointer',
-                    padding: '4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-
-            {/* 3. FULL NAME */}
-            <div style={{ gridColumn: 'span 2' }}>
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                fontSize: '0.78rem',
-                fontWeight: 700,
-                color: 'var(--text-primary)',
-                letterSpacing: '0.04em',
-                marginBottom: '6px'
-              }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <User size={14} className="text-emerald-400" />
-                  <span>FULL NAME *</span>
-                </span>
-                {dbUserFound && (
-                  <span style={{ fontSize: '0.68rem', color: '#10b981', fontWeight: 600 }}>
-                    ✓ Retrieved from Database
-                  </span>
-                )}
-              </label>
-              <input
-                type="text"
-                required
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="e.g. Dr. Kwabena Boateng or Eng. Emmanuel Darko"
-                style={{
-                  width: '100%',
-                  padding: '11px 14px',
-                  borderRadius: '8px',
-                  background: 'rgba(255, 255, 255, 0.04)',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                  color: '#fff',
-                  fontSize: '0.88rem',
-                  outline: 'none'
-                }}
-              />
-            </div>
-
-            {/* 4. MANAGING INSTITUTION */}
-            <div style={{ gridColumn: 'span 2', position: 'relative' }}>
+            {/* 2. MANAGING INSTITUTION */}
+            <div style={{ position: 'relative' }}>
               <label style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -538,7 +415,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
                 </span>
                 {dbUserFound && (
                   <span style={{ fontSize: '0.68rem', color: '#10b981', fontWeight: 600 }}>
-                    ✓ Retrieved from Database
+                    ✓ Auto-Selected from Database
                   </span>
                 )}
               </label>
@@ -683,72 +560,8 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
               )}
             </div>
 
-            {/* 4. PASSWORD FIELD (Replaces previous Active Role Profile block) */}
-            <div style={{ gridColumn: 'span 2' }}>
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                fontSize: '0.78rem',
-                fontWeight: 700,
-                color: 'var(--text-primary)',
-                letterSpacing: '0.04em',
-                marginBottom: '6px'
-              }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Lock size={14} className="text-emerald-400" />
-                  <span>PASSWORD *</span>
-                </span>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                  Institutional Access Password
-                </span>
-              </label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your institutional password"
-                  style={{
-                    width: '100%',
-                    padding: '11px 40px 11px 14px',
-                    borderRadius: '8px',
-                    background: 'rgba(255, 255, 255, 0.04)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    color: '#fff',
-                    fontSize: '0.88rem',
-                    outline: 'none'
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = 'var(--ghana-emerald)'}
-                  onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.12)'}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={{
-                    position: 'absolute',
-                    right: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--text-muted)',
-                    cursor: 'pointer',
-                    padding: '4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-
-            {/* 5. STATUTORY CONSENT UNDER ACT 843 */}
+            {/* 3. STATUTORY CONSENT UNDER ACT 843 */}
             <div style={{
-              gridColumn: 'span 2',
               marginTop: '4px',
               padding: '14px 16px',
               borderRadius: '10px',
