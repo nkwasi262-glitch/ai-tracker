@@ -21,7 +21,8 @@ import {
   Scale,
   FileCheck2,
   Building,
-  BarChart3
+  BarChart3,
+  GitBranch
 } from 'lucide-react';
 import { UserSession, ActiveRole } from '../data/authTypes';
 import { HeaderProfile } from './HeaderProfile';
@@ -51,6 +52,7 @@ export const Layout: React.FC<LayoutProps> = ({
     { id: 'dashboard', label: 'M&E Dashboard', icon: <LayoutDashboard size={18} /> },
     { id: 'analytics_hub', label: 'Executive Analytics', icon: <BarChart3 size={18} /> },
     { id: 'public_portal', label: 'Public Transparency', icon: <Globe size={18} /> },
+    { id: 'workflow_lifecycle', label: '8-Step Lifecycle', icon: <GitBranch size={18} /> },
     { id: 'tcs_referrals', label: 'TCS Referral Queue', icon: <ArrowDownLeft size={18} /> },
     { id: 'registry', label: 'Project Registry', icon: <FilePlus2 size={18} /> },
     { id: 'assessments', label: '12-Domain Assessment', icon: <Scale size={18} /> },

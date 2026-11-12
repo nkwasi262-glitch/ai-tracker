@@ -19,7 +19,8 @@ export type AppModuleId =
   | 'audits_hub'
   | 'vendors'
   | 'public_portal'
-  | 'analytics_hub';
+  | 'analytics_hub'
+  | 'workflow_lifecycle';
 
 export type AppAction =
   | 'VIEW'
@@ -159,6 +160,12 @@ export const MODULE_REGISTRY: Record<AppModuleId, ModuleDefinition> = {
     label: 'Executive AI Analytics',
     description: 'National cross-sector intelligence, sovereign cloud adoption heatmaps, and official assessment dossiers.',
     category: 'executive'
+  },
+  workflow_lifecycle: {
+    id: 'workflow_lifecycle',
+    label: '8-Step Statutory Lifecycle',
+    description: 'National 8-step project lifecycle from TCS clearance to audit and closure.',
+    category: 'governance'
   }
 };
 
@@ -183,7 +190,8 @@ const ROLE_MODULE_PERMISSIONS: Record<string, AppModuleId[]> = {
     'audits_hub',
     'vendors',
     'public_portal',
-    'analytics_hub'
+    'analytics_hub',
+    'workflow_lifecycle'
   ],
   'Technical Unit': [
     'dashboard',
@@ -204,7 +212,8 @@ const ROLE_MODULE_PERMISSIONS: Record<string, AppModuleId[]> = {
     'audits_hub',
     'vendors',
     'public_portal',
-    'analytics_hub'
+    'analytics_hub',
+    'workflow_lifecycle'
   ],
   'Technical Director': [
     'dashboard',
@@ -225,7 +234,8 @@ const ROLE_MODULE_PERMISSIONS: Record<string, AppModuleId[]> = {
     'audits_hub',
     'vendors',
     'public_portal',
-    'analytics_hub'
+    'analytics_hub',
+    'workflow_lifecycle'
   ],
   'Public User': [
     'dashboard',

@@ -19,6 +19,7 @@ import { AIAuditInspectionHub } from './components/AIAuditInspectionHub';
 import { AIVendorOversight } from './components/AIVendorOversight';
 import { PublicTransparencyPortal } from './components/PublicTransparencyPortal';
 import { NationalAnalyticsHeatmapStudio } from './components/NationalAnalyticsHeatmapStudio';
+import { OperationalWorkflowStudio } from './components/OperationalWorkflowStudio';
 import { EntryGateModal } from './components/EntryGateModal';
 import { AccessDenied } from './components/AccessDenied';
 import { ActiveRoleSelectorModal } from './components/ActiveRoleSelectorModal';
@@ -549,6 +550,16 @@ function App() {
           <PublicTransparencyPortal
             projects={projects}
             session={session}
+          />
+        );
+      case 'workflow_lifecycle':
+        return (
+          <OperationalWorkflowStudio
+            projects={projects}
+            session={session}
+            onUpdateProject={(updatedProject) => {
+              setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
+            }}
           />
         );
       case 'registry':
