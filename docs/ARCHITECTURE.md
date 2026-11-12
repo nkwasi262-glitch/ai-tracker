@@ -140,3 +140,17 @@ Post-clearance oversight follows the statutory 8-step lifecycle:
 6. **Continuous Monitoring**: Model drift, incident logging, and expenditure auditing.
 7. **Audit & Impact Evaluation**: On-site NITA field inspections using the 8-point checklist.
 8. **Project Closure or Continued Oversight**: Lifecycle renewal, retirement, or permanent oversight archiving.
+
+## 6. Public Transparency & Executive Analytics (Phases 7 & 8)
+
+### Module 15: Public Transparency & Citizen Feedback Portal
+- **Citizen Protections**: Plain-language summaries of rights under the Data Protection Act (Act 843), explaining consent, automated decision challenge, and biometric notice standards.
+- **Auditable Public AI Register**: Direct search, filter by risk tier, sector, and hosting location for approved public AI systems.
+- **Whistleblower & Grievance Reporting**: Secure submission mechanism for citizens and civil servants to lodge algorithmic bias, discrimination, or privacy violation concerns.
+- **Open Data & Act 843 Disclosure**: One-click JSON open-data export of public AI projects.
+
+### Module 14 & 9: National AI Executive Analytics, Heatmaps & Clearance Dossier
+- **Regional Deployment Density**: Real-time cross-tabulation across Ghana's 16 administrative regions.
+- **Sovereign Infrastructure Tracking**: Quantitative ratio of On-Premises/Sovereign Cloud deployments vs foreign cloud dependencies.
+- **Official AI Clearance Assessment Dossier (Module 9)**: Generates printable, high-fidelity regulatory dossiers complete with National Governance Index scores, 12-domain radar evaluations, and statutory signature lines.
+

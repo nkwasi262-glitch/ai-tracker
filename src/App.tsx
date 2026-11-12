@@ -17,6 +17,8 @@ import { AIAssessmentStudio } from './components/AIAssessmentStudio';
 import { AIIncidentCenter } from './components/AIIncidentCenter';
 import { AIAuditInspectionHub } from './components/AIAuditInspectionHub';
 import { AIVendorOversight } from './components/AIVendorOversight';
+import { PublicTransparencyPortal } from './components/PublicTransparencyPortal';
+import { NationalAnalyticsHeatmapStudio } from './components/NationalAnalyticsHeatmapStudio';
 import { EntryGateModal } from './components/EntryGateModal';
 import { AccessDenied } from './components/AccessDenied';
 import { ActiveRoleSelectorModal } from './components/ActiveRoleSelectorModal';
@@ -458,7 +460,7 @@ function App() {
   const renderTabContent = () => {
     // If user is in pending_approval onboarding status, check if module is restricted
     if (session.onboardingStatus === 'pending_approval') {
-      if (!['dashboard', 'gis', 'chat'].includes(activeTab)) {
+      if (!['dashboard', 'gis', 'chat', 'public_portal'].includes(activeTab)) {
         return (
           <PendingApprovalNotice
             session={session}
@@ -532,6 +534,20 @@ function App() {
       case 'vendors':
         return (
           <AIVendorOversight
+            session={session}
+          />
+        );
+      case 'analytics_hub':
+        return (
+          <NationalAnalyticsHeatmapStudio
+            projects={projects}
+            session={session}
+          />
+        );
+      case 'public_portal':
+        return (
+          <PublicTransparencyPortal
+            projects={projects}
             session={session}
           />
         );

@@ -17,7 +17,9 @@ export type AppModuleId =
   | 'assessments'
   | 'incidents'
   | 'audits_hub'
-  | 'vendors';
+  | 'vendors'
+  | 'public_portal'
+  | 'analytics_hub';
 
 export type AppAction =
   | 'VIEW'
@@ -145,6 +147,18 @@ export const MODULE_REGISTRY: Record<AppModuleId, ModuleDefinition> = {
     label: 'AI Vendor Oversight',
     description: 'Third-party technology accreditation, sovereign data residency vetting, and lock-in risk scoring.',
     category: 'governance'
+  },
+  public_portal: {
+    id: 'public_portal',
+    label: 'Public Transparency Portal',
+    description: 'Open public AI registry, citizen rights protection under Act 843, and whistleblower grievance reporting.',
+    category: 'core'
+  },
+  analytics_hub: {
+    id: 'analytics_hub',
+    label: 'Executive AI Analytics',
+    description: 'National cross-sector intelligence, sovereign cloud adoption heatmaps, and official assessment dossiers.',
+    category: 'executive'
   }
 };
 
@@ -167,7 +181,9 @@ const ROLE_MODULE_PERMISSIONS: Record<string, AppModuleId[]> = {
     'assessments',
     'incidents',
     'audits_hub',
-    'vendors'
+    'vendors',
+    'public_portal',
+    'analytics_hub'
   ],
   'Technical Unit': [
     'dashboard',
@@ -186,7 +202,9 @@ const ROLE_MODULE_PERMISSIONS: Record<string, AppModuleId[]> = {
     'assessments',
     'incidents',
     'audits_hub',
-    'vendors'
+    'vendors',
+    'public_portal',
+    'analytics_hub'
   ],
   'Technical Director': [
     'dashboard',
@@ -205,12 +223,15 @@ const ROLE_MODULE_PERMISSIONS: Record<string, AppModuleId[]> = {
     'assessments',
     'incidents',
     'audits_hub',
-    'vendors'
+    'vendors',
+    'public_portal',
+    'analytics_hub'
   ],
   'Public User': [
     'dashboard',
     'gis',
-    'chat'
+    'chat',
+    'public_portal'
   ],
   // Legacy role definitions preserved for backward compatibility
   'Director General': [
