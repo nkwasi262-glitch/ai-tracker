@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Plus, Search, Calendar, Landmark, MapPin, DollarSign, AlertCircle, Activity, ShieldCheck, ShieldAlert, Stamp, Sparkles } from 'lucide-react';
-import { AIProject, formatNumberToWords } from '../data/sampleProjects';
+import { Plus, Search, Calendar, Landmark, MapPin, DollarSign, AlertCircle, Activity, ShieldCheck, ShieldAlert, Stamp, Sparkles, GitBranch } from 'lucide-react';
+import { AIProject, formatNumberToWords, generateDefaultOperationalWorkflow } from '../data/sampleProjects';
 import { UserRole } from './RoleSwitcher';
+import { OperationalWorkflowStudio } from './OperationalWorkflowStudio';
 const standardMDAs = [
   { name: 'Ministry of Communications and Digitalisation', code: 'MOCD' },
   { name: 'National Information Technology Agency', code: 'NITA' },
@@ -50,6 +51,7 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [stageFilter, setStageFilter] = useState('All');
   const [selectedProject, setSelectedProject] = useState<AIProject | null>(projects[0] || null);
+  const [isWorkflowStudioOpen, setIsWorkflowStudioOpen] = useState(false);
 
   // Sync selection when projects list changes (e.g. deletions)
   React.useEffect(() => {
@@ -256,7 +258,17 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
         unverifiedAssumptions: [],
         lastAuditedDate: new Date().toISOString(),
         assumptionsEliminatedCount: (warrantNumberInput.trim() ? 1 : 0) + (dpcCertInput.trim() ? 1 : 0) + 1
-      }
+      },
+      operationalWorkflow: generateDefaultOperationalWorkflow({
+        projectCode: projectCodeGenerated,
+        name,
+        mda,
+        mdaCode,
+        sector,
+        stage: 'Planning',
+        status: 'Active',
+        readinessScore: 84
+      })
     };
 
     onAddProject(newProjectItem);
@@ -522,6 +534,27 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
                       Registration: {selectedProject.reviewStatus}
                     </span>
                   )}
+                  <button
+                    onClick={() => setIsWorkflowStudioOpen(true)}
+                    style={{
+                      padding: '4px 10px',
+                      background: 'rgba(16, 185, 129, 0.15)',
+                      border: '1px solid #10b981',
+                      borderRadius: '6px',
+                      color: '#a7f3d0',
+                      fontSize: '0.68rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      transition: 'all 0.15s ease'
+                    }}
+                    title="Inspect & Execute Statutory 8-Step Operational Workflow"
+                  >
+                    <GitBranch size={13} className="text-emerald-400" />
+                    <span>8-Step Workflow</span>
+                  </button>
                   {canWrite && (
                     <button
                       onClick={() => {
@@ -1052,6 +1085,31 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
 
         </div>
       </div>
+
+      {/* Operational Workflow Studio Modal Overlay */}
+      {isWorkflowStudioOpen && selectedProject && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(5, 8, 15, 0.94)',
+          backdropFilter: 'blur(16px)',
+          zIndex: 99999,
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'flex-start',
+          padding: '30px 16px',
+          overflowY: 'auto'
+        }}>
+          <div style={{ maxWidth: '1080px', width: '100%' }}>
+            <OperationalWorkflowStudio
+              projects={projects}
+              session={null}
+              initialProjectId={selectedProject.id}
+              onClose={() => setIsWorkflowStudioOpen(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1220,6 +1220,425 @@ app.post('/api/system/dr-drill', async (req, res) => {
 });
 
 // ============================================================================
+// 11. STATUTORY 8-STEP OPERATIONAL WORKFLOW ENDPOINTS (ACT 771 / ACT 843)
+// ============================================================================
+
+// POST /api/projects/validate-registry — STEP 2 National Registry Validation
+app.post('/api/projects/validate-registry', async (req, res) => {
+  try {
+    const { name, mda, category, sector, budget, description } = req.body || {};
+    
+    // 1. Completeness score calculation
+    const fields = [
+      { key: 'name', value: name, weight: 20 },
+      { key: 'mda', value: mda, weight: 20 },
+      { key: 'sector', value: sector, weight: 15 },
+      { key: 'category', value: category, weight: 15 },
+      { key: 'budget', value: budget, weight: 15 },
+      { key: 'description', value: description, weight: 15 }
+    ];
+
+    let completenessScore = 0;
+    const missingFields = [];
+    for (const f of fields) {
+      if (f.value !== undefined && f.value !== null && String(f.value).trim() !== '') {
+        completenessScore += f.weight;
+      } else {
+        missingFields.push(f.key);
+      }
+    }
+
+    // 2. Scan for duplicate projects across DB or seed
+    const sql = getDb();
+    let existingProjects = [];
+    if (sql && isDbConfigured()) {
+      try {
+        const rows = await sql`SELECT project_code, name, mda, category, sector FROM projects;`;
+        existingProjects = rows.map(r => ({
+          projectCode: r.project_code,
+          name: r.name,
+          mda: r.mda,
+          category: r.category,
+          sector: r.sector
+        }));
+      } catch (e) {
+        console.warn('[API] Warning fetching projects for duplicate scan:', e.message);
+      }
+    }
+    if (existingProjects.length === 0) {
+      const seed = getLocalSeedData();
+      existingProjects = seed.projects || [];
+    }
+
+    const cleanName = (name || '').trim().toLowerCase();
+    const cleanMda = (mda || '').trim().toLowerCase();
+    const duplicateMatches = [];
+
+    for (const p of existingProjects) {
+      const pName = (p.name || '').trim().toLowerCase();
+      const pMda = (p.mda || '').trim().toLowerCase();
+      
+      // Exact or high similarity match
+      if (cleanName && pName === cleanName) {
+        duplicateMatches.push({
+          projectCode: p.projectCode,
+          name: p.name,
+          reason: 'Identical project name already registered'
+        });
+      } else if (cleanName && cleanMda && pName.includes(cleanName) && pMda === cleanMda) {
+        duplicateMatches.push({
+          projectCode: p.projectCode,
+          name: p.name,
+          reason: 'High name similarity within the same managing institution'
+        });
+      }
+    }
+
+    const isDuplicate = duplicateMatches.length > 0;
+    const nextCodeNumber = String(existingProjects.length + 1).padStart(3, '0');
+    const generatedRegistryId = `GN-AI-2026-${nextCodeNumber}`;
+
+    const validationStatus = isDuplicate
+      ? 'Flagged Duplicate'
+      : (completenessScore < 80 ? 'Incomplete Parameters' : 'Validated & Unique');
+
+    return res.json({
+      success: true,
+      uniqueRegistryId: generatedRegistryId,
+      completenessScore,
+      isComplete: completenessScore >= 80,
+      missingFields,
+      isDuplicate,
+      duplicateMatches,
+      validationStatus,
+      validatedAt: new Date().toISOString(),
+      scanSummary: isDuplicate
+        ? `Found ${duplicateMatches.length} possible duplicate collision(s) in registry.`
+        : `Zero collisions detected. Unique statutory ID ${generatedRegistryId} allocated under NITA Act 771.`
+    });
+  } catch (err) {
+    console.error('[API] Error in registry validation:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/projects/:id/operational-workflow/step — Updates active step & payload
+app.post('/api/projects/:id/operational-workflow/step', async (req, res) => {
+  const { id } = req.params;
+  const { stepNumber, stepData, actorName, actorEmail, actorRole, notes } = req.body || {};
+
+  if (!stepNumber || stepNumber < 1 || stepNumber > 8) {
+    return res.status(400).json({ error: 'Valid stepNumber (1 to 8) is required.' });
+  }
+
+  const sql = getDb();
+  if (sql && isDbConfigured()) {
+    try {
+      const rows = await sql`SELECT * FROM projects WHERE id = ${id};`;
+      if (!rows || rows.length === 0) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
+
+      const proj = rows[0];
+      const lifecycle = typeof proj.lifecycle === 'string' ? JSON.parse(proj.lifecycle) : (proj.lifecycle || {});
+      const currentWf = lifecycle.operationalWorkflow || {};
+
+      const stepKey = `step${stepNumber}_${
+        stepNumber === 1 ? 'DataExchange' :
+        stepNumber === 2 ? 'RegistryValidation' :
+        stepNumber === 3 ? 'RiskClassification' :
+        stepNumber === 4 ? 'RegulatoryAssessment' :
+        stepNumber === 5 ? 'Implementation' :
+        stepNumber === 6 ? 'ContinuousMonitoring' :
+        stepNumber === 7 ? 'AuditImpactEvaluation' :
+        'ClosureOrOversight'
+      }`;
+
+      const updatedWorkflow = {
+        ...currentWf,
+        currentStep: stepNumber,
+        overallProgressPercent: Math.round((stepNumber / 8) * 100),
+        [stepKey]: {
+          ...(currentWf[stepKey] || {}),
+          ...(stepData || {}),
+          updatedAt: new Date().toISOString()
+        }
+      };
+
+      lifecycle.operationalWorkflow = updatedWorkflow;
+
+      await sql`
+        UPDATE projects SET
+          lifecycle = ${JSON.stringify(lifecycle)}::jsonb,
+          updated_at = NOW()
+        WHERE id = ${id};
+      `;
+
+      // Log forensic audit
+      try {
+        const auditId = `audit-step-${Date.now()}`;
+        const auditHash = crypto.createHash('sha256').update(`${auditId}:${id}:${stepNumber}`).digest('hex');
+        await sql`
+          INSERT INTO audit_logs (
+            id, timestamp, event_type, actor_name, actor_email, actor_role, actor_institution,
+            target_module, target_entity_id, action_details, integrity_hash, retention_until
+          ) VALUES (
+            ${auditId}, NOW(), 'OPERATIONAL_WORKFLOW_STEP_UPDATE',
+            ${actorName || 'Authorized Officer'}, ${actorEmail || 'evaluator@nita.gov.gh'},
+            ${actorRole || 'Technical Director'}, ${proj.mda || 'NITA'},
+            'registry', ${id},
+            ${`Project ${proj.project_code} advanced/updated to Step ${stepNumber}: ${notes || 'Step parameters verified under statutory operational workflow.'}`},
+            ${auditHash}, '2031-12-31T00:00:00Z'
+          );
+        `;
+      } catch (e) {
+        console.warn('[API] Warning logging workflow step audit:', e.message);
+      }
+
+      return res.json({ success: true, message: `Operational workflow Step ${stepNumber} updated`, workflow: updatedWorkflow });
+    } catch (err) {
+      console.error('[API] Error updating workflow step:', err.message);
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  return res.json({ success: true, message: `Step ${stepNumber} updated in memory fallback` });
+});
+
+// POST /api/projects/:id/operational-workflow/incident — Logs Step 6 Incident
+app.post('/api/projects/:id/operational-workflow/incident', async (req, res) => {
+  const { id } = req.params;
+  const { title, severity, description, status } = req.body || {};
+
+  if (!title) {
+    return res.status(400).json({ error: 'Incident title is required.' });
+  }
+
+  const incident = {
+    id: `inc-${Date.now()}`,
+    date: new Date().toISOString().split('T')[0],
+    title: title.trim(),
+    severity: severity || 'Medium',
+    status: status || 'Reported',
+    description: description || 'Continuous monitoring discrepancy logged for regulatory investigation.'
+  };
+
+  const sql = getDb();
+  if (sql && isDbConfigured()) {
+    try {
+      const rows = await sql`SELECT * FROM projects WHERE id = ${id};`;
+      if (!rows || rows.length === 0) return res.status(404).json({ error: 'Project not found' });
+
+      const proj = rows[0];
+      const lifecycle = typeof proj.lifecycle === 'string' ? JSON.parse(proj.lifecycle) : (proj.lifecycle || {});
+      const wf = lifecycle.operationalWorkflow || {};
+      const step6 = wf.step6_ContinuousMonitoring || { incidents: [] };
+
+      step6.incidents = [incident, ...(step6.incidents || [])];
+      step6.reportedIncidentsCount = (step6.incidents || []).length;
+      step6.monitoringStatus = severity === 'Critical' || severity === 'High' ? 'Needs Attention' : 'Active Monitoring';
+      wf.step6_ContinuousMonitoring = step6;
+      lifecycle.operationalWorkflow = wf;
+
+      await sql`
+        UPDATE projects SET
+          lifecycle = ${JSON.stringify(lifecycle)}::jsonb,
+          updated_at = NOW()
+        WHERE id = ${id};
+      `;
+
+      return res.json({ success: true, message: 'Continuous monitoring incident recorded', incident });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  return res.json({ success: true, message: 'Incident recorded in memory', incident });
+});
+
+// POST /api/projects/:id/operational-workflow/inspection — Logs Step 7 Inspection & Impact Evaluation
+app.post('/api/projects/:id/operational-workflow/inspection', async (req, res) => {
+  const { id } = req.params;
+  const { inspectorName, inspectorRole, findings, verdict, citizenReach, economicImpact, nextInspectionDate } = req.body || {};
+
+  const inspection = {
+    lastInspectionDate: new Date().toISOString().split('T')[0],
+    leadRegulatoryInspector: inspectorName || 'Regulatory Inspection Team',
+    inspectorRole: inspectorRole || 'Super Admin',
+    inspectionFindings: findings || 'Regulatory on-site inspection passed statutory criteria.',
+    inspectionVerdict: verdict || 'Satisfactory',
+    impactEvaluation: {
+      citizenReachEstimate: citizenReach ? Number(citizenReach) : 100000,
+      economicProductivityImpact: economicImpact || 'Positive public sector productivity enhancement.',
+      socialBenefitRating: 'High Positive',
+      outcomeEvaluationSummary: 'Project outcomes confirmed compliant with public mandate.'
+    },
+    scheduledNextInspectionDate: nextInspectionDate || '2027-06-30'
+  };
+
+  const sql = getDb();
+  if (sql && isDbConfigured()) {
+    try {
+      const rows = await sql`SELECT * FROM projects WHERE id = ${id};`;
+      if (!rows || rows.length === 0) return res.status(404).json({ error: 'Project not found' });
+
+      const proj = rows[0];
+      const lifecycle = typeof proj.lifecycle === 'string' ? JSON.parse(proj.lifecycle) : (proj.lifecycle || {});
+      const wf = lifecycle.operationalWorkflow || {};
+      wf.step7_AuditImpactEvaluation = inspection;
+      lifecycle.operationalWorkflow = wf;
+
+      await sql`
+        UPDATE projects SET
+          lifecycle = ${JSON.stringify(lifecycle)}::jsonb,
+          updated_at = NOW()
+        WHERE id = ${id};
+      `;
+
+      return res.json({ success: true, message: 'Statutory inspection and impact evaluation logged', inspection });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  return res.json({ success: true, message: 'Inspection logged in memory', inspection });
+});
+
+// POST /api/projects/:id/operational-workflow/lifecycle-decision — Step 8 Closure or Continued Oversight
+app.post('/api/projects/:id/operational-workflow/lifecycle-decision', async (req, res) => {
+  const { id } = req.params;
+  const { decision, justification, signedByName, retentionUntil } = req.body || {};
+
+  if (!decision) {
+    return res.status(400).json({ error: 'Lifecycle decision is required.' });
+  }
+
+  const step8Data = {
+    currentOversightStatus: decision,
+    lifecycleDecisionDate: new Date().toISOString().split('T')[0],
+    decisionSignedBy: signedByName || 'Director General & NITA Oversight Board',
+    decisionJustification: justification || 'Statutory review ratified by the oversight committee.',
+    statutoryRetentionUntil: retentionUntil || '2036-12-31T23:59:59Z',
+    historicalRecordsArchived: true,
+    archiveStorageHash: crypto.createHash('sha256').update(`${id}:${decision}:${Date.now()}`).digest('hex')
+  };
+
+  const sql = getDb();
+  if (sql && isDbConfigured()) {
+    try {
+      const rows = await sql`SELECT * FROM projects WHERE id = ${id};`;
+      if (!rows || rows.length === 0) return res.status(404).json({ error: 'Project not found' });
+
+      const proj = rows[0];
+      const lifecycle = typeof proj.lifecycle === 'string' ? JSON.parse(proj.lifecycle) : (proj.lifecycle || {});
+      const wf = lifecycle.operationalWorkflow || {};
+      wf.currentStep = 8;
+      wf.step8_ClosureOrOversight = step8Data;
+      lifecycle.operationalWorkflow = wf;
+
+      const newStatus = decision === 'Completed' ? 'Completed' : (decision === 'Suspended' ? 'Suspended' : 'Active');
+
+      await sql`
+        UPDATE projects SET
+          status = ${newStatus},
+          lifecycle = ${JSON.stringify(lifecycle)}::jsonb,
+          updated_at = NOW()
+        WHERE id = ${id};
+      `;
+
+      return res.json({ success: true, message: `Project transitioned to ${decision}`, step8: step8Data });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  return res.json({ success: true, message: `Project lifecycle decision recorded`, step8: step8Data });
+});
+
+// GET /api/projects/operational-workflow/overview — Operational Workflow Metrics across all 8 steps
+app.get('/api/projects/operational-workflow/overview', async (req, res) => {
+  try {
+    const sql = getDb();
+    let projects = [];
+    if (sql && isDbConfigured()) {
+      try {
+        const rows = await sql`SELECT id, project_code, name, mda, stage, status, lifecycle FROM projects;`;
+        projects = rows.map(r => ({
+          id: r.id,
+          projectCode: r.project_code,
+          name: r.name,
+          mda: r.mda,
+          stage: r.stage,
+          status: r.status,
+          lifecycle: typeof r.lifecycle === 'string' ? JSON.parse(r.lifecycle) : (r.lifecycle || {})
+        }));
+      } catch (e) {
+        console.warn('[API] Warning fetching projects for workflow overview:', e.message);
+      }
+    }
+    if (projects.length === 0) {
+      const seed = getLocalSeedData();
+      projects = seed.projects || [];
+    }
+
+    const stepCounts = {
+      step1_dataExchange: 0,
+      step2_registryValidation: 0,
+      step3_riskClassification: 0,
+      step4_regulatoryAssessment: 0,
+      step5_implementation: 0,
+      step6_continuousMonitoring: 0,
+      step7_auditImpactEvaluation: 0,
+      step8_closureOrOversight: 0
+    };
+
+    let totalHealthy = 0;
+    let totalAttention = 0;
+
+    for (const p of projects) {
+      const wf = p.lifecycle?.operationalWorkflow;
+      const step = wf?.currentStep || (p.status === 'Completed' ? 8 : (p.stage === 'Development' ? 5 : 6));
+      if (step === 1) stepCounts.step1_dataExchange++;
+      else if (step === 2) stepCounts.step2_registryValidation++;
+      else if (step === 3) stepCounts.step3_riskClassification++;
+      else if (step === 4) stepCounts.step4_regulatoryAssessment++;
+      else if (step === 5) stepCounts.step5_implementation++;
+      else if (step === 6) stepCounts.step6_continuousMonitoring++;
+      else if (step === 7) stepCounts.step7_auditImpactEvaluation++;
+      else if (step === 8) stepCounts.step8_closureOrOversight++;
+
+      if (p.status === 'Delayed' || wf?.workflowHealth === 'Attention Required') {
+        totalAttention++;
+      } else {
+        totalHealthy++;
+      }
+    }
+
+    return res.json({
+      success: true,
+      totalProjects: projects.length,
+      stepCounts,
+      health: {
+        healthy: totalHealthy,
+        attentionRequired: totalAttention
+      },
+      statutorySteps: [
+        { step: 1, name: 'Secure API / Data Exchange', description: 'Transfers approved project record, clearance reference, decision and supporting documents to GNAPRMS.' },
+        { step: 2, name: 'National Registry Validation', description: 'System generates a unique project ID and checks completeness and possible duplicates.' },
+        { step: 3, name: 'Risk Classification', description: 'Project undergoes preliminary risk screening and is assigned a risk category.' },
+        { step: 4, name: 'Regulatory Assessment', description: 'Relevant officers examine technical, legal, privacy, ethical and governance requirements of AI projects.' },
+        { step: 5, name: 'Project Implementation', description: 'Institution updates development, pilot, deployment and project milestones.' },
+        { step: 6, name: 'Continuous Regulatory Monitoring', description: 'Monitor risks, compliance, incidents, performance and project expenditure.' },
+        { step: 7, name: 'Audit & Impact Evaluation', description: 'Regulatory officers conduct inspections and evaluate project outcomes.' },
+        { step: 8, name: 'Project Closure or Continued Oversight', description: 'Project is completed, renewed, suspended or retired, with its historical records retained.' }
+      ]
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================================
 // SERVER INITIALIZATION
 // ============================================================================
 app.listen(PORT, async () => {

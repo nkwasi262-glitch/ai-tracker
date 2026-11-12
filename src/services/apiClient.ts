@@ -349,6 +349,85 @@ class ApiClient {
       return { success: false, error: e.message };
     }
   }
+
+  // ==========================================================================
+  // 8-STEP OPERATIONAL WORKFLOW LIFECYCLE (ACT 771 / ACT 843)
+  // ==========================================================================
+
+  async validateProjectRegistry(data: { name: string; mda: string; category?: string; sector?: string; budget?: any; description?: string }): Promise<any> {
+    try {
+      const res = await fetch(`${this.base}/projects/validate-registry`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      return await res.json();
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  async updateWorkflowStep(projectId: string, stepNumber: number, stepData: any, meta?: { actorName?: string; actorEmail?: string; actorRole?: string; notes?: string }): Promise<any> {
+    try {
+      const res = await fetch(`${this.base}/projects/${encodeURIComponent(projectId)}/operational-workflow/step`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stepNumber, stepData, ...(meta || {}) })
+      });
+      return await res.json();
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  async logWorkflowIncident(projectId: string, incident: { title: string; severity?: string; description?: string; status?: string }): Promise<any> {
+    try {
+      const res = await fetch(`${this.base}/projects/${encodeURIComponent(projectId)}/operational-workflow/incident`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(incident)
+      });
+      return await res.json();
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  async logWorkflowInspection(projectId: string, inspection: any): Promise<any> {
+    try {
+      const res = await fetch(`${this.base}/projects/${encodeURIComponent(projectId)}/operational-workflow/inspection`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(inspection)
+      });
+      return await res.json();
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  async executeWorkflowLifecycleDecision(projectId: string, decisionData: { decision: string; justification?: string; signedByName?: string; retentionUntil?: string }): Promise<any> {
+    try {
+      const res = await fetch(`${this.base}/projects/${encodeURIComponent(projectId)}/operational-workflow/lifecycle-decision`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(decisionData)
+      });
+      return await res.json();
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  async fetchWorkflowOverview(): Promise<any> {
+    try {
+      const res = await fetch(`${this.base}/projects/operational-workflow/overview`, { signal: AbortSignal.timeout(4000) });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch {
+      return null;
+    }
+  }
 }
 
 export const apiClient = new ApiClient();

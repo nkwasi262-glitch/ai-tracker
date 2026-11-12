@@ -158,6 +158,269 @@ export interface DGFinalVerdictDetails {
   signatureSeal: string;
 }
 
+// ============================================================================
+// STATUTORY 8-STEP OPERATIONAL WORKFLOW INTERFACES (ACT 771 / ACT 843)
+// ============================================================================
+
+export interface Step1_DataExchange {
+  clearanceReference: string;
+  sourceAuthority: string;
+  transferredAt: string;
+  transferStatus: 'Transferred' | 'Verified' | 'Pending';
+  clearanceVerdict: 'Approved' | 'Conditionally Approved';
+  supportingDocumentsTransferred: number;
+  apiExchangePayloadHash?: string;
+  notes?: string;
+}
+
+export interface Step2_RegistryValidation {
+  validatedAt: string;
+  uniqueRegistryId: string;
+  completenessScore: number; // 0-100%
+  isComplete: boolean;
+  duplicateScan: {
+    scannedAt: string;
+    isDuplicate: boolean;
+    confidenceScore: number;
+    matchedProjectCodes?: string[];
+    scanSummary: string;
+  };
+  validationStatus: 'Validated & Unique' | 'Flagged Duplicate' | 'Incomplete Parameters';
+}
+
+export interface Step3_RiskClassification {
+  classifiedAt: string;
+  classifiedBy: string;
+  riskCategory: 'Minimal Risk' | 'Limited Risk' | 'High Risk' | 'Unacceptable Risk';
+  preliminaryScreening: {
+    affectsFundamentalRights: boolean;
+    autonomousDecisionMaking: boolean;
+    criticalInfrastructureInvolved: boolean;
+    biometricOrIdentityProcessing: boolean;
+    publicSectorAccessCritical: boolean;
+  };
+  mandatoryMitigationRequired: boolean;
+  classificationRationale: string;
+}
+
+export interface Step4_RegulatoryAssessment {
+  assessedAt: string;
+  assessedBy: string;
+  technicalCompliance: 'Compliant' | 'Needs Clarification' | 'Non-Compliant';
+  legalStatutoryCompliance: 'Compliant' | 'Needs Clarification' | 'Non-Compliant';
+  privacyAct843Compliance: 'Compliant' | 'Needs Clarification' | 'Non-Compliant';
+  ethicalGovernanceCompliance: 'Compliant' | 'Needs Clarification' | 'Non-Compliant';
+  nitaVerificationStatus: 'Verified by NITA' | 'Pending NITA Clearance';
+  overallAssessmentStatus: 'Approved & Cleared' | 'Under Statutory Review' | 'Revision Requested';
+  clearanceOfficerNotes: string;
+}
+
+export interface Step5_ProjectImplementation {
+  currentPhase: 'Development' | 'Pilot' | 'Deployment' | 'Full Rollout';
+  lastMilestoneUpdate: string;
+  completedMilestonesCount: number;
+  totalMilestonesCount: number;
+  overallImplementationProgress: number; // 0-100%
+  institutionalReportingContact: string;
+  pilotTestingLocation?: string;
+  implementationNotes: string;
+}
+
+export interface MonitoringIncident {
+  id: string;
+  date: string;
+  title: string;
+  severity: 'Low' | 'Medium' | 'High' | 'Critical';
+  status: 'Reported' | 'Investigating' | 'Mitigated' | 'Closed';
+  description: string;
+}
+
+export interface Step6_ContinuousMonitoring {
+  monitoringStatus: 'Active Monitoring' | 'Needs Attention' | 'Escalated' | 'Under Investigation';
+  lastHealthCheckAt: string;
+  systemUptimePercentage: number;
+  reportedIncidentsCount: number;
+  activeRisksCount: number;
+  disbursedExpenditureVerified: boolean;
+  mofWarrantReconciliationStatus: 'Verified' | 'Pending Reconciliation' | 'Flagged';
+  complianceDriftDetected: boolean;
+  incidents: MonitoringIncident[];
+}
+
+export interface Step7_AuditImpactEvaluation {
+  lastInspectionDate: string;
+  leadRegulatoryInspector: string;
+  inspectorRole: string;
+  inspectionFindings: string;
+  inspectionVerdict: 'Satisfactory' | 'Conditional Pass' | 'Action Plan Required';
+  impactEvaluation: {
+    citizenReachEstimate: number;
+    economicProductivityImpact: string;
+    socialBenefitRating: 'High Positive' | 'Moderate Positive' | 'Neutral';
+    outcomeEvaluationSummary: string;
+  };
+  scheduledNextInspectionDate: string;
+}
+
+export interface Step8_ProjectClosureOrOversight {
+  currentOversightStatus: 'Continued Active Oversight' | 'Completed' | 'Renewed' | 'Suspended' | 'Retired';
+  lifecycleDecisionDate: string;
+  decisionSignedBy: string;
+  decisionJustification: string;
+  statutoryRetentionUntil: string;
+  historicalRecordsArchived: boolean;
+  archiveStorageHash: string;
+}
+
+export interface ProjectOperationalWorkflow {
+  currentStep: number; // 1 to 8
+  overallProgressPercent: number; // 0-100%
+  workflowHealth: 'Healthy' | 'In Review' | 'Attention Required';
+  step1_DataExchange: Step1_DataExchange;
+  step2_RegistryValidation: Step2_RegistryValidation;
+  step3_RiskClassification: Step3_RiskClassification;
+  step4_RegulatoryAssessment: Step4_RegulatoryAssessment;
+  step5_Implementation: Step5_ProjectImplementation;
+  step6_ContinuousMonitoring: Step6_ContinuousMonitoring;
+  step7_AuditImpactEvaluation: Step7_AuditImpactEvaluation;
+  step8_ClosureOrOversight: Step8_ProjectClosureOrOversight;
+}
+
+export function generateDefaultOperationalWorkflow(project: Partial<AIProject>): ProjectOperationalWorkflow {
+  const code = project.projectCode || `GN-AI-2026-999`;
+  const mda = project.mda || 'Government of Ghana';
+  const name = project.name || 'National AI Project';
+  const stage = project.stage || 'Operational';
+  const status = project.status || 'Active';
+  const readiness = project.readinessScore ?? 75;
+  const docsCount = project.documents?.length || 1;
+  const isHighRiskSector = ['Security', 'Justice', 'Health', 'Finance'].includes(project.sector || '');
+
+  let step = 6;
+  if (status === 'Completed' || stage === 'Completed') {
+    step = 8;
+  } else if (stage === 'Pilot' || stage === 'Development') {
+    step = 5;
+  } else if (stage === 'Planning' || stage === 'Concept') {
+    step = 3;
+  }
+
+  const riskTier: 'Minimal Risk' | 'Limited Risk' | 'High Risk' | 'Unacceptable Risk' = 
+    isHighRiskSector ? 'High Risk' : (readiness > 80 ? 'Minimal Risk' : 'Limited Risk');
+
+  return {
+    currentStep: step,
+    overallProgressPercent: Math.round((step / 8) * 100),
+    workflowHealth: status === 'Delayed' ? 'Attention Required' : 'Healthy',
+    step1_DataExchange: {
+      clearanceReference: `TCS-CLEAR-2026-${code.replace(/[^0-9]/g, '').slice(-3) || '101'}`,
+      sourceAuthority: 'National Technical Clearance System (TCS)',
+      transferredAt: project.startDate || '2026-01-15T09:30:00Z',
+      transferStatus: 'Verified',
+      clearanceVerdict: 'Approved',
+      supportingDocumentsTransferred: docsCount,
+      apiExchangePayloadHash: `sha256-payload-${code.toLowerCase()}-verified`,
+      notes: `Project dossier, architecture charter, and clearance decision transferred seamlessly via GNAPRMS Secure API endpoint.`
+    },
+    step2_RegistryValidation: {
+      validatedAt: project.startDate ? `${project.startDate}T10:00:00Z` : '2026-01-15T10:00:00Z',
+      uniqueRegistryId: code,
+      completenessScore: 100,
+      isComplete: true,
+      duplicateScan: {
+        scannedAt: project.startDate ? `${project.startDate}T10:02:00Z` : '2026-01-15T10:02:00Z',
+        isDuplicate: false,
+        confidenceScore: 0,
+        matchedProjectCodes: [],
+        scanSummary: `Zero collisions detected across all registered MDAs. Project title and algorithm parameters are unique.`
+      },
+      validationStatus: 'Validated & Unique'
+    },
+    step3_RiskClassification: {
+      classifiedAt: project.startDate ? `${project.startDate}T11:15:00Z` : '2026-01-15T11:15:00Z',
+      classifiedBy: 'National AI Risk Evaluation Committee',
+      riskCategory: riskTier,
+      preliminaryScreening: {
+        affectsFundamentalRights: isHighRiskSector,
+        autonomousDecisionMaking: project.category === 'Machine Learning' || project.category === 'Generative AI',
+        criticalInfrastructureInvolved: ['Energy', 'Transport', 'Security'].includes(project.sector || ''),
+        biometricOrIdentityProcessing: name.toLowerCase().includes('biometric') || name.toLowerCase().includes('identity') || name.toLowerCase().includes('card'),
+        publicSectorAccessCritical: true
+      },
+      mandatoryMitigationRequired: riskTier === 'High Risk',
+      classificationRationale: `Assigned ${riskTier} based on sectoral sensitivity (${project.sector || 'General'}), automated decision scope, and citizen data reach.`
+    },
+    step4_RegulatoryAssessment: {
+      assessedAt: project.startDate ? `${project.startDate}T14:00:00Z` : '2026-01-15T14:00:00Z',
+      assessedBy: 'NITA Technical Directorate & DPC Joint Taskforce',
+      technicalCompliance: readiness >= 60 ? 'Compliant' : 'Needs Clarification',
+      legalStatutoryCompliance: 'Compliant',
+      privacyAct843Compliance: project.dpcCertificateNumber ? 'Compliant' : 'Needs Clarification',
+      ethicalGovernanceCompliance: (project.compliance?.overallGrade === 'High Risk') ? 'Needs Clarification' : 'Compliant',
+      nitaVerificationStatus: 'Verified by NITA',
+      overallAssessmentStatus: 'Approved & Cleared',
+      clearanceOfficerNotes: `Technical clearance ratified under NITA Act 771 and Data Protection Act 843. Statutory compliance scores confirmed.`
+    },
+    step5_Implementation: {
+      currentPhase: stage === 'Operational' ? 'Deployment' : (stage === 'Pilot' ? 'Pilot' : 'Development'),
+      lastMilestoneUpdate: new Date().toISOString().split('T')[0],
+      completedMilestonesCount: (project.milestones || []).filter(m => m.status === 'Completed').length,
+      totalMilestonesCount: (project.milestones || []).length,
+      overallImplementationProgress: Math.round(
+        ((project.milestones || []).reduce((acc, m) => acc + m.progressPercent, 0)) / ((project.milestones || []).length || 1)
+      ),
+      institutionalReportingContact: `${mda} Project Director`,
+      pilotTestingLocation: `${project.region || 'Greater Accra'} Pilot Region`,
+      implementationNotes: `Milestone execution proceeding per the approved national timeline.`
+    },
+    step6_ContinuousMonitoring: {
+      monitoringStatus: status === 'Delayed' ? 'Needs Attention' : 'Active Monitoring',
+      lastHealthCheckAt: new Date().toISOString(),
+      systemUptimePercentage: status === 'Delayed' ? 96.4 : 99.8,
+      reportedIncidentsCount: status === 'Delayed' ? 1 : 0,
+      activeRisksCount: (project.risks || []).filter(r => r.status === 'Open').length,
+      disbursedExpenditureVerified: project.budget?.verificationStatus === 'MoF Audited & Verified',
+      mofWarrantReconciliationStatus: project.budget?.mofWarrantNumber ? 'Verified' : 'Pending Reconciliation',
+      complianceDriftDetected: false,
+      incidents: status === 'Delayed' ? [
+        {
+          id: `inc-${code.toLowerCase()}-1`,
+          date: '2026-10-18',
+          title: 'Rural Offline Synchronisation Latency',
+          severity: 'Medium',
+          status: 'Investigating',
+          description: 'Cache sync delays observed in off-grid terminal locations during scheduled network maintenance.'
+        }
+      ] : []
+    },
+    step7_AuditImpactEvaluation: {
+      lastInspectionDate: '2026-08-20',
+      leadRegulatoryInspector: 'Dr. Evans Osei-Tutu (Chief Regulatory Inspector)',
+      inspectorRole: 'Super Admin / Lead Regulatory Officer',
+      inspectionFindings: `On-site inspection completed. Data logging systems comply with Act 843 audit directives. Zero algorithmic drift identified.`,
+      inspectionVerdict: status === 'Delayed' ? 'Conditional Pass' : 'Satisfactory',
+      impactEvaluation: {
+        citizenReachEstimate: project.budget ? Math.round(project.budget.totalAllocated / 15) : 50000,
+        economicProductivityImpact: `Estimated 32% turnaround improvement in institutional service delivery workflows.`,
+        socialBenefitRating: 'High Positive',
+        outcomeEvaluationSummary: `Statutory outcomes demonstrated tangible benefits in public service velocity and accurate record delivery.`
+      },
+      scheduledNextInspectionDate: '2027-02-15'
+    },
+    step8_ClosureOrOversight: {
+      currentOversightStatus: status === 'Completed' ? 'Completed' : (status === 'Suspended' ? 'Suspended' : 'Continued Active Oversight'),
+      lifecycleDecisionDate: new Date().toISOString().split('T')[0],
+      decisionSignedBy: 'Director General & Technical Director',
+      decisionJustification: status === 'Completed' 
+        ? 'Project completed all operational targets; transitioned to permanent sovereign maintenance.'
+        : 'Project in continuous high-performance lifecycle operation under active NITA oversight.',
+      statutoryRetentionUntil: '2036-12-31T23:59:59Z',
+      historicalRecordsArchived: true,
+      archiveStorageHash: `sha256-archive-${code.toLowerCase()}-sealed`
+    }
+  };
+}
+
 export interface AIProject {
   id: string;
   projectCode: string;
@@ -190,9 +453,10 @@ export interface AIProject {
   autoAssessment?: AutoAssessmentDetails;
   dpcCertificateNumber?: string;
   zeroAssumptionAudit?: ZeroAssumptionAudit;
+  operationalWorkflow?: ProjectOperationalWorkflow;
 }
 
-export const sampleProjects: AIProject[] = [
+const baseSampleProjects: AIProject[] = [
   {
     id: "proj-1",
     projectCode: "GN-AI-2026-001",
@@ -1101,6 +1365,11 @@ export const sampleProjects: AIProject[] = [
   }
 ];
 
+export const sampleProjects: AIProject[] = baseSampleProjects.map(p => ({
+  ...p,
+  operationalWorkflow: p.operationalWorkflow || generateDefaultOperationalWorkflow(p)
+}));
+
 export interface RegionInfo {
   name: string;
   center: [number, number];
@@ -1368,7 +1637,18 @@ export function ensureMdaProject(
       reviewerEmail: 'clearance@nita.gov.gh',
       reviewedAt: new Date().toISOString(),
       recommendationNotes: `Ingestion dossier for ${mdaName} (${mdaCode}) received from Technical Clearance System. Automatically graded against Ghana AI Governance & Ethics rubric and AI Readiness capability framework.`
-    }
+    },
+    operationalWorkflow: generateDefaultOperationalWorkflow({
+      projectCode: `GN-AI-2026-${mdaCode}-01`,
+      name: `${mdaName} AI Initiative`,
+      mda: mdaName,
+      mdaCode,
+      sector: 'Health',
+      stage: 'Operational',
+      status: 'Active',
+      readinessScore: 28,
+      documents: matchingMdaDocs
+    })
   };
 
   return {

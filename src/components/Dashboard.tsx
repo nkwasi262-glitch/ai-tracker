@@ -23,11 +23,13 @@ import {
   Server,
   HardDrive,
   Building2,
-  RefreshCw
+  RefreshCw,
+  GitBranch
 } from 'lucide-react';
 import { AIProject, formatNumberToWords } from '../data/sampleProjects';
 import { UserRole } from './RoleSwitcher';
 import { apiClient, InstitutionRecord, AppVersionRecord } from '../services/apiClient';
+import { OperationalWorkflowStudio } from './OperationalWorkflowStudio';
 
 const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
@@ -85,6 +87,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
   const [selectedSector, setSelectedSector] = useState<string>('All');
   const [showProjectsTooltip, setShowProjectsTooltip] = useState(false);
   const [monitoringFilter, setMonitoringFilter] = useState<'All' | 'Cleared & Registered' | 'Operational' | 'Active Monitoring' | 'Needs Attention'>('All');
+  const [isWorkflowStudioOpen, setIsWorkflowStudioOpen] = useState(false);
 
   // Federation & Administrative System State
   const [institutions, setInstitutions] = useState<InstitutionRecord[]>([]);
@@ -525,6 +528,112 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
             Ethical Governance Score: <span style={{ color: 'var(--ghana-emerald)' }}>Good</span>
           </div>
           <Activity className="kpi-icon-wrapper" />
+        </div>
+      </div>
+
+      {/* =========================================================================
+          STATUTORY OPERATIONAL WORKFLOW: 8-STEP AI REGULATORY LIFECYCLE
+          ========================================================================= */}
+      <div style={{
+        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(15, 23, 42, 0.95) 100%)',
+        border: '1px solid rgba(16, 185, 129, 0.4)',
+        borderRadius: '16px',
+        padding: '22px 26px',
+        marginBottom: '26px',
+        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.4)'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '16px' }}>
+          <div>
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              color: 'var(--ghana-emerald)',
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em'
+            }}>
+              <GitBranch size={14} />
+              <span>Statutory Operational Framework (Act 771 / Act 843)</span>
+            </div>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff', margin: '4px 0 0 0' }}>
+              Operational Workflow: How an AI Project Moves Through the System
+            </h3>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
+              The statutory operational sequence followed by government institutions, MDAs/MMDAs, and regulators after deployment.
+            </p>
+          </div>
+
+          <button
+            onClick={() => setIsWorkflowStudioOpen(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '9px 18px',
+              borderRadius: '8px',
+              background: 'linear-gradient(135deg, var(--ghana-emerald) 0%, #059669 100%)',
+              color: '#0b0f19',
+              fontSize: '0.82rem',
+              fontWeight: 800,
+              border: 'none',
+              cursor: 'pointer',
+              boxShadow: '0 4px 14px rgba(16, 185, 129, 0.35)',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <GitBranch size={15} />
+            <span>Open 8-Step Workflow Studio</span>
+          </button>
+        </div>
+
+        {/* 8-Step Visual Sequence Cards */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: '10px'
+        }}>
+          {[
+            { step: 1, title: 'Secure API / Data Exchange', desc: 'Transfer cleared record, reference & docs' },
+            { step: 2, title: 'National Registry Validation', desc: 'Generate unique ID & check duplicates' },
+            { step: 3, title: 'Risk Classification', desc: 'Preliminary screening & risk tier category' },
+            { step: 4, title: 'Regulatory Assessment', desc: 'Examine tech, legal, privacy & ethics' },
+            { step: 5, title: 'Project Implementation', desc: 'Track development, pilot & milestones' },
+            { step: 6, title: 'Continuous Monitoring', desc: 'Monitor risks, incidents & expenditures' },
+            { step: 7, title: 'Audit & Impact Evaluation', desc: 'Conduct inspections & evaluate reach' },
+            { step: 8, title: 'Closure or Continued Oversight', desc: 'Complete, renew, suspend with retention' }
+          ].map((s) => (
+            <div
+              key={s.step}
+              onClick={() => setIsWorkflowStudioOpen(true)}
+              style={{
+                padding: '10px 12px',
+                borderRadius: '8px',
+                background: 'rgba(0, 0, 0, 0.25)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--ghana-emerald)')}
+              onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)')}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '3px' }}>
+                <span style={{ fontSize: '0.66rem', fontWeight: 800, color: 'var(--ghana-emerald)' }}>
+                  STEP {s.step}
+                </span>
+                <span style={{ fontSize: '0.62rem', padding: '1px 5px', borderRadius: '4px', background: 'rgba(16, 185, 129, 0.15)', color: '#a7f3d0' }}>
+                  ACTIVE
+                </span>
+              </div>
+              <div style={{ fontSize: '0.76rem', fontWeight: 700, color: '#fff', lineHeight: 1.25 }}>
+                {s.title}
+              </div>
+              <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', marginTop: '2px', lineHeight: 1.2 }}>
+                {s.desc}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -1667,6 +1776,30 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Operational Workflow Studio Modal Overlay */}
+      {isWorkflowStudioOpen && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(5, 8, 15, 0.94)',
+          backdropFilter: 'blur(16px)',
+          zIndex: 99999,
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'flex-start',
+          padding: '30px 16px',
+          overflowY: 'auto'
+        }}>
+          <div style={{ maxWidth: '1080px', width: '100%' }}>
+            <OperationalWorkflowStudio
+              projects={projects}
+              session={null}
+              onClose={() => setIsWorkflowStudioOpen(false)}
+            />
           </div>
         </div>
       )}
