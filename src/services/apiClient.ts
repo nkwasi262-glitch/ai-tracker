@@ -428,6 +428,278 @@ class ApiClient {
       return null;
     }
   }
+
+  // ==========================================================================
+  // GN-AIRGMS PHASE 4 SPECIALIZED ENTERPRISE APIS
+  // ==========================================================================
+
+  // 1. TCS Inbound & Outbound Integration
+  async fetchTcsReferrals(): Promise<any[]> {
+    try {
+      const res = await fetch(`${this.base}/tcs/referrals`, { signal: AbortSignal.timeout(4000) });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.referrals || [];
+    } catch {
+      return [];
+    }
+  }
+
+  async submitTcsInboundReferral(payload: any): Promise<any> {
+    try {
+      const res = await fetch(`${this.base}/tcs/referrals/inbound`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      return await res.json();
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  async simulateInboundReferral(payload: any): Promise<any> {
+    return this.submitTcsInboundReferral(payload);
+  }
+
+  async transmitTcsReportReturn(reportData: any): Promise<any> {
+    try {
+      const res = await fetch(`${this.base}/tcs/reports/return`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(reportData)
+      });
+      return await res.json();
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  async returnReportToTcs(reportData: any): Promise<any> {
+    return this.transmitTcsReportReturn(reportData);
+  }
+
+  async fetchTcsStatus(): Promise<any> {
+    try {
+      const res = await fetch(`${this.base}/tcs/status`, { signal: AbortSignal.timeout(3000) });
+      return await res.json();
+    } catch {
+      return { status: 'OFFLINE' };
+    }
+  }
+
+  // 2. AI Models & Datasets
+  async fetchProjectModels(projectId: string): Promise<any[]> {
+    try {
+      const res = await fetch(`${this.base}/projects/${encodeURIComponent(projectId)}/models`);
+      const data = await res.json();
+      return data.models || [];
+    } catch {
+      return [];
+    }
+  }
+
+  async registerProjectModel(projectId: string, modelData: any): Promise<any> {
+    try {
+      const res = await fetch(`${this.base}/projects/${encodeURIComponent(projectId)}/models`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(modelData)
+      });
+      return await res.json();
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  async addProjectModel(projectId: string, modelData: any): Promise<any> {
+    return this.registerProjectModel(projectId, modelData);
+  }
+
+  async fetchProjectDatasets(projectId: string): Promise<any[]> {
+    try {
+      const res = await fetch(`${this.base}/projects/${encodeURIComponent(projectId)}/datasets`);
+      const data = await res.json();
+      return data.datasets || [];
+    } catch {
+      return [];
+    }
+  }
+
+  async registerProjectDataset(projectId: string, datasetData: any): Promise<any> {
+    try {
+      const res = await fetch(`${this.base}/projects/${encodeURIComponent(projectId)}/datasets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(datasetData)
+      });
+      return await res.json();
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  async addProjectDataset(projectId: string, datasetData: any): Promise<any> {
+    return this.registerProjectDataset(projectId, datasetData);
+  }
+
+  // 3. 12-Domain AI Assessment
+  async fetchProjectAssessments(projectId: string): Promise<any[]> {
+    try {
+      const res = await fetch(`${this.base}/projects/${encodeURIComponent(projectId)}/assessments`);
+      const data = await res.json();
+      return data.assessments || [];
+    } catch {
+      return [];
+    }
+  }
+
+  async recordDomainAssessment(projectId: string, assessmentData: any): Promise<any> {
+    try {
+      const res = await fetch(`${this.base}/projects/${encodeURIComponent(projectId)}/assessments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(assessmentData)
+      });
+      return await res.json();
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  async saveProjectAssessment(projectId: string, assessmentData: any): Promise<any> {
+    return this.recordDomainAssessment(projectId, assessmentData);
+  }
+
+  // 4. Regulatory Decisions
+  async fetchProjectDecisions(projectId: string): Promise<any[]> {
+    try {
+      const res = await fetch(`${this.base}/projects/${encodeURIComponent(projectId)}/decisions`);
+      const data = await res.json();
+      return data.decisions || [];
+    } catch {
+      return [];
+    }
+  }
+
+  async saveProjectDecision(projectId: string, decisionData: any): Promise<any> {
+    try {
+      const res = await fetch(`${this.base}/projects/${encodeURIComponent(projectId)}/decisions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(decisionData)
+      });
+      return await res.json();
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  // 5. Incidents
+  async fetchIncidents(): Promise<any[]> {
+    try {
+      const res = await fetch(`${this.base}/incidents`);
+      const data = await res.json();
+      return data.incidents || [];
+    } catch {
+      return [];
+    }
+  }
+
+  async reportIncident(incidentData: any): Promise<any> {
+    try {
+      const res = await fetch(`${this.base}/incidents`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(incidentData)
+      });
+      return await res.json();
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  async updateIncident(incidentId: string, updateData: any): Promise<any> {
+    try {
+      const res = await fetch(`${this.base}/incidents/${encodeURIComponent(incidentId)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData)
+      });
+      return await res.json();
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  // 6. Audits & Inspections
+  async fetchAudits(): Promise<any[]> {
+    try {
+      const res = await fetch(`${this.base}/audits`);
+      const data = await res.json();
+      return data.audits || [];
+    } catch {
+      return [];
+    }
+  }
+
+  async scheduleAudit(auditData: any): Promise<any> {
+    try {
+      const res = await fetch(`${this.base}/audits`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(auditData)
+      });
+      return await res.json();
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  // 7. Vendors
+  async fetchVendors(): Promise<any[]> {
+    try {
+      const res = await fetch(`${this.base}/vendors`);
+      const data = await res.json();
+      return data.vendors || [];
+    } catch {
+      return [];
+    }
+  }
+
+  async registerVendor(vendorData: any): Promise<any> {
+    try {
+      const res = await fetch(`${this.base}/vendors`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(vendorData)
+      });
+      return await res.json();
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  // 8. Notifications
+  async fetchNotifications(email?: string): Promise<any[]> {
+    try {
+      const url = email ? `${this.base}/notifications?email=${encodeURIComponent(email)}` : `${this.base}/notifications`;
+      const res = await fetch(url);
+      const data = await res.json();
+      return data.notifications || [];
+    } catch {
+      return [];
+    }
+  }
+
+  async markNotificationRead(id: string): Promise<boolean> {
+    try {
+      const res = await fetch(`${this.base}/notifications/${encodeURIComponent(id)}/read`, { method: 'POST' });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
 }
 
 export const apiClient = new ApiClient();

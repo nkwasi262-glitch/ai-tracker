@@ -9,6 +9,7 @@ import { getDb, isDbConfigured, testDbConnection } from './db.js';
 import { initializeDatabase } from './initDb.js';
 import { createDatabaseBackup, listBackups } from './backup.js';
 import { runDisasterRecoveryDrill } from './restoreTest.js';
+import { transmitReportToTcs, signTcsPayload, verifyTcsSignature } from './adapters/tcsAdapter.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1633,6 +1634,639 @@ app.get('/api/projects/operational-workflow/overview', async (req, res) => {
         { step: 8, name: 'Project Closure or Continued Oversight', description: 'Project is completed, renewed, suspended or retired, with its historical records retained.' }
       ]
     });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================================
+// 12. GN-AIRGMS SPECIALIZED ENTERPRISE APIS (PHASE 4)
+// Modules 1-13: TCS Bidirectional Exchange, Models, Datasets, 12 Domains,
+// Incidents, Audits, Vendors, Notifications & 2-Tier Role Authorization
+// ============================================================================
+
+// Role Authorization Middleware Helper
+function requireRole(allowedRoles = ['Super Admin', 'Technical Unit']) {
+  return (req, res, next) => {
+    const role = req.headers['x-user-role'] || req.body?.actorRole || 'Technical Unit';
+    const normalizedRole = role === 'Technical Director' ? 'Technical Unit' : role;
+    if (allowedRoles.includes(role) || allowedRoles.includes(normalizedRole)) {
+      return next();
+    }
+    return res.status(403).json({ error: `Access restricted. Authorized roles: ${allowedRoles.join(', ')}` });
+  };
+}
+
+// ----------------------------------------------------------------------------
+// 12.1 TCS INBOUND & OUTBOUND INTEGRATION (MODULE 1 & 9)
+// ----------------------------------------------------------------------------
+
+// POST /api/tcs/referrals/inbound — Inbound referral intake from TCS
+app.post('/api/tcs/referrals/inbound', async (req, res) => {
+  try {
+    const payload = req.body;
+    const signature = req.headers['x-tcs-signature'];
+
+    // Verify signature if configured
+    if (process.env.NODE_ENV === 'production' && signature && !verifyTcsSignature(payload, signature)) {
+      return res.status(401).json({ error: 'Invalid HMAC-SHA256 signature from TCS gateway' });
+    }
+
+    const {
+      tcsReferenceNumber,
+      institution,
+      project,
+      aiDeclaration,
+      supportingDocuments
+    } = payload || {};
+
+    if (!tcsReferenceNumber || !project?.title) {
+      return res.status(400).json({ error: 'Missing mandatory referral parameters (tcsReferenceNumber, project.title)' });
+    }
+
+    const sql = getDb();
+    const instCode = institution?.code || 'GOV';
+    const instName = institution?.name || 'Managing Government Institution';
+
+    // Generate unique GN-AIRGMS sovereign project ID
+    let projectCount = 12;
+    if (sql && isDbConfigured()) {
+      try {
+        const countRes = await sql`SELECT COUNT(*)::int as count FROM projects;`;
+        projectCount = countRes[0]?.count || 12;
+      } catch (e) {
+        console.warn('[API] Warning counting projects:', e.message);
+      }
+    }
+    const nextCode = String(projectCount + 1).padStart(3, '0');
+    const gnAirgmsId = `proj-tcs-${Date.now()}`;
+    const projectCode = `GN-AI-2026-${nextCode}`;
+
+    // 1. Insert into tcs_referrals
+    const referralId = `ref-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    if (sql && isDbConfigured()) {
+      await sql`
+        INSERT INTO tcs_referrals (
+          id, tcs_reference_number, institution_name, institution_code,
+          project_title, project_description, ai_technologies, intended_use,
+          is_citizen_affecting, is_critical_infrastructure, screening_score,
+          referral_status, referred_at, gn_airgms_project_id, raw_tcs_payload
+        ) VALUES (
+          ${referralId}, ${tcsReferenceNumber}, ${instName}, ${instCode},
+          ${project.title}, ${project.description || ''},
+          ${JSON.stringify(aiDeclaration?.technologyTypes || ['Machine Learning'])}::jsonb,
+          ${aiDeclaration?.intendedUse || ''},
+          ${Boolean(aiDeclaration?.isCitizenAffecting)},
+          ${Boolean(aiDeclaration?.isCriticalInfrastructure)},
+          85, 'Accepted & Registered', NOW(), ${gnAirgmsId},
+          ${JSON.stringify(payload)}::jsonb
+        ) ON CONFLICT (tcs_reference_number) DO UPDATE SET
+          referral_status = 'Updated Inbound',
+          updated_at = NOW();
+      `;
+
+      // 2. Insert into projects
+      await sql`
+        INSERT INTO projects (
+          id, project_code, tcs_reference_number, name, description,
+          category, sector, stage, status, start_date, end_date, expected_completion_date,
+          latitude, longitude, mda, mda_code, region, district, budget, compliance,
+          readiness_score, risk_level, review_status, technical_stack, vendor, documents
+        ) VALUES (
+          ${gnAirgmsId}, ${projectCode}, ${tcsReferenceNumber}, ${project.title},
+          ${project.description || ''}, ${aiDeclaration?.technologyTypes?.[0] || 'Machine Learning'},
+          ${project.sector || 'Cross-Sector'}, 'Planning', 'Active',
+          ${project.implementationStartDate || '2026-01-01'},
+          ${project.expectedCompletionDate || '2028-12-31'},
+          ${project.expectedCompletionDate || '2028-12-31'},
+          ${project.projectLocation?.latitude || 5.6037},
+          ${project.projectLocation?.longitude || -0.1870},
+          ${instName}, ${instCode},
+          ${project.projectLocation?.region || 'Greater Accra'},
+          ${project.projectLocation?.district || 'Accra Metropolitan'},
+          ${JSON.stringify({ totalAllocated: project.allocatedBudgetGHS || 1000000, disbursed: 0, utilized: 0, primaryFundingSource: project.fundingSource || 'Government', currency: 'GHS' })}::jsonb,
+          ${JSON.stringify({ fairness: 80, transparency: 80, accountability: 80, privacy: 80, security: 80, overallGrade: 'Good' })}::jsonb,
+          75, 'Moderate Risk', 'Pending Review',
+          ${JSON.stringify({ foundationModel: aiDeclaration?.foundationModel || 'Custom' })}::jsonb,
+          ${JSON.stringify({ name: aiDeclaration?.primaryVendor || 'Sovereign ICT Team' })}::jsonb,
+          ${JSON.stringify(supportingDocuments || [])}::jsonb
+        ) ON CONFLICT (id) DO NOTHING;
+      `;
+    }
+
+    return res.status(202).json({
+      status: 'ACCEPTED',
+      statusCode: 202,
+      gnAirgmsProjectId: gnAirgmsId,
+      projectCode,
+      tcsReferenceNumber,
+      referralStatus: 'Referred & Registered',
+      acknowledgementToken: `ACK-GNAIRGMS-${Date.now()}`,
+      assignedAssessmentTeam: 'National AI Technical Unit',
+      estimatedReviewDays: 14,
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error('[API] Inbound TCS Referral Error:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/tcs/referrals — List all inbound referrals
+app.get('/api/tcs/referrals', async (req, res) => {
+  try {
+    const sql = getDb();
+    if (sql && isDbConfigured()) {
+      const rows = await sql`
+        SELECT * FROM tcs_referrals ORDER BY referred_at DESC;
+      `;
+      return res.json({ success: true, count: rows.length, referrals: rows });
+    }
+    return res.json({ success: true, count: 0, referrals: [] });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/tcs/reports/return — Outbound assessment report transmission to TCS
+app.post('/api/tcs/reports/return', async (req, res) => {
+  try {
+    const reportData = req.body;
+    if (!reportData?.tcsReferenceNumber || !reportData?.decision) {
+      return res.status(400).json({ error: 'Missing mandatory report fields (tcsReferenceNumber, decision)' });
+    }
+
+    const transmissionResult = await transmitReportToTcs(reportData);
+
+    // Save decision and update regulatory_decisions table if DB configured
+    const sql = getDb();
+    if (sql && isDbConfigured()) {
+      const decisionId = `dec-${Date.now()}`;
+      await sql`
+        INSERT INTO regulatory_decisions (
+          id, project_id, tcs_reference_number, decision, justification,
+          risk_tier_assigned, conditions, decided_by_name, decided_by_role,
+          decided_by_email, decided_at, signature_seal, tcs_transmission_status,
+          tcs_transmitted_at, tcs_acknowledgement_receipt
+        ) VALUES (
+          ${decisionId}, ${reportData.projectId || reportData.gnAirgmsProjectId || 'unknown'},
+          ${reportData.tcsReferenceNumber}, ${reportData.decision},
+          ${reportData.justification || 'Statutory review ratified by the National Technical Unit.'},
+          ${reportData.riskClassification || 'Moderate Risk'},
+          ${JSON.stringify(reportData.bindingConditions || [])}::jsonb,
+          ${reportData.decidedByName || 'Super Administrator'},
+          ${reportData.decidedByRole || 'Super Admin'},
+          ${reportData.decidedByEmail || 'superadmin@nita.gov.gh'},
+          NOW(), ${crypto.createHash('sha256').update(`${reportData.tcsReferenceNumber}:${reportData.decision}`).digest('hex')},
+          ${transmissionResult.success ? 'Acknowledged' : 'Queued'},
+          NOW(), ${transmissionResult.acknowledgementToken || null}
+        );
+      `;
+    }
+
+    return res.json({
+      success: true,
+      message: 'AI Assessment report successfully processed for TCS delivery',
+      transmission: transmissionResult
+    });
+  } catch (err) {
+    console.error('[API] Error transmitting report to TCS:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/tcs/status — Health check & integration diagnostics
+app.get('/api/tcs/status', async (req, res) => {
+  return res.json({
+    status: 'ACTIVE_ONLINE',
+    tcsInterconnectProtocol: 'TLS 1.3 / HMAC-SHA256',
+    mockAdapterEnabled: true,
+    lastHeartbeat: new Date().toISOString()
+  });
+});
+
+// ----------------------------------------------------------------------------
+// 12.2 AI MODELS & DATASETS APIS (MODULE 6)
+// ----------------------------------------------------------------------------
+
+// GET /api/projects/:id/models
+app.get('/api/projects/:id/models', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const sql = getDb();
+    if (sql && isDbConfigured()) {
+      const rows = await sql`SELECT * FROM ai_models WHERE project_id = ${id} ORDER BY created_at DESC;`;
+      return res.json({ success: true, count: rows.length, models: rows });
+    }
+    return res.json({ success: true, count: 0, models: [] });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/projects/:id/models
+app.post('/api/projects/:id/models', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const m = req.body;
+    if (!m?.modelName || !m?.provider) {
+      return res.status(400).json({ error: 'Missing required model fields (modelName, provider)' });
+    }
+
+    const modelId = `model-${Date.now()}`;
+    const sql = getDb();
+    if (sql && isDbConfigured()) {
+      await sql`
+        INSERT INTO ai_models (
+          id, project_id, model_name, provider, model_type, version,
+          intended_purpose, hosting_location, model_ownership, accuracy_score,
+          validation_metrics, known_limitations, explainability_method,
+          bias_testing_status, is_generative_ai, genai_safeguards
+        ) VALUES (
+          ${modelId}, ${id}, ${m.modelName}, ${m.provider},
+          ${m.modelType || 'Foundation Model'}, ${m.version || '1.0.0'},
+          ${m.intendedPurpose || ''}, ${m.hostingLocation || 'Sovereign National Data Centre'},
+          ${m.modelOwnership || 'State-Owned / MDA'}, ${parseFloat(m.accuracyScore) || 0.92},
+          ${JSON.stringify(m.validationMetrics || {})}::jsonb,
+          ${m.knownLimitations || ''}, ${m.explainabilityMethod || 'SHAP / Attention Maps'},
+          ${m.biasTestingStatus || 'Passed'}, ${Boolean(m.isGenerativeAi)},
+          ${JSON.stringify(m.genaiSafeguards || {})}::jsonb
+        );
+      `;
+      return res.status(201).json({ success: true, message: 'AI model registered successfully', modelId });
+    }
+    return res.status(201).json({ success: true, message: 'AI model registered (memory fallback)', modelId });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/projects/:id/datasets
+app.get('/api/projects/:id/datasets', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const sql = getDb();
+    if (sql && isDbConfigured()) {
+      const rows = await sql`SELECT * FROM datasets WHERE project_id = ${id} ORDER BY created_at DESC;`;
+      return res.json({ success: true, count: rows.length, datasets: rows });
+    }
+    return res.json({ success: true, count: 0, datasets: [] });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/projects/:id/datasets
+app.post('/api/projects/:id/datasets', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const d = req.body;
+    if (!d?.datasetName || !d?.dataSource) {
+      return res.status(400).json({ error: 'Missing required dataset fields (datasetName, dataSource)' });
+    }
+
+    const datasetId = `ds-${Date.now()}`;
+    const sql = getDb();
+    if (sql && isDbConfigured()) {
+      await sql`
+        INSERT INTO datasets (
+          id, project_id, dataset_name, data_source, data_owner,
+          data_classification, contains_personal_data, act_843_lawful_basis,
+          consent_documentation_ref, cross_border_transfer, cross_border_justification,
+          data_retention_period, quality_score
+        ) VALUES (
+          ${datasetId}, ${id}, ${d.datasetName}, ${d.dataSource},
+          ${d.dataOwner || 'Managing MDA'}, ${d.dataClassification || 'Restricted Public Sector'},
+          ${Boolean(d.containsPersonalData)}, ${d.act843LawfulBasis || 'Public Interest (Act 843)'},
+          ${d.consentDocumentationRef || 'DPC-REG-2026-VAL'},
+          ${Boolean(d.crossBorderTransfer)}, ${d.crossBorderJustification || 'None'},
+          ${d.dataRetentionPeriod || '5 Years Statutory'}, ${parseInt(d.qualityScore) || 85}
+        );
+      `;
+      return res.status(201).json({ success: true, message: 'Dataset registered successfully', datasetId });
+    }
+    return res.status(201).json({ success: true, message: 'Dataset registered (memory fallback)', datasetId });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ----------------------------------------------------------------------------
+// 12.3 12-DOMAIN AI ASSESSMENT ENGINE APIS (MODULES 4 & 5)
+// ----------------------------------------------------------------------------
+
+// GET /api/projects/:id/assessments
+app.get('/api/projects/:id/assessments', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const sql = getDb();
+    if (sql && isDbConfigured()) {
+      const rows = await sql`SELECT * FROM assessment_domains WHERE project_id = ${id} ORDER BY domain_number ASC;`;
+      return res.json({ success: true, count: rows.length, assessments: rows });
+    }
+    return res.json({ success: true, count: 0, assessments: [] });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/projects/:id/assessments — Record domain scores (1-5) and gate status
+app.post('/api/projects/:id/assessments', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { domainNumber, domainName, score, scoreLabel, findings, evidenceRecords, evaluatorName, evaluatorRole, evaluatorEmail, mandatoryGatePassed } = req.body || {};
+
+    if (!domainNumber || !score || score < 1 || score > 5) {
+      return res.status(400).json({ error: 'Valid domainNumber (1-12) and score (1-5) are required.' });
+    }
+
+    const assessmentId = `asm-${id}-d${domainNumber}`;
+    const sql = getDb();
+    if (sql && isDbConfigured()) {
+      await sql`
+        INSERT INTO assessment_domains (
+          id, project_id, domain_number, domain_name, score, score_label,
+          findings, evidence_records, evaluator_name, evaluator_role,
+          evaluator_email, mandatory_gate_passed
+        ) VALUES (
+          ${assessmentId}, ${id}, ${parseInt(domainNumber)}, ${domainName || `Domain ${domainNumber}`},
+          ${parseInt(score)}, ${scoreLabel || (score >= 4 ? 'Good' : 'Satisfactory')},
+          ${findings || ''}, ${JSON.stringify(evidenceRecords || [])}::jsonb,
+          ${evaluatorName || 'Technical Unit Evaluator'}, ${evaluatorRole || 'Technical Unit'},
+          ${evaluatorEmail || 'techdirector@mocd.gov.gh'}, ${mandatoryGatePassed !== false}
+        ) ON CONFLICT (id) DO UPDATE SET
+          score = EXCLUDED.score,
+          findings = EXCLUDED.findings,
+          mandatory_gate_passed = EXCLUDED.mandatory_gate_passed;
+      `;
+      return res.json({ success: true, message: `Domain ${domainNumber} scored successfully`, score });
+    }
+    return res.json({ success: true, message: `Domain ${domainNumber} scored (memory)`, score });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ----------------------------------------------------------------------------
+// 12.4 REGULATORY DECISIONS & CONDITIONS APIS (MODULE 8)
+// ----------------------------------------------------------------------------
+
+// GET /api/projects/:id/decisions
+app.get('/api/projects/:id/decisions', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const sql = getDb();
+    if (sql && isDbConfigured()) {
+      const rows = await sql`SELECT * FROM regulatory_decisions WHERE project_id = ${id} ORDER BY decided_at DESC;`;
+      return res.json({ success: true, count: rows.length, decisions: rows });
+    }
+    return res.json({ success: true, count: 0, decisions: [] });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ----------------------------------------------------------------------------
+// 12.5 AI INCIDENTS APIS (MODULE 11)
+// ----------------------------------------------------------------------------
+
+// GET /api/incidents
+app.get('/api/incidents', async (req, res) => {
+  try {
+    const sql = getDb();
+    if (sql && isDbConfigured()) {
+      const rows = await sql`SELECT * FROM ai_incidents ORDER BY incident_date DESC;`;
+      return res.json({ success: true, count: rows.length, incidents: rows });
+    }
+    return res.json({ success: true, count: 0, incidents: [] });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/incidents
+app.post('/api/incidents', async (req, res) => {
+  try {
+    const inc = req.body;
+    if (!inc?.title || !inc?.severity) {
+      return res.status(400).json({ error: 'Missing required incident fields (title, severity)' });
+    }
+
+    const incidentId = `inc-${Date.now()}`;
+    const incidentCode = `INC-2026-${String(Math.floor(Math.random() * 900) + 100)}`;
+    const sql = getDb();
+    if (sql && isDbConfigured()) {
+      await sql`
+        INSERT INTO ai_incidents (
+          id, incident_code, project_id, institution_id, incident_date,
+          category, severity, title, description, affected_systems,
+          assigned_investigator, root_cause, corrective_action, status
+        ) VALUES (
+          ${incidentId}, ${incidentCode}, ${inc.projectId || null},
+          ${inc.institutionId || null}, NOW(),
+          ${inc.category || 'System Drift'}, ${inc.severity || 'Medium'},
+          ${inc.title}, ${inc.description || ''}, ${inc.affectedSystems || 'All Users'},
+          ${inc.assignedInvestigator || 'Technical Unit Incident Lead'},
+          ${inc.rootCause || ''}, ${inc.correctiveAction || ''},
+          ${inc.status || 'Reported'}
+        );
+      `;
+      return res.status(201).json({ success: true, message: 'Incident logged', incidentCode, incidentId });
+    }
+    return res.status(201).json({ success: true, message: 'Incident logged (memory)', incidentCode, incidentId });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/incidents/:id
+app.put('/api/incidents/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, rootCause, correctiveAction, assignedInvestigator } = req.body || {};
+    const sql = getDb();
+    if (sql && isDbConfigured()) {
+      await sql`
+        UPDATE ai_incidents SET
+          status = COALESCE(${status}, status),
+          root_cause = COALESCE(${rootCause}, root_cause),
+          corrective_action = COALESCE(${correctiveAction}, corrective_action),
+          assigned_investigator = COALESCE(${assignedInvestigator}, assigned_investigator),
+          resolved_at = CASE WHEN ${status} = 'Resolved' THEN NOW() ELSE resolved_at END,
+          updated_at = NOW()
+        WHERE id = ${id} OR incident_code = ${id};
+      `;
+      return res.json({ success: true, message: 'Incident updated' });
+    }
+    return res.json({ success: true, message: 'Incident updated (memory)' });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ----------------------------------------------------------------------------
+// 12.6 AI AUDITS & STATUTORY INSPECTIONS APIS (MODULE 12)
+// ----------------------------------------------------------------------------
+
+// GET /api/audits
+app.get('/api/audits', async (req, res) => {
+  try {
+    const sql = getDb();
+    if (sql && isDbConfigured()) {
+      const rows = await sql`SELECT * FROM ai_audits ORDER BY scheduled_date ASC;`;
+      return res.json({ success: true, count: rows.length, audits: rows });
+    }
+    return res.json({ success: true, count: 0, audits: [] });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/audits
+app.post('/api/audits', async (req, res) => {
+  try {
+    const a = req.body;
+    if (!a?.leadAuditor || !a?.scheduledDate) {
+      return res.status(400).json({ error: 'Missing required audit fields (leadAuditor, scheduledDate)' });
+    }
+
+    const auditId = `aud-${Date.now()}`;
+    const auditCode = `AUD-2026-${String(Math.floor(Math.random() * 900) + 100)}`;
+    const sql = getDb();
+    if (sql && isDbConfigured()) {
+      await sql`
+        INSERT INTO ai_audits (
+          id, audit_code, project_id, audit_type, scheduled_date,
+          lead_auditor, audit_team, checklist_findings, non_compliance_records,
+          corrective_action_plan, verdict, status
+        ) VALUES (
+          ${auditId}, ${auditCode}, ${a.projectId || null},
+          ${a.auditType || 'Statutory Inspection'}, ${a.scheduledDate},
+          ${a.leadAuditor}, ${JSON.stringify(a.auditTeam || ['Technical Unit Inspector'])}::jsonb,
+          ${JSON.stringify(a.checklistFindings || {})}::jsonb,
+          ${JSON.stringify(a.nonComplianceRecords || [])}::jsonb,
+          ${a.correctiveActionPlan || ''}, ${a.verdict || 'Scheduled'},
+          ${a.status || 'Scheduled'}
+        );
+      `;
+      return res.status(201).json({ success: true, message: 'Audit scheduled', auditCode, auditId });
+    }
+    return res.status(201).json({ success: true, message: 'Audit scheduled (memory)', auditCode, auditId });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ----------------------------------------------------------------------------
+// 12.7 AI VENDORS & PROCUREMENT OVERSIGHT APIS (MODULE 13)
+// ----------------------------------------------------------------------------
+
+// GET /api/vendors
+app.get('/api/vendors', async (req, res) => {
+  try {
+    const sql = getDb();
+    if (sql && isDbConfigured()) {
+      const rows = await sql`SELECT * FROM ai_vendors ORDER BY name ASC;`;
+      return res.json({ success: true, count: rows.length, vendors: rows });
+    }
+    return res.json({ success: true, count: 0, vendors: [] });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/vendors
+app.post('/api/vendors', async (req, res) => {
+  try {
+    const v = req.body;
+    if (!v?.name || !v?.country) {
+      return res.status(400).json({ error: 'Missing required vendor fields (name, country)' });
+    }
+
+    const vendorId = `vnd-${Date.now()}`;
+    const sql = getDb();
+    if (sql && isDbConfigured()) {
+      await sql`
+        INSERT INTO ai_vendors (
+          id, name, country, contract_reference, licensing_type,
+          data_ownership_clause, hosting_location, security_certifications,
+          sla_guarantees, vendor_lockin_risk, exit_strategy_documented
+        ) VALUES (
+          ${vendorId}, ${v.name}, ${v.country}, ${v.contractReference || 'CON-2026-VAL'},
+          ${v.licensingType || 'Custom Government Build'},
+          ${v.dataOwnershipClause || 'All State data belongs exclusively to the Republic of Ghana under Act 843.'},
+          ${v.hostingLocation || 'Sovereign National Data Centre'},
+          ${JSON.stringify(v.securityCertifications || ['ISO 27001'])}::jsonb,
+          ${JSON.stringify(v.slaGuarantees || { uptime: '99.9%' })}::jsonb,
+          ${v.vendorLockinRisk || 'Low'}, ${Boolean(v.exitStrategyDocumented)}
+        );
+      `;
+      return res.status(201).json({ success: true, message: 'Vendor registered successfully', vendorId });
+    }
+    return res.status(201).json({ success: true, message: 'Vendor registered (memory)', vendorId });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ----------------------------------------------------------------------------
+// 12.8 SYSTEM NOTIFICATIONS APIS (SECTION 10)
+// ----------------------------------------------------------------------------
+
+// GET /api/notifications
+app.get('/api/notifications', async (req, res) => {
+  try {
+    const email = req.headers['x-user-email'] || req.query.email;
+    const sql = getDb();
+    if (sql && isDbConfigured()) {
+      const rows = email 
+        ? await sql`SELECT * FROM notifications WHERE recipient_email = ${email} ORDER BY delivered_at DESC;`
+        : await sql`SELECT * FROM notifications ORDER BY delivered_at DESC LIMIT 50;`;
+      return res.json({ success: true, count: rows.length, notifications: rows });
+    }
+    return res.json({ success: true, count: 0, notifications: [] });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/notifications
+app.post('/api/notifications', async (req, res) => {
+  try {
+    const { recipientEmail, recipientRole, type, title, message, projectId } = req.body || {};
+    if (!recipientEmail || !title || !message) {
+      return res.status(400).json({ error: 'Missing mandatory notification parameters (recipientEmail, title, message)' });
+    }
+
+    const notifId = `notif-${Date.now()}`;
+    const sql = getDb();
+    if (sql && isDbConfigured()) {
+      await sql`
+        INSERT INTO notifications (
+          id, recipient_email, recipient_role, type, title, message, project_id, is_read, delivered_at
+        ) VALUES (
+          ${notifId}, ${recipientEmail}, ${recipientRole || 'Technical Unit'},
+          ${type || 'SYSTEM_ALERT'}, ${title}, ${message}, ${projectId || null}, FALSE, NOW()
+        );
+      `;
+      return res.status(201).json({ success: true, notificationId: notifId });
+    }
+    return res.status(201).json({ success: true, notificationId: notifId });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/notifications/:id/read
+app.post('/api/notifications/:id/read', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const sql = getDb();
+    if (sql && isDbConfigured()) {
+      await sql`UPDATE notifications SET is_read = TRUE WHERE id = ${id};`;
+      return res.json({ success: true });
+    }
+    return res.json({ success: true });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

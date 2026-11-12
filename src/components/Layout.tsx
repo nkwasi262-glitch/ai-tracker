@@ -15,7 +15,12 @@ import {
   ShieldAlert,
   LogOut,
   Lock,
-  Clock
+  Clock,
+  ArrowDownLeft,
+  Cpu,
+  Scale,
+  FileCheck2,
+  Building
 } from 'lucide-react';
 import { UserSession, ActiveRole } from '../data/authTypes';
 import { HeaderProfile } from './HeaderProfile';
@@ -40,18 +45,24 @@ export const Layout: React.FC<LayoutProps> = ({
   setActiveTab, 
   children 
 }) => {
-  // Navigation tabs definition (Without DG Decision Queue)
+  // Navigation tabs definition for GN-AIRGMS Modules
   const menuItems: { id: AppModuleId; label: string; icon: React.ReactNode }[] = [
     { id: 'dashboard', label: 'M&E Dashboard', icon: <LayoutDashboard size={18} /> },
+    { id: 'tcs_referrals', label: 'TCS Referral Queue', icon: <ArrowDownLeft size={18} /> },
     { id: 'registry', label: 'Project Registry', icon: <FilePlus2 size={18} /> },
+    { id: 'assessments', label: '12-Domain Assessment', icon: <Scale size={18} /> },
+    { id: 'models_datasets', label: 'Models & Datasets', icon: <Cpu size={18} /> },
+    { id: 'incidents', label: 'AI Incident Center', icon: <AlertOctagon size={18} /> },
+    { id: 'audits_hub', label: 'Audits & Inspections', icon: <FileCheck2 size={18} /> },
+    { id: 'vendors', label: 'Vendor Oversight', icon: <Building size={18} /> },
     { id: 'gis', label: 'GIS Spatial Map', icon: <Map size={18} /> },
     { id: 'governance', label: 'Governance & Ethics', icon: <ShieldCheck size={18} /> },
     { id: 'readiness', label: 'AI Readiness', icon: <Award size={18} /> },
-    { id: 'risk', label: 'Risk Matrix', icon: <AlertOctagon size={18} /> },
+    { id: 'risk', label: 'Risk Matrix', icon: <ShieldAlert size={18} /> },
     { id: 'documents', label: 'Documents & OCR', icon: <Files size={18} /> },
     { id: 'finance', label: 'Financial Suite', icon: <DollarSign size={18} /> },
     { id: 'reports', label: 'Internal Reports', icon: <MessageSquare size={18} /> },
-    { id: 'audit', label: 'Audit Trail', icon: <ShieldAlert size={18} /> },
+    { id: 'audit', label: 'Audit Trail', icon: <ShieldCheck size={18} /> },
     { id: 'chat', label: 'AI Chat Assistant', icon: <MessageSquareCode size={18} /> }
   ];
 

@@ -11,6 +11,12 @@ import { AIChatAssistant } from './components/AIChatAssistant';
 import { FinanceMinisterView } from './components/FinanceMinisterView';
 import { InternalReportsHub } from './components/InternalReportsHub';
 import { AuditLogViewer } from './components/AuditLogViewer';
+import { TCSReferralConsole } from './components/TCSReferralConsole';
+import { AIModelDatasetStudio } from './components/AIModelDatasetStudio';
+import { AIAssessmentStudio } from './components/AIAssessmentStudio';
+import { AIIncidentCenter } from './components/AIIncidentCenter';
+import { AIAuditInspectionHub } from './components/AIAuditInspectionHub';
+import { AIVendorOversight } from './components/AIVendorOversight';
 import { EntryGateModal } from './components/EntryGateModal';
 import { AccessDenied } from './components/AccessDenied';
 import { ActiveRoleSelectorModal } from './components/ActiveRoleSelectorModal';
@@ -485,6 +491,48 @@ function App() {
             currentRole={session.role as any} 
             onNavigate={(tab) => setActiveTab(tab)} 
             onNavigateToReview={handleNavigateToReview}
+          />
+        );
+      case 'tcs_referrals':
+        return (
+          <TCSReferralConsole
+            projects={projects}
+            session={session}
+            onNavigateToProject={(projId) => handleNavigateToReview(projId)}
+          />
+        );
+      case 'models_datasets':
+        return (
+          <AIModelDatasetStudio
+            projects={projects}
+            session={session}
+          />
+        );
+      case 'assessments':
+        return (
+          <AIAssessmentStudio
+            projects={projects}
+            session={session}
+          />
+        );
+      case 'incidents':
+        return (
+          <AIIncidentCenter
+            projects={projects}
+            session={session}
+          />
+        );
+      case 'audits_hub':
+        return (
+          <AIAuditInspectionHub
+            projects={projects}
+            session={session}
+          />
+        );
+      case 'vendors':
+        return (
+          <AIVendorOversight
+            session={session}
           />
         );
       case 'registry':

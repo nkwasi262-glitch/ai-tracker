@@ -11,7 +11,13 @@ export type AppModuleId =
   | 'finance'
   | 'reports'
   | 'audit'
-  | 'chat';
+  | 'chat'
+  | 'tcs_referrals'
+  | 'models_datasets'
+  | 'assessments'
+  | 'incidents'
+  | 'audits_hub'
+  | 'vendors';
 
 export type AppAction =
   | 'VIEW'
@@ -103,6 +109,42 @@ export const MODULE_REGISTRY: Record<AppModuleId, ModuleDefinition> = {
     label: 'AI Assistant',
     description: 'Conversational assistant providing instant answers on national AI policies and registry data.',
     category: 'core'
+  },
+  tcs_referrals: {
+    id: 'tcs_referrals',
+    label: 'TCS Referral Queue',
+    description: 'Inbound Technical Clearance System referrals, AI project screening, and return dispatch.',
+    category: 'technical'
+  },
+  models_datasets: {
+    id: 'models_datasets',
+    label: 'AI Models & Datasets',
+    description: 'Foundation model architecture registry, parameter specifications, and Act 843 dataset sovereignty.',
+    category: 'technical'
+  },
+  assessments: {
+    id: 'assessments',
+    label: '12-Domain AI Assessment',
+    description: 'Comprehensive statutory 12-domain AI governance assessment and formal regulatory clearance decisions.',
+    category: 'governance'
+  },
+  incidents: {
+    id: 'incidents',
+    label: 'AI Incident Center',
+    description: 'Algorithmic bias, model drift, hallucination anomalies, and corrective action plan tracking.',
+    category: 'security'
+  },
+  audits_hub: {
+    id: 'audits_hub',
+    label: 'Audits & Inspections',
+    description: '8-point statutory NITA audit checklists, inspection schedules, and non-conformance remediation.',
+    category: 'security'
+  },
+  vendors: {
+    id: 'vendors',
+    label: 'AI Vendor Oversight',
+    description: 'Third-party technology accreditation, sovereign data residency vetting, and lock-in risk scoring.',
+    category: 'governance'
   }
 };
 
@@ -119,7 +161,13 @@ const ROLE_MODULE_PERMISSIONS: Record<string, AppModuleId[]> = {
     'finance',
     'reports',
     'audit',
-    'chat'
+    'chat',
+    'tcs_referrals',
+    'models_datasets',
+    'assessments',
+    'incidents',
+    'audits_hub',
+    'vendors'
   ],
   'Technical Unit': [
     'dashboard',
@@ -132,7 +180,13 @@ const ROLE_MODULE_PERMISSIONS: Record<string, AppModuleId[]> = {
     'finance',
     'reports',
     'audit',
-    'chat'
+    'chat',
+    'tcs_referrals',
+    'models_datasets',
+    'assessments',
+    'incidents',
+    'audits_hub',
+    'vendors'
   ],
   'Technical Director': [
     'dashboard',
@@ -145,7 +199,13 @@ const ROLE_MODULE_PERMISSIONS: Record<string, AppModuleId[]> = {
     'finance',
     'reports',
     'audit',
-    'chat'
+    'chat',
+    'tcs_referrals',
+    'models_datasets',
+    'assessments',
+    'incidents',
+    'audits_hub',
+    'vendors'
   ],
   'Public User': [
     'dashboard',
