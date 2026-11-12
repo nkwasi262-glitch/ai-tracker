@@ -160,8 +160,153 @@ Submits a classified issue report.
 
 ---
 
-### 6. Authentication & Session Cache
+### 10. Technical Clearance System (TCS) Integration & Data Exchange
 
-#### `POST /api/auth/session`
-Syncs the active user's institutional session and clearance tier.
+#### `POST /api/tcs/referrals/inbound`
+Ingests an upstream referral from Ghana's Technical Clearance System (TCS).
+- **Authentication**: HMAC-SHA256 signature in `X-TCS-Signature` header verified against `TCS_SHARED_SECRET`.
+- **Idempotency**: Prevents duplicate submissions using `tcsReferenceNumber`.
+- **Payload**:
+```json
+{
+  "tcsReferenceNumber": "TCS-GH-2026-8801",
+  "institutionName": "Ministry of Health",
+  "institutionCategory": "MDA",
+  "projectTitle": "Radiology AI Triage Assistant",
+  "projectDescription": "Chest X-ray automated anomaly detector",
+  "projectOwner": "Head of Biomedical Informatics",
+  "contactEmail": "biomed@moh.gov.gh",
+  "aiTechnologyDeclared": "Deep Convolutional Neural Networks & Vision Transformers",
+  "aiComponentDescription": "Automated diagnostic radiograph triage",
+  "projectSector": "Health",
+  "budgetGhs": 5500000,
+  "fundingSource": "Consolidated Fund & Global Fund",
+  "implementationTimeline": "2026 - 2028",
+  "projectLocation": "Greater Accra & Ashanti",
+  "screeningResult": { "containsAi": true, "confidence": 0.98 }
+}
+```
+
+#### `GET /api/tcs/referrals`
+Lists all inbound referrals with filtering by `status` (`pending_screening`, `accepted`, `rejected`, `returned`).
+
+#### `GET /api/tcs/status`
+Returns live health and handshake status of the TCS bidirectional integration adapter.
+
+#### `POST /api/tcs/reports/return`
+Transmits the final specialized AI assessment report and clearance decision back to upstream TCS.
+- **Payload**:
+```json
+{
+  "projectId": "proj-1",
+  "tcsReferenceNumber": "TCS-GH-2026-8801",
+  "decision": "Approved",
+  "riskClassification": "High Risk",
+  "assessmentFindings": { "compositeIndex": 89, "fairness": 86, "privacy": 95 },
+  "conditions": ["Quarterly algorithmic drift audits required"],
+  "officialReportUri": "/reports/gn-airgms-clearance-proj-1.pdf",
+  "signedBy": "Dr. Kwaku Mensah (Super Administrator)"
+}
+```
+
+---
+
+### 11. AI Models & Foundation Weights Management
+
+#### `GET /api/projects/:id/models`
+Retrieves all registered AI model architectures, parameter sizes, and guardrail specifications for a project.
+
+#### `POST /api/projects/:id/models`
+Registers a new AI foundation model, architecture, or fine-tuning checkpoint.
+- **Request Body**:
+```json
+{
+  "modelName": "DeepSeek-R1-671B-MoE",
+  "modelFamily": "DeepSeek-R1",
+  "parameterCount": "671B (37B active)",
+  "modality": "Text Reasoning",
+  "deploymentType": "Self-Hosted (NITA Sovereign Cloud)",
+  "vendor": "Open Source Fine-Tuned in Ghana",
+  "contextWindow": "128k tokens",
+  "hallucinationMitigation": "Deterministic RAG + verification guardrails"
+}
+```
+
+---
+
+### 12. Datasets Governance & Act 843 Sovereignty
+
+#### `GET /api/projects/:id/datasets`
+Retrieves all datasets associated with an AI project, including Data Protection Commission (DPC) registration numbers.
+
+#### `POST /api/projects/:id/datasets`
+Registers a training, fine-tuning, or evaluation dataset.
+- **Request Body**:
+```json
+{
+  "datasetName": "Ghana Health Services Clinical Scans 2025",
+  "sourceEntity": "Ghana Health Service (GHS)",
+  "recordsCount": "1,250,000",
+  "containsPii": false,
+  "consentBasis": "Statutory Mandate (Data Protection Act 843 Section 20)",
+  "act843RegistrationNumber": "DPC-GH-2026-CERT-0199",
+  "sovereignStorageLocation": "NITA Primary Data Centre, Accra"
+}
+```
+
+---
+
+### 13. 12-Domain Statutory AI Governance Assessment
+
+#### `GET /api/projects/:id/assessments`
+Retrieves scores, risk levels, and auditor findings across all 12 statutory domains.
+
+#### `POST /api/projects/:id/assessments`
+Records an auditor assessment for a specific statutory governance domain.
+- **Domains**: Technical Architecture, Data Governance, Algorithmic Fairness, Explainability, Safety, Cybersecurity, Privacy, Human Oversight, Societal Impact, Auditability, Compliance, Vendor Risk.
+
+---
+
+### 14. Formal Regulatory Clearance Decisions
+
+#### `GET /api/projects/:id/decisions`
+Retrieves all formal regulatory decisions and conditions recorded for an AI project.
+
+#### `POST /api/projects/:id/decisions`
+Records an official regulatory clearance decision signed by Super Admin or Technical Unit.
+- **Decisions**: `CLEARED`, `CONDITIONAL_CLEARANCE`, `PENDING_REMEDIATION`, `REJECTED`.
+
+---
+
+### 15. AI Incident, Drift & Anomaly Center
+
+#### `GET /api/incidents`
+Lists all reported AI incidents, categorized by severity (`P1`, `P2`, `P3`, `P4`) and status (`reported`, `investigating`, `remediating`, `resolved`, `closed`).
+
+#### `POST /api/incidents`
+Logs a new AI incident, safety anomaly, or algorithmic drift event.
+
+#### `PUT /api/incidents/:id`
+Updates incident investigation status, root cause analysis (RCA), and Corrective & Preventive Action Plan (CAPA).
+
+---
+
+### 16. Statutory AI Audits & Regulatory Inspections
+
+#### `GET /api/audits`
+Retrieves scheduled and completed statutory AI inspections.
+
+#### `POST /api/audits`
+Schedules a statutory audit with the mandatory 8-point NITA checklist under Act 771 and Act 843.
+
+---
+
+### 17. AI Vendor & Third-Party Technology Oversight
+
+#### `GET /api/vendors`
+Retrieves the national directory of accredited AI vendors and third-party technology providers.
+
+#### `POST /api/vendors`
+Accredits a new AI vendor, evaluating sovereign data residency, lock-in risk, and SLA guarantees.
+
 

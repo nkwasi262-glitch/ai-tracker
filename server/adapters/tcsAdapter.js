@@ -48,6 +48,7 @@ export async function transmitReportToTcs(reportData) {
       receiptTimestamp: new Date().toISOString(),
       clearingOfficer: 'Chief Technical Examiner, Upstream TCS Gateway',
       signatureVerified: true,
+      signature: signature,
       message: 'Assessment dossier acknowledged and statutory clearance record updated in TCS.'
     };
   }
@@ -102,4 +103,12 @@ export async function transmitReportToTcs(reportData) {
     retryQueued: true
   };
 }
+
+export const tcsAdapter = {
+  signPayload: signTcsPayload,
+  verifySignature: verifyTcsSignature,
+  returnReportToTcs: transmitReportToTcs
+};
+
+export default tcsAdapter;
 
