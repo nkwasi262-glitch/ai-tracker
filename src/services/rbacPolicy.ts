@@ -121,6 +121,19 @@ const ROLE_MODULE_PERMISSIONS: Record<string, AppModuleId[]> = {
     'audit',
     'chat'
   ],
+  'Technical Unit': [
+    'dashboard',
+    'registry',
+    'gis',
+    'governance',
+    'readiness',
+    'risk',
+    'documents',
+    'finance',
+    'reports',
+    'audit',
+    'chat'
+  ],
   'Technical Director': [
     'dashboard',
     'registry',
@@ -196,6 +209,22 @@ const ROLE_ACTION_PERMISSIONS: Record<string, Partial<Record<AppAction, boolean>
     VIEW_AUDIT_LOG: true,
     PURGE_AUDIT_LOG: false,
     VERIFY_FINANCIAL_EXPENDITURE: true,
+    REVIEW_AND_GRADE_DOCUMENT: true,
+    COMMENT_ON_ONBOARDER_DOCUMENT: true
+  },
+  'Technical Unit': {
+    VIEW: true,
+    CREATE: true,
+    EDIT: true,
+    DELETE: true,
+    RECOMMEND_TO_DG: true,
+    PASS_DG_VERDICT: true,
+    EXPORT_FINANCIALS: true,
+    CREATE_INTERNAL_REPORT: true,
+    COMMENT_INTERNAL_REPORT: true,
+    SIGN_DOCUMENT: true,
+    VIEW_AUDIT_LOG: true,
+    PURGE_AUDIT_LOG: false,
     REVIEW_AND_GRADE_DOCUMENT: true,
     COMMENT_ON_ONBOARDER_DOCUMENT: true
   },

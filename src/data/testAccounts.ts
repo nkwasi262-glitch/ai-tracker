@@ -41,16 +41,16 @@ export const TEST_ACCOUNTS: TestAccount[] = [
     ]
   },
   {
-    role: 'Technical Director',
-    fullName: 'Eng. Emmanuel Darko (Technical Director)',
+    role: 'Technical Unit',
+    fullName: 'Eng. Emmanuel Darko (Technical Unit)',
     email: 'techdirector@mocd.gov.gh',
     password: 'TechDirector@2026',
     institution: 'Ministry of Communications and Digitalisation',
     institutionId: 'inst-2',
     institutionCategory: 'MDA',
-    badge: 'Clearance Leadership',
+    badge: 'Technical & Regulatory Unit',
     badgeColor: '#6366f1',
-    description: 'Supervises national technical clearance evaluations, continuous monitoring, document review & grading, ethical audits, and readiness scoring.',
+    description: 'Unified Technical Unit supervising technical intake, 12-domain assessments, model & dataset evaluation, risk scoring, M&E, and statutory inspections.',
     accessibleModules: [
       'M&E Dashboard',
       'Project Registry',

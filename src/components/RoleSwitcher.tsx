@@ -3,6 +3,9 @@ import { UserCheck, ShieldAlert, Award, FileText } from 'lucide-react';
 
 export type UserRole = 
   | 'Super Administrator'
+  | 'Super Admin'
+  | 'Technical Unit'
+  | 'Technical Director'
   | 'National AI Authority'
   | 'Government Administrator'
   | 'Institution Administrator'
@@ -18,20 +21,20 @@ interface RoleSwitcherProps {
 
 export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ currentRole, onRoleChange }) => {
   const roles: UserRole[] = [
-    'Super Administrator',
-    'National AI Authority',
-    'Government Administrator',
-    'Institution Administrator',
-    'Project Manager',
-    'Monitoring & Evaluation Officer',
-    'Auditor',
+    'Super Admin',
+    'Technical Unit',
     'Public User'
   ];
 
   const getRoleIcon = (role: UserRole) => {
     switch (role) {
-      case 'Super Administrator': return <ShieldAlert className="w-4 h-4 text-red-400" />;
-      case 'National AI Authority': return <Award className="w-4 h-4 text-emerald-400" />;
+      case 'Super Administrator':
+      case 'Super Admin': 
+        return <ShieldAlert className="w-4 h-4 text-red-400" />;
+      case 'Technical Unit':
+      case 'Technical Director':
+      case 'National AI Authority': 
+        return <Award className="w-4 h-4 text-emerald-400" />;
       case 'Government Administrator': return <Award className="w-4 h-4 text-amber-400" />;
       case 'Institution Administrator': return <UserCheck className="w-4 h-4 text-blue-400" />;
       case 'Project Manager': return <UserCheck className="w-4 h-4 text-indigo-400" />;

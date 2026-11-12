@@ -366,44 +366,49 @@ GN-AIRGMS establishes a unified, structured assessment framework spanning 12 dom
 
 ---
 
-## 5. User Roles and Access Control Matrix (13 Roles)
+## 5. User Roles and Access Control Matrix (Streamlined 2-Tier Internal Architecture)
 
-GN-AIRGMS supports 13 specialized roles reflecting Ghana's regulatory architecture:
+Per government optimization directives, GN-AIRGMS eliminates organizational role bloat by consolidating all operational responsibilities into a **streamlined 2-tier internal architecture**:
 
-1. **Super Administrator (`super_admin`)**: System administration, user account management, database maintenance, version releases.
-2. **National AI Regulatory Administrator (`regulatory_admin`)**: Manages the National AI Registry, assigns assessment teams, issues official gazettes.
-3. **AI Assessment Officer (`assessment_officer`)**: Primary assessor reviewing technical submissions and conducting 12-domain evaluations.
-4. **AI Governance Officer (`governance_officer`)**: Reviews ethical compliance, policy alignment, and algorithmic accountability.
-5. **Data Protection Specialist (`dpc_specialist`)**: Dedicated assessor evaluating compliance with the Data Protection Act (Act 843).
-6. **Cybersecurity Specialist (`cyber_specialist`)**: Dedicated assessor evaluating compliance with the Cybersecurity Act (Act 1038).
-7. **Legal Officer (`legal_officer`)**: Evaluates statutory mandates, institutional legal authority, and procurement law.
-8. **Regulatory Review Committee Member (`committee_member`)**: Sits on statutory AI Review Panels, reviews findings, votes on decisions.
-9. **Monitoring & Evaluation Officer (`m_and_e_officer`)**: Tracks post-deployment milestones, model drift, expenditure, and KPIs.
-10. **Auditor / Inspector (`auditor_inspector`)**: Conducts on-site inspections, evidence audits, and non-compliance investigations.
-11. **Institution Administrator (`institution_admin`)**: Manages an MDA's/MMDA's submissions and user accounts.
-12. **Project Manager (`project_manager`)**: Updates project milestones, documents, and monitoring logs for an assigned project.
-13. **Public User (`public_user`)**: Citizen observer accessing approved public transparency information only.
+1. **Super Administrator (`super_admin`) — Stands Alone**:
+   - Holds exclusive, complete administrative and sovereign authority over the entire platform.
+   - Manages system configuration, user accounts, institutions directory, version deployments, and disaster recovery.
+   - Retains final authority for approving statutory decisions, gazetting clearances, and executing cryptographic audit purges.
 
-### Granular Authorization Matrix
+2. **Technical Unit (`technical_unit`) — Consolidated Technical Directorate**:
+   - Compresses all technical, regulatory, assessment, governance, M&E, audit, and monitoring specialist functions into one unified operational role.
+   - Handles:
+     - Technical Clearance Ingestion & TCS referral screening.
+     - 12-domain AI assessment evaluations and scoring.
+     - Model & Dataset provenance and GenAI safeguard assessments.
+     - 14-vector Risk Matrix analysis and mitigation tracking.
+     - Governance and ethics audits under Act 843 and Act 1038.
+     - Post-deployment continuous monitoring and incident investigations.
+     - Statutory audits, inspections, and vendor procurement oversight.
+     - Recommending regulatory decisions for final Super Admin endorsement.
 
-| System Module | Super Admin | Reg Admin | Assessor / Specialists | Committee Member | M&E / Auditor | Institution Admin / PM | Public User |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **M&E Dashboard** | Full | Full | View | View | View / Edit | Institution Only | Public View |
-| **Project Registry** | Full | Full | Read-Only | Read-Only | Read-Only | Manage Own | Blocked |
-| **TCS Referral Intake** | Full | Full | View | View | Blocked | Blocked | Blocked |
-| **Classification Engine** | Full | Full | Edit | View | Blocked | View Own | Blocked |
-| **Risk Assessment Engine** | Full | Full | Full | View | Read-Only | View Own | Blocked |
-| **Governance & Ethics** | Full | Full | Full | View | Read-Only | View Own | Blocked |
-| **Model & Dataset Studio** | Full | Full | Full | View | Read-Only | View Own | Blocked |
-| **Impact Assessment** | Full | Full | Full | View | Read-Only | View Own | Blocked |
-| **Regulatory Decisions** | Full | Full | Recommend | Sign / Vote | Blocked | View Decision | Blocked |
-| **TCS Report Return** | Full | Full | Blocked | Blocked | Blocked | Blocked | Blocked |
-| **Continuous Monitoring**| Full | Full | Read-Only | Read-Only | Full | Update Own | Blocked |
-| **Incident Management** | Full | Full | Investigate | View | Full | Report / Update | Blocked |
-| **Audit & Inspection** | Full | Full | Blocked | View | Full | View Findings | Blocked |
-| **Vendor Oversight** | Full | Full | Review | View | Read-Only | Update Own | Blocked |
-| **System Settings & RLS**| Full | Blocked | Blocked | Blocked | Blocked | Blocked | Blocked |
-| **Public Portal** | Full | Full | Full | Full | Full | Full | Full |
+*(External Citizen Access is preserved via **Public User (`public_user`)** for transparent, view-only public information).*
+
+### Granular Authorization Matrix (2-Tier Architecture)
+
+| System Module | Super Admin (Stands Alone) | Technical Unit (Compressed) | Public User (Citizen Observer) |
+| :--- | :---: | :---: | :---: |
+| **M&E Dashboard** | Full Control | Full Operational View | Substance View-Only |
+| **Project Registry** | Full CRUD | Ingest, Review & Update | Blocked |
+| **TCS Referral Intake** | Full Control | Review, Screen & Process | Blocked |
+| **AI Classification Engine** | Full Control | Classify & Calibrate | Blocked |
+| **National AI Risk Engine** | Full Control | Inherent & Residual Scoring | Blocked |
+| **Governance & Ethics** | Full Control | Audit & Grade Rubrics | Blocked |
+| **Model & Dataset Studio** | Full Control | Inspect Architecture & Data | Blocked |
+| **Impact Assessment** | Full Control | Evaluate Socioeconomic Indicators | Blocked |
+| **Regulatory Decisions** | Final Approval & Sign-Off | Review & Recommend Decisions | Blocked |
+| **TCS Outbound Dispatcher** | Full Transmission Authority | Stage & Queue Reports | Blocked |
+| **Continuous Monitoring** | Full Control | Telemetry & Drift Monitoring | Blocked |
+| **Incident Investigation** | Full Control | Log, Triage & Investigate | Blocked |
+| **Audit & Inspection Hub** | Full Control | Schedule, Audit & Action Plans | Blocked |
+| **Vendor & Procurement** | Full Control | Vendor Oversight & SLA Review | Blocked |
+| **System Settings & RLS** | Full Control | Blocked | Blocked |
+| **Public Transparency Portal**| Full Control | View | Full Access (Sanitized) |
 
 ---
 

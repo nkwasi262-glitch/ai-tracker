@@ -179,7 +179,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
     // Normalize any role strictly to one of the 3 active role profiles
     const normalizeToActiveRole = (r?: string): ActiveRole => {
       if (r === 'Super Admin') return 'Super Admin';
-      if (r === 'Technical Director' || r === 'Director General' || r === 'Technical Clearance Team' || r === 'AI Manager') return 'Technical Director';
+      if (r === 'Technical Unit' || r === 'Technical Director' || r === 'Director General' || r === 'Technical Clearance Team' || r === 'AI Manager') return 'Technical Unit';
       return 'Public User';
     };
 
@@ -187,7 +187,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
     //    - If the user exists in Neon PostgreSQL or seed data, use their database role
     //    - If new user, assign statutory role based on domain rules and persist to database
     const matchedTest = TEST_ACCOUNTS.find(a => a.email.toLowerCase() === cleanEmail);
-    let assignedRole: ActiveRole = 'Technical Director';
+    let assignedRole: ActiveRole = 'Technical Unit';
 
     if (userRecord?.role) {
       assignedRole = normalizeToActiveRole(userRecord.role);
@@ -198,7 +198,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({ onSuccess }) => 
     } else if (cleanEmail === 'public.user@gov.gh' || cleanEmail.includes('public') || cleanEmail.includes('citizen')) {
       assignedRole = 'Public User';
     } else if (cleanEmail.endsWith('.gov.gh')) {
-      assignedRole = 'Technical Director';
+      assignedRole = 'Technical Unit';
     } else {
       assignedRole = normalizeToActiveRole(getLastSelectedRole() || 'Public User');
     }

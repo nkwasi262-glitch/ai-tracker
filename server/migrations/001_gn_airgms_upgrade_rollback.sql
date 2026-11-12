@@ -21,3 +21,4 @@ ALTER TABLE projects DROP COLUMN IF EXISTS risk_assessment;
 ALTER TABLE projects DROP COLUMN IF EXISTS governance_compliance;
 ALTER TABLE projects DROP COLUMN IF EXISTS impact_assessment;
 ALTER TABLE projects DROP COLUMN IF EXISTS monitoring_telemetry;
+

@@ -59,7 +59,7 @@ export const OperationalWorkflowStudio: React.FC<OperationalWorkflowStudioProps>
   const currentProject = projects.find(p => p.id === selectedProjectId) || projects[0];
   const workflow: ProjectOperationalWorkflow = currentProject?.operationalWorkflow || generateDefaultOperationalWorkflow(currentProject || {});
 
-  const canEdit = session?.role === 'Super Admin' || session?.role === 'Technical Director';
+  const canEdit = session?.role === 'Super Admin' || session?.role === 'Technical Unit' || session?.role === 'Technical Director';
 
   const stepsList = [
     { step: 1, name: 'Secure API / Data Exchange', tag: 'Data Exchange', icon: <Server size={14} /> },

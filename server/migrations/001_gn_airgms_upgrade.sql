@@ -254,3 +254,4 @@ CREATE POLICY app_all_ai_vendors_policy ON ai_vendors FOR ALL TO PUBLIC USING (t
 
 DROP POLICY IF EXISTS app_all_notifications_policy ON notifications;
 CREATE POLICY app_all_notifications_policy ON notifications FOR ALL TO PUBLIC USING (true) WITH CHECK (true);
+

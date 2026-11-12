@@ -44,11 +44,11 @@ export const ActiveRoleSelectorModal: React.FC<ActiveRoleSelectorModalProps> = (
       unlockedModules: ['dashboard', 'registry', 'gis', 'governance', 'readiness', 'risk', 'documents', 'finance', 'reports', 'audit', 'chat']
     },
     {
-      role: 'Technical Director',
-      title: 'Technical Director',
-      badge: 'Clearance Leadership',
+      role: 'Technical Unit',
+      title: 'Technical Unit',
+      badge: 'Technical & Regulatory Unit',
       color: '#6366f1',
-      desc: 'Supervises national technical clearance evaluations, ethical audits, escalations, dossier recommendations, and clearance verdicts.',
+      desc: 'Unified Technical Unit supervising technical intake, 12-domain assessments, model & dataset evaluation, risk scoring, M&E, and statutory inspections.',
       unlockedModules: ['dashboard', 'registry', 'gis', 'governance', 'readiness', 'risk', 'documents', 'finance', 'reports', 'audit', 'chat']
     },
     {

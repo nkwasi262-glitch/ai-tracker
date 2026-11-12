@@ -122,6 +122,7 @@ export const ProjectRegistry: React.FC<ProjectRegistryProps> = ({
     'Institution Administrator',
     'Project Manager',
     'AI Manager',
+    'Technical Unit',
     'Technical Director',
     'Technical Clearance Team'
   ].includes(currentRole as string) || (

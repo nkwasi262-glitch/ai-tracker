@@ -35,9 +35,9 @@ export const ALL_ACTIVE_ROLES: RoleDropdownOption[] = [
     color: '#ef4444'
   },
   {
-    role: 'Technical Director',
-    label: 'Technical Director',
-    badge: 'Clearance Leadership',
+    role: 'Technical Unit',
+    label: 'Technical Unit',
+    badge: 'Technical & Regulatory Unit',
     icon: <Award size={14} className="text-indigo-400" />,
     color: '#6366f1'
   },

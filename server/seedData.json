@@ -1421,10 +1421,10 @@
     {
       "id": "user-techdirector-002",
       "email": "techdirector@mocd.gov.gh",
-      "fullName": "Eng. Emmanuel Darko (Technical Director)",
+      "fullName": "Eng. Emmanuel Darko (Technical Unit)",
       "institution": "Ministry of Communications and Digitalisation",
       "institutionCategory": "MDA",
-      "role": "Technical Director",
+      "role": "Technical Unit",
       "memberType": "in_member",
       "onboardingStatus": "approved",
       "isFirstTimer": false

@@ -1,5 +1,6 @@
 export type ActiveRole =
   | 'Super Admin'
+  | 'Technical Unit'
   | 'Technical Director'
   | 'Public User';
 
@@ -13,7 +14,7 @@ export type AnyRole = ActiveRole | LegacyRole;
 
 export const ACTIVE_ROLES: ActiveRole[] = [
   'Super Admin',
-  'Technical Director',
+  'Technical Unit',
   'Public User'
 ];
 
