@@ -7,7 +7,7 @@ WORKDIR /app
 
 # Accept optional Dokploy build-time environment variables
 ARG VITE_APP_ENV=production
-ARG VITE_APP_NAME="Ghana National AI Projects Registry & Monitoring System (GNAPRMS)"
+ARG VITE_APP_NAME="Ghana National AI Registry, Governance, Regulatory & Monitoring System (GN-AIRGMS)"
 ARG VITE_APP_VERSION=1.0.0
 ARG VITE_API_BASE_URL=/api/v1
 
@@ -34,8 +34,8 @@ RUN npm test && npm run build
 # ============================================================================
 FROM nginx:1.27-alpine AS production
 
-LABEL org.opencontainers.image.title="GNAPRMS - Ghana National AI Projects Registry & Monitoring System" \
-      org.opencontainers.image.description="Sovereign National AI Projects Registry & Monitoring System for NITA / MOCD Ghana" \
+LABEL org.opencontainers.image.title="GN-AIRGMS - Ghana National AI Registry, Governance, Regulatory & Monitoring System" \
+      org.opencontainers.image.description="Sovereign National AI Registry, Governance, Regulatory & Monitoring System for NITA / MOCD Ghana" \
       org.opencontainers.image.version="1.0.0"
 
 # Copy hardened NGINX configuration with SPA fallback, Gzip, caching, and /health endpoint

@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 
 export async function runDisasterRecoveryDrill(backupFilename = null) {
   console.log(`====================================================================`);
-  console.log(`  GNAPRMS DISASTER RECOVERY & INTEGRITY DRILL (NITA AUDIT STANDARDS)`);
+  console.log(`  GN-AIRGMS DISASTER RECOVERY & INTEGRITY DRILL (NITA AUDIT STANDARDS)`);
   console.log(`====================================================================`);
   
   const startTime = Date.now();

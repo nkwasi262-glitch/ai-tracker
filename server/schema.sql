@@ -1,5 +1,5 @@
 -- ============================================================================
--- REPUBLIC OF GHANA — NATIONAL AI PROJECTS REGISTRY & MONITORING SYSTEM (GNAPRMS)
+-- REPUBLIC OF GHANA — NATIONAL AI REGISTRY, GOVERNANCE, REGULATORY AND MONITORING SYSTEM (GN-AIRGMS)
 -- NEON POSTGRESQL DATABASE SCHEMA
 -- Statutory Authority: National Information Technology Agency (NITA Act 771)
 -- Data Protection & Integrity: Data Protection Act, 2012 (Act 843)

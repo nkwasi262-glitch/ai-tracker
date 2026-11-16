@@ -686,7 +686,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
               National Technical Clearance System • Cleared AI Projects & Inbound Dossiers
             </h3>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px', margin: 0 }}>
-              The system intake path is always ready to receive documents from the technical clearance system. Submissions are automatically scanned and graded using the standards of Governance & Ethics and AI Readiness, registered into GNAPRMS, and displayed for active monitoring.
+              The system intake path is always ready to receive documents from the technical clearance system. Submissions are automatically scanned and graded using the standards of Governance & Ethics and AI Readiness, registered into GN-AIRGMS, and displayed for active monitoring.
             </p>
           </div>
 
@@ -1693,7 +1693,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ projects, currentRole, onN
                   Application Version & Deployment History
                 </h3>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                  GNAPRMS Statutory Software Release Lifecycle
+                  GN-AIRGMS Statutory Software Release Lifecycle
                 </div>
               </div>
               <button

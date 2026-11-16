@@ -20,7 +20,7 @@ function test(name, fn) {
 }
 
 console.log('====================================================================');
-console.log('   GNAPRMS FIRST-TIMER ONBOARDING & SUPER ADMIN CLEARANCE TESTS    ');
+console.log('   GN-AIRGMS FIRST-TIMER ONBOARDING & SUPER ADMIN CLEARANCE TESTS   ');
 console.log('====================================================================\n');
 
 // 1. First-Timer Onboarding Access Checks

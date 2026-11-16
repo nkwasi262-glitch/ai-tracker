@@ -22,7 +22,8 @@ import {
   FileCheck2,
   Building,
   BarChart3,
-  GitBranch
+  GitBranch,
+  Search
 } from 'lucide-react';
 import { UserSession, ActiveRole } from '../data/authTypes';
 import { HeaderProfile } from './HeaderProfile';
@@ -49,125 +50,226 @@ export const Layout: React.FC<LayoutProps> = ({
   children 
 }) => {
   const [showPageAuditModal, setShowPageAuditModal] = useState(false);
+  const [navSearch, setNavSearch] = useState('');
 
-  // Navigation tabs definition for GN-AIRGMS Modules
-  const menuItems: { id: AppModuleId; label: string; icon: React.ReactNode }[] = [
-    { id: 'dashboard', label: 'M&E Dashboard', icon: <LayoutDashboard size={18} /> },
-    { id: 'analytics_hub', label: 'Executive Analytics', icon: <BarChart3 size={18} /> },
-    { id: 'public_portal', label: 'Public Transparency', icon: <Globe size={18} /> },
-    { id: 'workflow_lifecycle', label: '8-Step Lifecycle', icon: <GitBranch size={18} /> },
-    { id: 'tcs_referrals', label: 'TCS Referral Queue', icon: <ArrowDownLeft size={18} /> },
-    { id: 'registry', label: 'Project Registry', icon: <FilePlus2 size={18} /> },
-    { id: 'assessments', label: '12-Domain Assessment', icon: <Scale size={18} /> },
-    { id: 'models_datasets', label: 'Models & Datasets', icon: <Cpu size={18} /> },
-    { id: 'incidents', label: 'AI Incident Center', icon: <AlertOctagon size={18} /> },
-    { id: 'audits_hub', label: 'Audits & Inspections', icon: <FileCheck2 size={18} /> },
-    { id: 'vendors', label: 'Vendor Oversight', icon: <Building size={18} /> },
-    { id: 'gis', label: 'GIS Spatial Map', icon: <Map size={18} /> },
-    { id: 'governance', label: 'Governance & Ethics', icon: <ShieldCheck size={18} /> },
-    { id: 'readiness', label: 'AI Readiness', icon: <Award size={18} /> },
-    { id: 'risk', label: 'Risk Matrix', icon: <ShieldAlert size={18} /> },
-    { id: 'documents', label: 'Documents & OCR', icon: <Files size={18} /> },
-    { id: 'finance', label: 'Financial Suite', icon: <DollarSign size={18} /> },
-    { id: 'reports', label: 'Internal Reports', icon: <MessageSquare size={18} /> },
-    { id: 'audit', label: 'Audit Trail', icon: <ShieldCheck size={18} /> },
-    { id: 'chat', label: 'AI Chat Assistant', icon: <MessageSquareCode size={18} /> }
+  // Structured statutory functional groups for GN-AIRGMS (de-crowded architecture)
+  const navGroups: {
+    category: string;
+    items: { id: AppModuleId; label: string; icon: React.ReactNode }[];
+  }[] = [
+    {
+      category: 'Executive & Transparency',
+      items: [
+        { id: 'dashboard', label: 'M&E Dashboard', icon: <LayoutDashboard size={16} /> },
+        { id: 'analytics_hub', label: 'Executive Analytics', icon: <BarChart3 size={16} /> },
+        { id: 'public_portal', label: 'Public Transparency', icon: <Globe size={16} /> }
+      ]
+    },
+    {
+      category: 'Clearance & Lifecycle',
+      items: [
+        { id: 'workflow_lifecycle', label: '8-Step Lifecycle', icon: <GitBranch size={16} /> },
+        { id: 'tcs_referrals', label: 'TCS Referral Queue', icon: <ArrowDownLeft size={16} /> },
+        { id: 'registry', label: 'Project Registry', icon: <FilePlus2 size={16} /> },
+        { id: 'assessments', label: '12-Domain Assessment', icon: <Scale size={16} /> }
+      ]
+    },
+    {
+      category: 'Oversight & Monitoring',
+      items: [
+        { id: 'models_datasets', label: 'Models & Datasets', icon: <Cpu size={16} /> },
+        { id: 'incidents', label: 'AI Incident Center', icon: <AlertOctagon size={16} /> },
+        { id: 'audits_hub', label: 'Audits & Inspections', icon: <FileCheck2 size={16} /> },
+        { id: 'vendors', label: 'Vendor Oversight', icon: <Building size={16} /> },
+        { id: 'gis', label: 'GIS Spatial Map', icon: <Map size={16} /> }
+      ]
+    },
+    {
+      category: 'Governance & Operations',
+      items: [
+        { id: 'governance', label: 'Governance & Ethics', icon: <ShieldCheck size={16} /> },
+        { id: 'readiness', label: 'AI Readiness', icon: <Award size={16} /> },
+        { id: 'risk', label: 'Risk Matrix', icon: <ShieldAlert size={16} /> },
+        { id: 'documents', label: 'Documents & OCR', icon: <Files size={16} /> },
+        { id: 'finance', label: 'Financial Suite', icon: <DollarSign size={16} /> },
+        { id: 'reports', label: 'Internal Reports', icon: <MessageSquare size={16} /> },
+        { id: 'audit', label: 'Audit Trail', icon: <ShieldCheck size={16} /> },
+        { id: 'chat', label: 'AI Chat Assistant', icon: <MessageSquareCode size={16} /> }
+      ]
+    }
   ];
 
-  // For pending_approval users, modules remain visible in navigation. Non-monitoring modules show a lock badge and route to pending approval notice.
   const isPendingApproval = session.onboardingStatus === 'pending_approval';
 
-  const displayedMenuItems = isPendingApproval 
-    ? menuItems 
-    : menuItems.filter(item => canAccessModule(session.role, item.id));
+  // Filter groups and items based on role access and quick-search query
+  const filteredGroups = navGroups.map(group => {
+    const accessibleItems = group.items.filter(item => {
+      const permitted = isPendingApproval || canAccessModule(session.role, item.id);
+      if (!permitted) return false;
+      if (!navSearch.trim()) return true;
+      const q = navSearch.toLowerCase();
+      return item.label.toLowerCase().includes(q) || item.id.toLowerCase().includes(q);
+    });
+    return { ...group, items: accessibleItems };
+  }).filter(group => group.items.length > 0);
 
   return (
     <div className="layout-wrapper">
       {/* Sidebar Navigation */}
       <aside className="sidebar">
-        <div className="sidebar-header">
-          <div className="sidebar-logo">GN</div>
+        <div className="sidebar-header" style={{ padding: '18px 16px' }}>
+          <div className="sidebar-logo" style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '9px',
+            background: 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff',
+            fontWeight: 900,
+            fontSize: '0.88rem',
+            letterSpacing: '0.04em',
+            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+            flexShrink: 0
+          }}>
+            AI
+          </div>
           <div>
-            <div className="sidebar-logo-text">GNAPRMS</div>
-            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.05em' }}>
-              REPUBLIC OF GHANA
+            <div className="sidebar-logo-text" style={{ fontSize: '1.02rem', fontWeight: 800, letterSpacing: '0.03em', color: '#f8fafc' }}>
+              GN-AIRGMS
+            </div>
+            <div style={{ fontSize: '0.62rem', color: '#94a3b8', fontWeight: 700, letterSpacing: '0.06em' }}>
+              REPUBLIC OF GHANA • NITA
             </div>
           </div>
         </div>
 
-        <nav className="sidebar-menu">
-          <div style={{ padding: '0 12px 8px 12px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
-            {isPendingApproval ? 'All System Modules' : 'National Monitoring Modules'}
+        {/* Quick Module Filter Input to Eliminate Visual Crowding */}
+        <div style={{ padding: '8px 12px 4px 12px' }}>
+          <div style={{
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center'
+          }}>
+            <Search size={13} style={{ position: 'absolute', left: '8px', color: '#64748b', pointerEvents: 'none' }} />
+            <input
+              type="text"
+              value={navSearch}
+              onChange={(e) => setNavSearch(e.target.value)}
+              placeholder="Quick find module..."
+              style={{
+                width: '100%',
+                padding: '5px 8px 5px 26px',
+                borderRadius: '6px',
+                background: 'rgba(30, 41, 59, 0.7)',
+                border: '1px solid rgba(51, 65, 85, 0.6)',
+                color: '#f8fafc',
+                fontSize: '0.74rem',
+                outline: 'none'
+              }}
+            />
           </div>
-          {displayedMenuItems.map((item) => {
-            const isLockedForPending = isPendingApproval && !['dashboard', 'gis', 'chat'].includes(item.id);
-            return (
-              <div
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`menu-item ${activeTab === item.id ? 'active' : ''}`}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  opacity: isLockedForPending ? 0.78 : 1
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  {item.icon}
-                  <span>{item.label}</span>
+        </div>
+
+        <nav className="sidebar-menu" style={{ padding: '6px 10px', gap: '2px' }}>
+          {filteredGroups.length === 0 ? (
+            <div style={{ padding: '20px 10px', textAlign: 'center', color: '#64748b', fontSize: '0.76rem' }}>
+              No modules match "{navSearch}"
+            </div>
+          ) : (
+            filteredGroups.map((group) => (
+              <div key={group.category} style={{ marginBottom: '8px' }}>
+                <div style={{
+                  padding: '6px 8px 3px 8px',
+                  fontSize: '0.62rem',
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  color: '#64748b'
+                }}>
+                  {group.category}
                 </div>
-                {isLockedForPending && (
-                  <span style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    fontSize: '0.62rem',
-                    padding: '2px 7px',
-                    borderRadius: '4px',
-                    background: 'rgba(239, 68, 68, 0.16)',
-                    border: '1px solid rgba(239, 68, 68, 0.42)',
-                    color: '#fca5a5',
-                    fontWeight: 800
-                  }}>
-                    <Lock size={10} />
-                    <span>Lock</span>
-                  </span>
-                )}
-                {session.role === 'Public User' && (
-                  <span style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '3px',
-                    fontSize: '0.62rem',
-                    padding: '2px 6px',
-                    borderRadius: '4px',
-                    background: 'rgba(16, 185, 129, 0.12)',
-                    border: '1px solid rgba(16, 185, 129, 0.3)',
-                    color: '#a7f3d0',
-                    fontWeight: 700
-                  }}>
-                    <Lock size={9} />
-                    <span>View Only</span>
-                  </span>
-                )}
+                {group.items.map((item) => {
+                  const isLockedForPending = isPendingApproval && !['dashboard', 'gis', 'chat', 'public_portal'].includes(item.id);
+                  const isActive = activeTab === item.id;
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => setActiveTab(item.id)}
+                      className={`menu-item ${isActive ? 'active' : ''}`}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '6px 10px',
+                        marginBottom: '2px',
+                        borderRadius: '6px',
+                        fontSize: '0.8rem',
+                        opacity: isLockedForPending ? 0.75 : 1,
+                        background: isActive ? 'rgba(16, 185, 129, 0.12)' : 'transparent',
+                        border: isActive ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid transparent',
+                        color: isActive ? '#34d399' : '#cbd5e1'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {item.icon}
+                        <span style={{ fontWeight: isActive ? 700 : 500 }}>{item.label}</span>
+                      </div>
+                      {isLockedForPending && (
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px',
+                          fontSize: '0.58rem',
+                          padding: '1px 5px',
+                          borderRadius: '4px',
+                          background: 'rgba(239, 68, 68, 0.16)',
+                          border: '1px solid rgba(239, 68, 68, 0.42)',
+                          color: '#fca5a5',
+                          fontWeight: 800
+                        }}>
+                          <Lock size={9} />
+                          <span>Lock</span>
+                        </span>
+                      )}
+                      {session.role === 'Public User' && (
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '2px',
+                          fontSize: '0.58rem',
+                          padding: '1px 5px',
+                          borderRadius: '4px',
+                          background: 'rgba(16, 185, 129, 0.12)',
+                          border: '1px solid rgba(16, 185, 129, 0.3)',
+                          color: '#a7f3d0',
+                          fontWeight: 700
+                        }}>
+                          <Lock size={8} />
+                          <span>View</span>
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            ))
+          )}
         </nav>
 
         <div style={{
-          padding: '16px 20px',
+          padding: '12px 16px',
           borderTop: '1px solid var(--border-color)',
           display: 'flex',
           flexDirection: 'column',
-          gap: '10px'
+          gap: '8px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
             <Calendar className="w-3.5 h-3.5 text-emerald-400" />
             <span>Fiscal Year: 2026</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
             <Globe className="w-3.5 h-3.5 text-emerald-400" />
             <span>Security Gate: Act 843</span>
           </div>
@@ -175,19 +277,19 @@ export const Layout: React.FC<LayoutProps> = ({
           {/* Visible Sign Out Action in Sidebar */}
           <button
             onClick={onSwitchRole}
-            title="Sign out of GNAPRMS and return to Mandatory Gatekeeper"
+            title="Sign out of GN-AIRGMS and return to Mandatory Gatekeeper"
             style={{
-              marginTop: '4px',
+              marginTop: '2px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '8px',
-              padding: '8px 12px',
-              borderRadius: '8px',
+              gap: '6px',
+              padding: '6px 10px',
+              borderRadius: '6px',
               background: 'rgba(239, 68, 68, 0.12)',
               border: '1px solid rgba(239, 68, 68, 0.35)',
               color: '#fca5a5',
-              fontSize: '0.78rem',
+              fontSize: '0.74rem',
               fontWeight: 700,
               cursor: 'pointer',
               transition: 'all 0.18s ease'
@@ -203,7 +305,7 @@ export const Layout: React.FC<LayoutProps> = ({
               e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.35)';
             }}
           >
-            <LogOut size={14} className="text-red-400" />
+            <LogOut size={13} className="text-red-400" />
             <span>Sign Out Session</span>
           </button>
         </div>
@@ -213,14 +315,18 @@ export const Layout: React.FC<LayoutProps> = ({
       <div className="main-container">
         {/* Dynamic Header */}
         <header className="top-bar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '1.4rem' }}>🇬🇭</span>
-            <div className="top-bar-title">
-              National AI Projects Registry & Monitoring System
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '1.3rem' }}>🇬🇭</span>
+            <div className="top-bar-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ color: '#10b981', fontWeight: 800, letterSpacing: '0.03em' }}>GN-AIRGMS</span>
+              <span style={{ opacity: 0.35, color: '#94a3b8' }}>•</span>
+              <span style={{ fontSize: '0.86rem', color: '#e2e8f0', fontWeight: 600 }}>
+                National AI Registry, Governance, Regulatory & Monitoring System
+              </span>
             </div>
           </div>
 
-          <div className="top-bar-right" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div className="top-bar-right" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button
               onClick={() => setShowPageAuditModal(true)}
               title="Inspect Act 843 immutable forensic audit log for this page"

@@ -80,7 +80,7 @@ export async function createDatabaseBackup(triggeredBy = 'Automated System Sched
       timestamp: new Date().toISOString(),
       durationMs: Date.now() - startTime,
       databaseEngine: 'Neon Serverless PostgreSQL (Postgres 16 / 17)',
-      application: 'Ghana National AI Projects Registry & Monitoring System (GNAPRMS)',
+      application: 'Ghana National AI Registry, Governance, Regulatory and Monitoring System (GN-AIRGMS)',
       systemVersion: '1.2.0',
       triggeredBy,
       totalRecords: Object.values(recordCounts).reduce((a, b) => a + b, 0),

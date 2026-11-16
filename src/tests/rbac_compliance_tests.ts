@@ -1,5 +1,5 @@
 /**
- * Ghana National AI Projects Registry & Monitoring System (GNAPRMS)
+ * Ghana National AI Registry, Governance, Regulatory and Monitoring System (GN-AIRGMS)
  * Statutory RBAC & Entry Gate Verification Test Suite
  */
 
@@ -30,7 +30,7 @@ function assert(condition: boolean, role: string, testName: string, details: str
 }
 
 console.log('====================================================================');
-console.log('GNAPRMS ROLE-BASED ACCESS CONTROL (RBAC) & VERIFICATION TEST SUITE');
+console.log('GN-AIRGMS ROLE-BASED ACCESS CONTROL (RBAC) & VERIFICATION TEST SUITE');
 console.log('====================================================================\n');
 
 // -----------------------------------------------------------------------------

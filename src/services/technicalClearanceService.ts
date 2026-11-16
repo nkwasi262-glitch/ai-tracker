@@ -204,7 +204,7 @@ SECTION 2: AI READINESS STANDARDS:
 - Multi-tier backup and disaster recovery protocols in place.
 - Dedicated technical review panel monitoring false rejection and acceptance rates.
 
-STATUS: Cleared by Technical Clearance System. Transmitted to GNAPRMS for registry enrollment and continuous monitoring.`
+STATUS: Cleared by Technical Clearance System. Transmitted to GN-AIRGMS for registry enrollment and continuous monitoring.`
       }
     }
   ];

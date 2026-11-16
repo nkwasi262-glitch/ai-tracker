@@ -220,7 +220,7 @@ export const AIChatAssistant: React.FC<AIChatAssistantProps> = ({ projects, curr
   }, [messages]);
 
   const sampleQuestions = [
-    "What is the GNAPRMS platform and its key interactive features?",
+    "What is the GN-AIRGMS platform and its key interactive features?",
     "Explain the 2026 Ghana National AI Strategy & Initiatives",
     "Describe the microservices system IT architecture & databases",
     "What are the security standards, encryption, and MFA details?",
@@ -311,7 +311,7 @@ export const AIChatAssistant: React.FC<AIChatAssistantProps> = ({ projects, curr
         return projectTerms.some(term => q.includes(term));
       };
 
-      const containsGeneralSystem = matchesAnyKeyword(['system', 'gnaprms', 'platform', 'software', 'app', 'portal', 'tracker', 'website', 'about the project', 'what is this']);
+      const containsGeneralSystem = matchesAnyKeyword(['system', 'gn-airgms', 'gnairgms', 'gnaprms', 'platform', 'software', 'app', 'portal', 'tracker', 'website', 'about the project', 'what is this']);
       const containsGeneralIT = matchesAnyKeyword(['it', 'technology', 'infrastructure', 'backend', 'frontend', 'server', 'hardware']);
       const containsGeneralSecurity = matchesAnyKeyword(['security', 'cyber', 'cybersecurity', 'encrypt', 'protect', 'auth', 'mfa', 'otp', 'token', 'jwt', 'rbac', 'abac', 'role', 'permission', 'access', 'audit', 'cert', 'cii', 'switcher']);
       const containsGeneralAct = matchesAnyKeyword(['act', 'law', 'legislation', 'regulation', 'bill', 'legal', 'act 843', 'act 1038', 'data protection', 'privacy']);
@@ -379,8 +379,8 @@ ${docsStr}
       }
       // 2. System / Platform Overview General Topic
       else if (containsGeneralSystem) {
-        replyText = `## 🇬🇭 Ghana National AI Projects Registry & Monitoring System (GNAPRMS)
-GNAPRMS is the sovereign single source of truth for Artificial Intelligence initiatives being developed or deployed across the Republic of Ghana. Designed for IT Regulators, M&E Officers, and Ministry Auditors, it ensures complete ethical compliance, financial tracking, and secure record keeping.
+        replyText = `## 🇬🇭 Ghana National AI Registry, Governance, Regulatory & Monitoring System (GN-AIRGMS)
+GN-AIRGMS is the sovereign single source of truth for Artificial Intelligence initiatives being developed or deployed across the Republic of Ghana. Designed for IT Regulators, M&E Officers, and Ministry Auditors, it ensures complete ethical compliance, financial tracking, and secure record keeping.
 
 ### 🚀 Key Interactive Portal Features
 1. **M&E Dashboard**: Real-time KPI counters tracking registered projects, budgets, and compliance distribution with dynamic Recharts plots.
@@ -396,7 +396,7 @@ GNAPRMS is the sovereign single source of truth for Artificial Intelligence init
       }
       // 3. IT, Architecture & Backend Technologies
       else if (containsGeneralIT || query.includes('architecture') || query.includes('microservice') || query.includes('nest') || query.includes('asp.net') || query.includes('gateway') || query.includes('kong') || query.includes('rabbitmq') || query.includes('database') || query.includes('postgres') || query.includes('sql') || query.includes('mongo') || query.includes('redis') || query.includes('elasticsearch') || query.includes('s3') || query.includes('minio') || query.includes('hybrid') || query.includes('erd') || query.includes('index') || query.includes('table') || query.includes('collection') || query.includes('schema') || query.includes('devops') || query.includes('docker') || query.includes('kubernetes') || query.includes('k8s') || query.includes('ci/cd') || query.includes('prometheus') || query.includes('hpa') || query.includes('scaling') || query.includes('pgbouncer') || query.includes('canary') || query.includes('compose') || query.includes('metrics')) {
-        replyText = `## ⚙️ GNAPRMS Enterprise System Architecture & Databases
+        replyText = `## ⚙️ GN-AIRGMS Enterprise System Architecture & Databases
 The platform is designed with a state-of-the-art **Microservices Topology**, a **Hybrid Database Strategy**, and sovereign scaling deployments:
 
 ### 🌐 Microservice Topology
@@ -424,7 +424,7 @@ The platform is designed with a state-of-the-art **Microservices Topology**, a *
       // 4. Security, Auth, MFA & Access Control
       else if (containsGeneralSecurity) {
         replyText = `## 🔒 Security Architecture, Cryptography & Access Control
-GNAPRMS is built for national-scale production workloads, enforcing robust cryptographic standards and fine-grained data isolation in accordance with Ghana's Cybersecurity Act 2020 (Act 1038).
+GN-AIRGMS is built for national-scale production workloads, enforcing robust cryptographic standards and fine-grained data isolation in accordance with Ghana's Cybersecurity Act 2020 (Act 1038).
 
 ### 🔑 Authentication & MFA
 - **OIDC & OAuth 2.0**: Centralized identity system integrating with the **Ghanaian Government Single Sign-On (Gov-SSO)** portal.
@@ -454,7 +454,7 @@ GNAPRMS is built for national-scale production workloads, enforcing robust crypt
       // 5. Legislative Acts & Bills (Act 843, Act 1038, Emerging Tech Bill)
       else if (containsGeneralAct) {
         replyText = `## ⚖️ National Legislative Framework & AI Compliance Acts
-GNAPRMS directly enforces compliance with Ghana's sovereign legislative mandates:
+GN-AIRGMS directly enforces compliance with Ghana's sovereign legislative mandates:
 
 ### 🛡️ Data Protection Act, 2012 (Act 843) Requirements
 - **Sovereign Hosting Restriction**: In compliance with Act 843, all production databases and object stores hosting citizen records must be physically hosted on servers located inside Ghana's national borders to prevent unauthorized overseas processing.
@@ -463,7 +463,7 @@ GNAPRMS directly enforces compliance with Ghana's sovereign legislative mandates
 - **Consent Logs**: Digital consent workflows and signature audits are recorded inside the document registry.
 
 ### 🔒 Cybersecurity Act, 2020 (Act 1038) Requirements
-- **Critical National Information Infrastructure (CII)**: Essential national AI installations (like Akosombo Dam Smart Gates or GNAPRMS itself) are classified as CII under Act 1038, requiring network isolation and CERT-GH integration.
+- **Critical National Information Infrastructure (CII)**: Essential national AI installations (like Akosombo Dam Smart Gates or GN-AIRGMS itself) are classified as CII under Act 1038, requiring network isolation and CERT-GH integration.
 - **Immutable Audit Trail**: All database edits trigger database-level triggers that append immutable, append-only logs to MongoDB, capturing the precise timestamp, operator, IP address, and schema diff.
 - **Independent Auditing**: Semi-annual independent technical audits, pen testing, and vulnerability disclosures are mandatory for projects targeting operational stages.
 
@@ -478,7 +478,7 @@ GNAPRMS directly enforces compliance with Ghana's sovereign legislative mandates
         // Sub-route specifically to Ethics & Scorecard if keywords match
         if (query.includes('ethics') || query.includes('governance') || query.includes('scorecard') || query.includes('ngs') || query.includes('weight') || query.includes('seis') || query.includes('readiness') || query.includes('maturity')) {
           replyText = `## ⚖️ National AI Ethics Framework, NGS Scorecard & SEIS
-To evaluate AI safety and socio-economic value, GNAPRMS applies the **National AI Governance Score (NGS)** scorecard and the **Socio-Economic Impact Score (SEIS)**:
+To evaluate AI safety and socio-economic value, GN-AIRGMS applies the **National AI Governance Score (NGS)** scorecard and the **Socio-Economic Impact Score (SEIS)**:
 
 ### 📊 NGS Scoring Formula & Weights
 The final NGS grade is computed as a weighted average:
@@ -555,7 +555,7 @@ The **Ghana National AI Strategy (2025–2035)** sets out a ten-year roadmap to 
           : '*None. All projects are proceeding according to schedule.*';
 
         replyText = `## 📊 Registry M&E Aggregated KPI Summary
-Here is the real-time aggregated dashboard status of the **Ghana National AI Projects Registry & Monitoring System (GNAPRMS)**:
+Here is the real-time aggregated dashboard status of the **Ghana National AI Registry, Governance, Regulatory & Monitoring System (GN-AIRGMS)**:
 
 ### ⚙️ Main Registry Status
 - **Total Registered AI Projects**: **${totalProjects}**
@@ -604,7 +604,7 @@ Here is a summary of registered projects and their oversight bodies under the **
       }
       // 9. Guides & Workflows
       else if (query.includes('how to') || query.includes('how do i') || query.includes('guide') || query.includes('workflow') || query.includes('register') || query.includes('audit') || query.includes('mitigate') || query.includes('upload') || query.includes('sign') || query.includes('ocr')) {
-        replyText = `## 📖 GNAPRMS Step-by-Step Operator Guide
+        replyText = `## 📖 GN-AIRGMS Step-by-Step Operator Guide
 Here is how to perform core actions inside the Single Page Application:
 
 ### 1. Register a New AI Project
@@ -699,8 +699,8 @@ ${docsStr}
       }
       // 11. Default instructions fallback
       else {
-        replyText = `## 🇬🇭 GNAPRMS AI Governance & Policy Assistant
-Welcome! I am the National AI Governance Assistant. I can help you answer questions about the GNAPRMS platform, its registered projects, legislative requirements, technical architecture, and user workflows.
+        replyText = `## 🇬🇭 GN-AIRGMS AI Governance & Policy Assistant
+Welcome! I am the National AI Governance Assistant. I can help you answer questions about the GN-AIRGMS platform, its registered projects, legislative requirements, technical architecture, and user workflows.
 
 ### ❓ What you can ask me:
 1. **The System**: Ask "what is this system?" or "what are the key features of the platform?"

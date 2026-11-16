@@ -122,7 +122,7 @@ export const HeaderProfile: React.FC<HeaderProfileProps> = ({
         {/* Prominent High-Visibility Sign Out Button */}
         <button
           onClick={onSwitchRole}
-          title="Sign Out of GNAPRMS"
+          title="Sign Out of GN-AIRGMS"
           style={{
             display: 'inline-flex',
             alignItems: 'center',

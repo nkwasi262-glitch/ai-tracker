@@ -320,7 +320,7 @@ export function generateDefaultOperationalWorkflow(project: Partial<AIProject>):
       clearanceVerdict: 'Approved',
       supportingDocumentsTransferred: docsCount,
       apiExchangePayloadHash: `sha256-payload-${code.toLowerCase()}-verified`,
-      notes: `Project dossier, architecture charter, and clearance decision transferred seamlessly via GNAPRMS Secure API endpoint.`
+      notes: `Project dossier, architecture charter, and clearance decision transferred seamlessly via GN-AIRGMS Secure API endpoint.`
     },
     step2_RegistryValidation: {
       validatedAt: project.startDate ? `${project.startDate}T10:00:00Z` : '2026-01-15T10:00:00Z',
@@ -1632,7 +1632,7 @@ export function ensureMdaProject(
       recommendationNotes: `Cleared project dossier and compliance documents for ${mdaName} received from the National Technical Clearance System and enrolled in active monitoring.`
     },
     technicalReview: {
-      reviewerName: 'GNAPRMS Automated Grading Engine',
+      reviewerName: 'GN-AIRGMS Automated Grading Engine',
       reviewerRole: 'Technical Clearance Team',
       reviewerEmail: 'clearance@nita.gov.gh',
       reviewedAt: new Date().toISOString(),

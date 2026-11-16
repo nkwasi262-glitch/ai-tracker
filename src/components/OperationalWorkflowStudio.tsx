@@ -277,7 +277,7 @@ export const OperationalWorkflowStudio: React.FC<OperationalWorkflowStudioProps>
   // Download Master Operational Workflow Specification Dossier
   const handleDownloadWorkflowDossier = () => {
     if (!currentProject) return;
-    const dossierMarkdown = `# Republic of Ghana — National AI Projects Registry & Monitoring System (GNAPRMS)
+    const dossierMarkdown = `# Republic of Ghana — National AI Registry, Governance, Regulatory & Monitoring System (GN-AIRGMS)
 ## Official Operational Workflow & Statutory AI Lifecycle Dossier
 
 * **Project Identifier:** ${currentProject.projectCode}
@@ -361,7 +361,7 @@ ${(workflow.step6_ContinuousMonitoring.incidents || []).map(inc => `  - [${inc.d
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `GNAPRMS-${currentProject.projectCode}-Operational-Workflow-Dossier.md`;
+    link.download = `GN-AIRGMS-${currentProject.projectCode}-Operational-Workflow-Dossier.md`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -660,7 +660,7 @@ ${(workflow.step6_ContinuousMonitoring.incidents || []).map(inc => `  - [${inc.d
         {activeStepTab === 1 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
             <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0 }}>
-              Transfers the approved project record, clearance reference, decision, and supporting documents from the National Technical Clearance System into GNAPRMS.
+              Transfers the approved project record, clearance reference, decision, and supporting documents from the National Technical Clearance System into GN-AIRGMS.
             </p>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>

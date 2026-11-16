@@ -62,7 +62,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = () => {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `GNAPRMS_Audit_Trail_Export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `GN_AIRGMS_Audit_Trail_Export_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

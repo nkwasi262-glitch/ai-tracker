@@ -1,14 +1,14 @@
 // ============================================================================
 // REPUBLIC OF GHANA - NATIONAL INFORMATION TECHNOLOGY AGENCY (NITA)
-// GHANA NATIONAL AI PROJECTS REGISTRY & MONITORING SYSTEM (GNAPRMS)
+// GHANA NATIONAL AI REGISTRY, GOVERNANCE, REGULATORY & MONITORING SYSTEM (GN-AIRGMS)
 // OFFICIAL SCOPE OF WORK (SOW) CONTENT & CLIENT DOWNLOAD SERVICE
 // ============================================================================
 
 export const SCOPE_OF_WORK_CONTENT = `# Republic of Ghana • National Information Technology Agency (NITA)
-# Ghana National AI Projects Registry & Monitoring System (GNAPRMS)
+# Ghana National AI Registry, Governance, Regulatory & Monitoring System (GN-AIRGMS)
 ## Official System Scope of Work (SOW) & Technical Specifications Dossier
 
-* **Document Reference:** NITA-GNAPRMS-SOW-2026-V3
+* **Document Reference:** NITA-GN-AIRGMS-SOW-2026-V4
 * **Issuing Authority:** National Information Technology Agency (NITA)
 * **Parent Ministry:** Ministry of Communications and Digitalisation (MOCD), Republic of Ghana
 * **Statutory Mandates:** NITA Act, 2008 (Act 771); Data Protection Act, 2012 (Act 843); Cybersecurity Act, 2020 (Act 1038)
@@ -20,11 +20,11 @@ export const SCOPE_OF_WORK_CONTENT = `# Republic of Ghana • National Informati
 
 ## 1. Executive Summary & Purpose of the System
 
-The **Ghana National AI Projects Registry & Monitoring System (GNAPRMS)** is the definitive national repository and continuous oversight platform established by NITA to catalog, track, and monitor all Artificial Intelligence (AI) and Machine Learning (ML) deployments across the Republic of Ghana.
+The **Ghana National AI Registry, Governance, Regulatory & Monitoring System (GN-AIRGMS)** is the definitive national repository and continuous oversight platform established by NITA to catalog, track, and monitor all Artificial Intelligence (AI) and Machine Learning (ML) deployments across the Republic of Ghana.
 
 ### 1.1 Core Strategic Orientation
 Under the streamlined national architecture:
-1. **Registry & Monitoring Focus:** GNAPRMS functions strictly as a centralized **Registry and Monitoring System** for all AI projects that have undergone technical clearance.
+1. **Registry & Monitoring Focus:** GN-AIRGMS functions strictly as a centralized **Registry and Monitoring System** for all AI projects that have undergone technical clearance.
 2. **Clear Ingestion Direction:** The system **receives** cleared project dossiers, architectural blueprints, and compliance filings from the National Technical Clearance System into active monitoring (projects are *received from* technical clearance, never sent upstream).
 3. **Bureaucracy Elimination:** Direct executive operational sign-offs, redundant Director General verdict queues, and multi-tier approval bottlenecks are removed in favor of transparent, continuous compliance auditing.
 4. **Permanent Single Source of Truth:** Every AI workload across Ministries, Departments, and Agencies (MDAs), Metropolitan, Municipal, and District Assemblies (MMDAs), and licensed private enterprises is indexed with verified budgets, readiness grades, and spatial telemetry.
@@ -162,7 +162,7 @@ export function downloadScopeOfWork(): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.setAttribute('download', 'GNAPRMS_Scope_of_Work_2026.md');
+  link.setAttribute('download', 'GN_AIRGMS_Scope_of_Work_2026.md');
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

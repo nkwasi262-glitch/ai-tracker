@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * Ghana National AI Projects Registry & Monitoring System (GNAPRMS)
+ * Ghana National AI Registry, Governance, Regulatory & Monitoring System (GN-AIRGMS)
  * Sovereign GIS Spatial API & Telemetry Engine
  * 
  * Compliant with:
@@ -725,7 +725,7 @@ export function exportSpatialData(
     return {
       data: JSON.stringify(geojsonObj, null, 2),
       mimeType: 'application/geo+json',
-      filename: `GNAPRMS_Ghana_AI_Projects_${timestamp}.geojson`
+      filename: `GN_AIRGMS_Ghana_AI_Projects_${timestamp}.geojson`
     };
   }
 
@@ -771,7 +771,7 @@ export function exportSpatialData(
     return {
       data: csvContent,
       mimeType: 'text/csv',
-      filename: `GNAPRMS_Ghana_AI_Coordinates_${timestamp}.csv`
+      filename: `GN_AIRGMS_Ghana_AI_Coordinates_${timestamp}.csv`
     };
   }
 
@@ -801,7 +801,7 @@ export function exportSpatialData(
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
     <name>Ghana National AI Projects Registry</name>
-    <description>GNAPRMS Sovereign GIS Spatial Deployment Nodes</description>
+    <description>GN-AIRGMS Sovereign GIS Spatial Deployment Nodes</description>
     ${kmlPlacemarks}
   </Document>
 </kml>`;
@@ -809,7 +809,7 @@ export function exportSpatialData(
   return {
     data: kmlContent,
     mimeType: 'application/vnd.google-earth.kml+xml',
-    filename: `GNAPRMS_Ghana_AI_Placemarks_${timestamp}.kml`
+    filename: `GN_AIRGMS_Ghana_AI_Placemarks_${timestamp}.kml`
   };
 }
 
@@ -818,7 +818,7 @@ export function exportSpatialData(
 // ----------------------------------------------------------------------------
 
 export function generateCurlSnippet(endpoint: string): string {
-  const baseUrl = 'https://api.gnaprms.gov.gh';
+  const baseUrl = 'https://api.gn-airgms.gov.gh';
   return `curl -X GET "${baseUrl}${endpoint}" \\
   -H "Accept: application/geo+json, application/json" \\
   -H "Authorization: Bearer <GOV_API_KEY>" \\

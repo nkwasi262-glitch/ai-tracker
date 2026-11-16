@@ -45,7 +45,7 @@ export interface BackupRecord {
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string) || '/api';
 
 /**
- * Robust Central API Client connecting GNAPRMS to the Neon PostgreSQL Backend.
+ * Robust Central API Client connecting GN-AIRGMS to the Neon PostgreSQL Backend.
  * Automatically handles offline/cached fallback.
  */
 class ApiClient {

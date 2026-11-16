@@ -121,7 +121,7 @@ export const SignOutConfirmModal: React.FC<SignOutConfirmModalProps> = ({
                 <span>Statutory Session Termination • Act 843</span>
               </div>
               <h3 style={{ fontSize: '1.3rem', fontWeight: 900, color: '#fff', margin: 0, letterSpacing: '-0.01em' }}>
-                Sign Out of GNAPRMS?
+                Sign Out of GN-AIRGMS?
               </h3>
             </div>
           </div>

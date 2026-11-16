@@ -947,7 +947,7 @@ TECHNICAL CLEARANCE SUBMISSION: National AFIS Biometric Identity Verification (G
 - Multi-tier backup and disaster recovery protocols in place.
 - Dedicated technical review panel monitoring false rejection and acceptance rates.
 
-RECOMMENDATION: Transmitted to GNAPRMS as Recommended for statutory technical review.`
+RECOMMENDATION: Transmitted to GN-AIRGMS as Recommended for statutory technical review.`
       }
     }
   ];
@@ -1624,7 +1624,7 @@ app.get('/api/projects/operational-workflow/overview', async (req, res) => {
         attentionRequired: totalAttention
       },
       statutorySteps: [
-        { step: 1, name: 'Secure API / Data Exchange', description: 'Transfers approved project record, clearance reference, decision and supporting documents to GNAPRMS.' },
+        { step: 1, name: 'Secure API / Data Exchange', description: 'Transfers approved project record, clearance reference, decision and supporting documents to GN-AIRGMS.' },
         { step: 2, name: 'National Registry Validation', description: 'System generates a unique project ID and checks completeness and possible duplicates.' },
         { step: 3, name: 'Risk Classification', description: 'Project undergoes preliminary risk screening and is assigned a risk category.' },
         { step: 4, name: 'Regulatory Assessment', description: 'Relevant officers examine technical, legal, privacy, ethical and governance requirements of AI projects.' },
@@ -2277,7 +2277,7 @@ app.post('/api/notifications/:id/read', async (req, res) => {
 // ============================================================================
 app.listen(PORT, async () => {
   console.log(`====================================================================`);
-  console.log(`  GNAPRMS NEON POSTGRESQL API SERVER RUNNING ON PORT ${PORT}`);
+  console.log(`  GN-AIRGMS NEON POSTGRESQL API SERVER RUNNING ON PORT ${PORT}`);
   console.log(`====================================================================`);
   if (isDbConfigured()) {
     console.log('[API] Initializing Neon PostgreSQL Database tables & verifying schema...');

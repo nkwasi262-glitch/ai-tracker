@@ -12,7 +12,7 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 async function runTestSuite() {
   console.log(`====================================================================`);
-  console.log(`  GNAPRMS INTEGRATION & AUDIT VERIFICATION TEST SUITE (ACT 771 / 843)`);
+  console.log(`  GN-AIRGMS INTEGRATION & AUDIT VERIFICATION TEST SUITE (ACT 771 / 843)`);
   console.log(`====================================================================`);
 
   const sql = getDb();

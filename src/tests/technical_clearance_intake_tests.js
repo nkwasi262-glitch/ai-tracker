@@ -1,5 +1,5 @@
 // ============================================================================
-// GHANA NATIONAL AI PROJECTS REGISTRY & MONITORING SYSTEM (GNAPRMS)
+// GHANA NATIONAL AI REGISTRY, GOVERNANCE, REGULATORY AND MONITORING SYSTEM (GN-AIRGMS)
 // TEST SUITE: TECHNICAL CLEARANCE INTAKE PATH, AUTO-GRADING & ROLE LIMITATION
 // ============================================================================
 

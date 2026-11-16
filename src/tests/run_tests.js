@@ -1,5 +1,5 @@
 /**
- * Standalone RBAC & Verification Test Runner for GNAPRMS
+ * Standalone RBAC & Verification Test Runner for GN-AIRGMS
  */
 import fs from 'fs';
 import path from 'path';
@@ -79,7 +79,7 @@ function assert(condition, message) {
 }
 
 console.log('====================================================================');
-console.log('   REPUBLIC OF GHANA - GNAPRMS RBAC & ENTRY GATE TEST EXECUTION     ');
+console.log('   REPUBLIC OF GHANA - GN-AIRGMS RBAC & ENTRY GATE TEST EXECUTION   ');
 console.log('====================================================================\n');
 
 console.log('1. Testing Institutional Email Verification Gate:');

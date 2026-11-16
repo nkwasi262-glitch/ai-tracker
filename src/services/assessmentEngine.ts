@@ -1062,7 +1062,7 @@ export function generateAssessmentFromDocuments(
     const readinessScore = 28;
     const details: AutoAssessmentDetails = {
       generatedAt: new Date().toISOString(),
-      generatedBy: session?.fullName || 'GNAPRMS Automated Document AI Engine',
+      generatedBy: session?.fullName || 'GN-AIRGMS Automated Document AI Engine',
       documentCount: 0,
       documentsAnalyzed: [],
       ethicsSummary: 'No compliance documents or technical dossiers have been uploaded yet. Statutory regulatory requirements under Ghana Act 843 and Ghana AI Ethics Framework are unverified.',
@@ -1104,7 +1104,7 @@ export function generateAssessmentFromDocuments(
         'Ethical governance parameters unverified by documentary evidence'
       ],
       lastAuditedDate: new Date().toISOString(),
-      auditedBy: session?.fullName || 'GNAPRMS Document AI Engine',
+      auditedBy: session?.fullName || 'GN-AIRGMS Document AI Engine',
       assumptionsEliminatedCount: 0
     };
 
@@ -1230,7 +1230,7 @@ export function generateAssessmentFromDocuments(
 
   const details: AutoAssessmentDetails = {
     generatedAt: new Date().toISOString(),
-    generatedBy: session?.fullName || 'GNAPRMS Automated Document AI Engine',
+    generatedBy: session?.fullName || 'GN-AIRGMS Automated Document AI Engine',
     documentCount: docCount,
     documentsAnalyzed: documentNames,
     ethicsSummary: `Automated scan of ${docCount} uploaded document(s) verified compliance across Ghana AI Ethics pillars. Fairness (${fairness}%), Transparency (${transparency}%), Privacy (${privacy}%), and Security (${security}%). Overall Grade: ${overallGrade}.`,
@@ -1280,7 +1280,7 @@ export function generateAssessmentFromDocuments(
       ? ['Partial documentary coverage: additional penetration test and fiscal reconciliation required to eliminate remaining assumptions.'] 
       : [],
     lastAuditedDate: new Date().toISOString(),
-    auditedBy: session?.fullName || 'GNAPRMS Document AI Engine',
+    auditedBy: session?.fullName || 'GN-AIRGMS Document AI Engine',
     assumptionsEliminatedCount: docCount * 2
   };
 
