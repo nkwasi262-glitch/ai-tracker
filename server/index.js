@@ -1702,30 +1702,9 @@ app.post('/api/tcs/referrals/inbound', async (req, res) => {
     const gnAirgmsId = `proj-tcs-${Date.now()}`;
     const projectCode = `GN-AI-2026-${nextCode}`;
 
-    // 1. Insert into tcs_referrals
+    // 1. Insert into projects first (so foreign key in tcs_referrals succeeds)
     const referralId = `ref-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     if (sql && isDbConfigured()) {
-      await sql`
-        INSERT INTO tcs_referrals (
-          id, tcs_reference_number, institution_name, institution_code,
-          project_title, project_description, ai_technologies, intended_use,
-          is_citizen_affecting, is_critical_infrastructure, screening_score,
-          referral_status, referred_at, gn_airgms_project_id, raw_tcs_payload
-        ) VALUES (
-          ${referralId}, ${tcsReferenceNumber}, ${instName}, ${instCode},
-          ${project.title}, ${project.description || ''},
-          ${JSON.stringify(aiDeclaration?.technologyTypes || ['Machine Learning'])}::jsonb,
-          ${aiDeclaration?.intendedUse || ''},
-          ${Boolean(aiDeclaration?.isCitizenAffecting)},
-          ${Boolean(aiDeclaration?.isCriticalInfrastructure)},
-          85, 'Accepted & Registered', NOW(), ${gnAirgmsId},
-          ${JSON.stringify(payload)}::jsonb
-        ) ON CONFLICT (tcs_reference_number) DO UPDATE SET
-          referral_status = 'Updated Inbound',
-          updated_at = NOW();
-      `;
-
-      // 2. Insert into projects
       await sql`
         INSERT INTO projects (
           id, project_code, tcs_reference_number, name, description,
@@ -1744,13 +1723,34 @@ app.post('/api/tcs/referrals/inbound', async (req, res) => {
           ${instName}, ${instCode},
           ${project.projectLocation?.region || 'Greater Accra'},
           ${project.projectLocation?.district || 'Accra Metropolitan'},
-          ${JSON.stringify({ totalAllocated: project.allocatedBudgetGHS || 1000000, disbursed: 0, utilized: 0, primaryFundingSource: project.fundingSource || 'Government', currency: 'GHS' })}::jsonb,
+          ${JSON.stringify({ totalAllocated: project.allocatedBudgetGHS || project.budget || 1000000, disbursed: 0, utilized: 0, primaryFundingSource: project.fundingSource || 'Government', currency: 'GHS' })}::jsonb,
           ${JSON.stringify({ fairness: 80, transparency: 80, accountability: 80, privacy: 80, security: 80, overallGrade: 'Good' })}::jsonb,
           75, 'Moderate Risk', 'Pending Review',
           ${JSON.stringify({ foundationModel: aiDeclaration?.foundationModel || 'Custom' })}::jsonb,
           ${JSON.stringify({ name: aiDeclaration?.primaryVendor || 'Sovereign ICT Team' })}::jsonb,
           ${JSON.stringify(supportingDocuments || [])}::jsonb
         ) ON CONFLICT (id) DO NOTHING;
+      `;
+
+      // 2. Insert into tcs_referrals
+      await sql`
+        INSERT INTO tcs_referrals (
+          id, tcs_reference_number, institution_name, institution_code,
+          project_title, project_description, ai_technologies, intended_use,
+          is_citizen_affecting, is_critical_infrastructure, screening_score,
+          referral_status, referred_at, gn_airgms_project_id, raw_tcs_payload
+        ) VALUES (
+          ${referralId}, ${tcsReferenceNumber}, ${instName}, ${instCode},
+          ${project.title}, ${project.description || ''},
+          ${JSON.stringify(aiDeclaration?.technologyTypes || ['Machine Learning'])}::jsonb,
+          ${aiDeclaration?.intendedUse || ''},
+          ${Boolean(aiDeclaration?.isCitizenAffecting)},
+          ${Boolean(aiDeclaration?.isCriticalInfrastructure)},
+          85, 'Accepted & Registered', NOW(), ${gnAirgmsId},
+          ${JSON.stringify(payload)}::jsonb
+        ) ON CONFLICT (tcs_reference_number) DO UPDATE SET
+          referral_status = 'Updated Inbound',
+          updated_at = NOW();
       `;
     }
 

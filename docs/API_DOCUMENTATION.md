@@ -309,4 +309,30 @@ Retrieves the national directory of accredited AI vendors and third-party techno
 #### `POST /api/vendors`
 Accredits a new AI vendor, evaluating sovereign data residency, lock-in risk, and SLA guarantees.
 
+---
+
+### 18. 8-Step Statutory Operational Lifecycle Endpoints
+
+#### `POST /api/projects/validate-registry`
+Executes Step 2 statutory validation: completeness scoring across mandatory parameters and automated duplicate collision scanning across all registered MDAs. Returns unique National Project ID (`GN-AI-2026-xxx`).
+
+#### `POST /api/projects/:id/operational-workflow/step`
+Advances or updates an AI project across any of the 8 statutory lifecycle steps:
+- `1`: Secure API / Data Exchange
+- `2`: National Registry Validation
+- `3`: Risk Classification
+- `4`: Regulatory Assessment
+- `5`: Project Implementation
+- `6`: Continuous Regulatory Monitoring
+- `7`: Audit & Impact Evaluation
+- `8`: Project Closure or Continued Oversight
+
+Automatically records an Act 843 immutable forensic audit diff entry.
+
+#### `POST /api/tcs/reports/return`
+Dispatches the cryptographically signed AI clearance decision dossier back to the upstream Technical Clearance System (TCS) with binding conditions, composite National Governance Index score, and authorized NITA digital seal.
+
+---
+*Republic of Ghana • National Information Technology Agency (NITA) • All Rights Reserved (2026)*
+
 

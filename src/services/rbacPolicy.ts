@@ -421,7 +421,7 @@ const ROLE_ACTION_PERMISSIONS: Record<string, Partial<Record<AppAction, boolean>
  */
 export function canAccessModule(role: ActiveRole | string, moduleId: AppModuleId, session?: { onboardingStatus?: string }): boolean {
   if (session?.onboardingStatus === 'pending_approval') {
-    return ['dashboard', 'gis', 'chat'].includes(moduleId);
+    return ['dashboard', 'gis', 'chat', 'public_portal'].includes(moduleId);
   }
   const allowedModules = ROLE_MODULE_PERMISSIONS[role] || [];
   return allowedModules.includes(moduleId);
