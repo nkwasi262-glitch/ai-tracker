@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   LayoutDashboard, 
   FilePlus2, 
@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { UserSession, ActiveRole } from '../data/authTypes';
 import { HeaderProfile } from './HeaderProfile';
+import { PageAuditLogModal } from './PageAuditLogModal';
 import { AppModuleId, canAccessModule } from '../services/rbacPolicy';
 
 interface LayoutProps {
@@ -47,6 +48,8 @@ export const Layout: React.FC<LayoutProps> = ({
   setActiveTab, 
   children 
 }) => {
+  const [showPageAuditModal, setShowPageAuditModal] = useState(false);
+
   // Navigation tabs definition for GN-AIRGMS Modules
   const menuItems: { id: AppModuleId; label: string; icon: React.ReactNode }[] = [
     { id: 'dashboard', label: 'M&E Dashboard', icon: <LayoutDashboard size={18} /> },
@@ -217,7 +220,31 @@ export const Layout: React.FC<LayoutProps> = ({
             </div>
           </div>
 
-          <div className="top-bar-right">
+          <div className="top-bar-right" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button
+              onClick={() => setShowPageAuditModal(true)}
+              title="Inspect Act 843 immutable forensic audit log for this page"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                background: 'rgba(51, 65, 85, 0.45)',
+                border: '1px solid #334155',
+                color: '#94a3b8',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseOver={(e) => { e.currentTarget.style.color = '#38bdf8'; e.currentTarget.style.borderColor = '#0284c7'; }}
+              onMouseOut={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.borderColor = '#334155'; }}
+            >
+              <ShieldCheck size={14} style={{ color: '#34d399' }} />
+              <span>Page Audit Trail</span>
+            </button>
+
             <HeaderProfile 
               session={session} 
               onSwitchRole={onSwitchRole} 
@@ -274,6 +301,13 @@ export const Layout: React.FC<LayoutProps> = ({
           {children}
         </main>
       </div>
+
+      <PageAuditLogModal
+        isOpen={showPageAuditModal}
+        onClose={() => setShowPageAuditModal(false)}
+        activeModule={activeTab}
+        session={session}
+      />
     </div>
   );
 };

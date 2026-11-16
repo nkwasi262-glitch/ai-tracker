@@ -104,6 +104,8 @@ export function getAuditLogs(): AuditLogEntry[] {
   }
 }
 
+export const loadAuditLogs = getAuditLogs;
+
 async function syncAuditLogsWithNeon() {
   try {
     const remote = await apiClient.fetchAuditLogs();
