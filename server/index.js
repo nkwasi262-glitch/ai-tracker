@@ -83,7 +83,7 @@ function getLocalSeedData() {
 // ============================================================================
 // 1. HEALTH & NEON DATABASE STATUS ENDPOINT
 // ============================================================================
-app.get('/api/health', async (req, res) => {
+app.get(['/health', '/api/health'], async (req, res) => {
   const dbStatus = await testDbConnection();
   res.json({
     status: 'ok',
